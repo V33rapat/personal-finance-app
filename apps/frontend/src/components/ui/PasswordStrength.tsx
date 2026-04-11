@@ -5,7 +5,7 @@
 
 "use client";
 
-import { getPasswordStrength } from "@/lib/validation";
+import { getPasswordStrength } from "../../feature/auth/lib/validation";
 
 interface PasswordStrengthProps {
   password: string;

@@ -9,7 +9,7 @@ import { useState } from "react";
 import Link from "next/link";
 import FormField from "@/components/ui/FormField";
 import PasswordStrength from "@/components/ui/PasswordStrength";
-import { useRegisterForm } from "@/hooks/useRegisterForm";
+import { useRegisterForm } from "../hooks/useRegisterForm";
 
 // ── Icon: Eye / EyeOff ───────────────────────────────────────────────────────
 function EyeIcon({ open }: { open: boolean }) {

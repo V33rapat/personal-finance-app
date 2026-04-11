@@ -4,7 +4,7 @@
 // ---------------------------------------------------------------------------
 
 import type { Metadata } from "next";
-import RegisterForm from "@/components/RegisterForm";
+import RegisterForm from "@/feature/auth/components/RegisterForm";
 
 export const metadata: Metadata = {
   title: "สมัครสมาชิก | Finance App",
