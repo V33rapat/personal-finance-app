@@ -1,0 +1,179 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model categories {
+  id                    String                  @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  user_id               String?                 @db.Uuid
+  name                  String                  @db.VarChar(100)
+  type                  transaction_type
+  color                 String?                 @db.VarChar(7)
+  icon                  String?                 @db.VarChar(100)
+  is_system             Boolean                 @default(false)
+  created_at            DateTime                @default(now()) @db.Timestamptz(6)
+  updated_at            DateTime                @default(now()) @db.Timestamptz(6)
+  users                 users?                  @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  transaction_templates transaction_templates[]
+  transactions          transactions[]
+
+  @@unique([user_id, name, type], map: "uq_category_user_name")
+  @@index([user_id, type], map: "idx_categories_type")
+  @@index([user_id], map: "idx_categories_user")
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model refresh_tokens {
+  id         String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  user_id    String   @db.Uuid
+  token_hash String   @unique @db.VarChar(255)
+  expires_at DateTime @db.Timestamptz(6)
+  is_revoked Boolean  @default(false)
+  ip_address String?  @db.Inet
+  user_agent String?  @db.VarChar(500)
+  created_at DateTime @default(now()) @db.Timestamptz(6)
+  users      users    @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([user_id], map: "idx_refresh_tokens_user")
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model transaction_templates {
+  id             String           @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  user_id        String           @db.Uuid
+  wallet_id      String?          @db.Uuid
+  category_id    String?          @db.Uuid
+  name           String           @db.VarChar(150)
+  type           transaction_type
+  default_amount Decimal?         @db.Decimal(20, 2)
+  note           String?
+  is_active      Boolean          @default(true)
+  created_at     DateTime         @default(now()) @db.Timestamptz(6)
+  updated_at     DateTime         @default(now()) @db.Timestamptz(6)
+  categories     categories?      @relation(fields: [category_id], references: [id], onUpdate: NoAction)
+  users          users            @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  wallets        wallets?         @relation(fields: [wallet_id], references: [id], onUpdate: NoAction)
+  transactions   transactions[]
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+/// This model contains an expression index which requires additional setup for migrations. Visit https://pris.ly/d/expression-indexes for more info.
+model transactions {
+  id                                                    String                 @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  wallet_id                                             String                 @db.Uuid
+  category_id                                           String?                @db.Uuid
+  template_id                                           String?                @db.Uuid
+  name                                                  String                 @db.VarChar(255)
+  type                                                  transaction_type
+  amount                                                Decimal                @db.Decimal(20, 2)
+  note                                                  String?
+  transaction_date                                      DateTime               @db.Date
+  metadata                                              Json?
+  created_at                                            DateTime               @default(now()) @db.Timestamptz(6)
+  updated_at                                            DateTime               @default(now()) @db.Timestamptz(6)
+  deleted_at                                            DateTime?              @db.Timestamptz(6)
+  categories                                            categories?            @relation(fields: [category_id], references: [id], onUpdate: NoAction)
+  transaction_templates                                 transaction_templates? @relation(fields: [template_id], references: [id], onUpdate: NoAction)
+  wallets                                               wallets                @relation(fields: [wallet_id], references: [id], onUpdate: NoAction)
+  transfers_transfers_from_transaction_idTotransactions transfers?             @relation("transfers_from_transaction_idTotransactions")
+  transfers_transfers_to_transaction_idTotransactions   transfers?             @relation("transfers_to_transaction_idTotransactions")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model transfers {
+  id                                                       String        @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  from_wallet_id                                           String        @db.Uuid
+  to_wallet_id                                             String        @db.Uuid
+  from_transaction_id                                      String?       @unique @db.Uuid
+  to_transaction_id                                        String?       @unique @db.Uuid
+  amount                                                   Decimal       @db.Decimal(20, 2)
+  fee                                                      Decimal       @default(0.00) @db.Decimal(20, 2)
+  note                                                     String?
+  transfer_date                                            DateTime      @db.Date
+  created_at                                               DateTime      @default(now()) @db.Timestamptz(6)
+  updated_at                                               DateTime      @default(now()) @db.Timestamptz(6)
+  transactions_transfers_from_transaction_idTotransactions transactions? @relation("transfers_from_transaction_idTotransactions", fields: [from_transaction_id], references: [id], onUpdate: NoAction)
+  wallets_transfers_from_wallet_idTowallets                wallets       @relation("transfers_from_wallet_idTowallets", fields: [from_wallet_id], references: [id], onUpdate: NoAction)
+  transactions_transfers_to_transaction_idTotransactions   transactions? @relation("transfers_to_transaction_idTotransactions", fields: [to_transaction_id], references: [id], onUpdate: NoAction)
+  wallets_transfers_to_wallet_idTowallets                  wallets       @relation("transfers_to_wallet_idTowallets", fields: [to_wallet_id], references: [id], onUpdate: NoAction)
+
+  @@index([transfer_date(sort: Desc)], map: "idx_transfers_date")
+  @@index([from_wallet_id, transfer_date(sort: Desc)], map: "idx_transfers_from_wallet")
+  @@index([to_wallet_id, transfer_date(sort: Desc)], map: "idx_transfers_to_wallet")
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model users {
+  id                    String                  @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  email                 String                  @unique @db.VarChar(255)
+  password_hash         String                  @db.VarChar(255)
+  full_name             String                  @db.VarChar(150)
+  avatar_url            String?                 @db.VarChar(500)
+  role                  user_role               @default(user)
+  is_active             Boolean                 @default(true)
+  email_verified_at     DateTime?               @db.Timestamptz(6)
+  created_at            DateTime                @default(now()) @db.Timestamptz(6)
+  updated_at            DateTime                @default(now()) @db.Timestamptz(6)
+  deleted_at            DateTime?               @db.Timestamptz(6)
+  categories            categories[]
+  refresh_tokens        refresh_tokens[]
+  transaction_templates transaction_templates[]
+  wallets               wallets[]
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model wallets {
+  id                                          String                  @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  user_id                                     String                  @db.Uuid
+  parent_wallet_id                            String?                 @db.Uuid
+  name                                        String                  @db.VarChar(150)
+  description                                 String?
+  wallet_type                                 wallet_type             @default(normal)
+  balance                                     Decimal                 @default(0.00) @db.Decimal(20, 2)
+  currency                                    String                  @default("THB") @db.Char(3)
+  color                                       String?                 @db.VarChar(7)
+  icon                                        String?                 @db.VarChar(100)
+  sort_order                                  Int                     @default(0)
+  is_active                                   Boolean                 @default(true)
+  created_at                                  DateTime                @default(now()) @db.Timestamptz(6)
+  updated_at                                  DateTime                @default(now()) @db.Timestamptz(6)
+  deleted_at                                  DateTime?               @db.Timestamptz(6)
+  transaction_templates                       transaction_templates[]
+  transactions                                transactions[]
+  transfers_transfers_from_wallet_idTowallets transfers[]             @relation("transfers_from_wallet_idTowallets")
+  transfers_transfers_to_wallet_idTowallets   transfers[]             @relation("transfers_to_wallet_idTowallets")
+  wallets                                     wallets?                @relation("walletsTowallets", fields: [parent_wallet_id], references: [id], onUpdate: NoAction)
+  other_wallets                               wallets[]               @relation("walletsTowallets")
+  users                                       users                   @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+}
+
+enum transaction_type {
+  income
+  expense
+}
+
+enum user_role {
+  admin
+  user
+}
+
+enum wallet_type {
+  normal
+  investment
+}
