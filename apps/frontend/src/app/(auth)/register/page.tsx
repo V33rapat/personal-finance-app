@@ -7,7 +7,7 @@ import type { Metadata } from "next";
 import RegisterForm from "@/feature/auth/components/RegisterForm";
 
 export const metadata: Metadata = {
-  title: "สมัครสมาชิก | Finance App",
+  title: "สมัครสมาชิก | Walpaca",
   description: "สร้างบัญชีเพื่อเริ่มจัดการการเงินส่วนตัว",
 };
 
@@ -46,10 +46,10 @@ export default function RegisterPage() {
 
             <div>
               <h1 className="text-2xl font-bold tracking-tight text-slate-800 dark:text-slate-100">
-                Finance App
+                Walpaca
               </h1>
               <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
-                สร้างบัญชีเพื่อเริ่มจัดการการเงิน
+                สร้างบัญชีเพื่อเริ่มจัดการการเงินของคุณ
               </p>
             </div>
           </div>
