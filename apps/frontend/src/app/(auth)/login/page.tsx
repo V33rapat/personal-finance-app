@@ -4,7 +4,6 @@
 // ---------------------------------------------------------------------------
 
 import type { Metadata } from "next";
-import Link from "next/link";
 import ThemeToggle from "@/components/ui/ThemeToggle";
 import LoginForm from "@/feature/auth/components/LoginForm";
 

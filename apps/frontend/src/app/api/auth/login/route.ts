@@ -17,7 +17,7 @@ export async function POST(request: NextRequest) {
     }
 
     return NextResponse.json(data, { status: res.status });
-  } catch (error) {
+  } catch {
     return NextResponse.json(
       { message: "เซิร์ฟเวอร์ไม่พร้อมใช้งาน" },
       { status: 500 }
