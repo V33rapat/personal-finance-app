@@ -6,7 +6,7 @@
 "use client";
 
 import { useState, useCallback, useMemo } from "react";
-import type { RegisterFormData, RegisterFormErrors } from "@/types/auth";
+import type { RegisterFormData, RegisterFormErrors } from "../types/auth";
 import { validateRegisterForm, isFormValid } from "../lib/validation";
 
 type SubmitStatus = "idle" | "loading" | "success" | "error";

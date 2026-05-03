@@ -3,7 +3,7 @@
 // Pure validation functions — ไม่มี side-effect ทดสอบง่าย
 // ---------------------------------------------------------------------------
 
-import type { RegisterFormData, RegisterFormErrors } from "@/types/auth";
+import type { RegisterFormData, RegisterFormErrors } from "../types/auth";
 
 export function validateRegisterForm(data: RegisterFormData): RegisterFormErrors {
   const errors: RegisterFormErrors = {};
