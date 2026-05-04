@@ -118,6 +118,7 @@ cd apps/frontend
 npm install
 npm run dev
 ```
+- Frontend runs on: `http://localhost:3000`
 
 ### 3. Setup Backend (pnpm)
 ```bash
@@ -125,6 +126,9 @@ cd apps/backend
 pnpm install
 pnpm run start:dev
 ```
+- Backend runs on: `http://localhost:3001`
+
+> **Note**: Run both apps simultaneously for full functionality.
 
 ### 4. Environment Variables
 
@@ -134,7 +138,7 @@ DATABASE_URL="postgresql://<user>:<password>@<host>:<port>/<database>"
 DIRECT_URL="postgresql://<user>:<password>@<host>:<port>/<database>"
 ```
 
-**Frontend** (`apps/frontend/.env.local`):
+**Frontend** (`apps/frontend/.env`):
 ```env
 NEXT_PUBLIC_BACKEND_URL=http://localhost:3001
 ```
@@ -215,7 +219,8 @@ npx prisma studio      # Open database GUI
 ## 🤖 AI Usage
 
 This project uses AI tools to assist development:
-- **OpenCode** - Code generation, architecture design, development
+- **OpenCode** - Code generation, bug fixing, refactoring, architecture design, development
+- **Codex** - Code generation, bug fixing, refactoring
 - **ChatGPT** - System planning, architecture, feature ideation
 
 > All AI-generated content has been reviewed and understood by the developer.

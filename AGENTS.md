@@ -2,6 +2,11 @@
 
 Dual-app repository: Next.js frontend + NestJS backend. No shared workspace.
 
+## Package Managers
+
+- **Frontend**: npm (uses `package-lock.json`)
+- **Backend**: pnpm (uses `pnpm-lock.yaml`) - must use pnpm for tests
+
 ## Apps
 
 | App | Framework | Run Command | Key Tools |
@@ -31,6 +36,7 @@ apps/frontend/src/
 ## Development Notes
 
 - **Frontend**: Next.js 16 has breaking changes. Read `node_modules/next/dist/docs/` before writing code.
+- **Language**: UI defaults to Thai (`lang="th"` in layout.tsx)
 - **BFF Pattern**: Use `/api/auth/*` routes to proxy to backend (don't call backend directly from client)
 - **Theme**: Uses `next-themes` with `ThemeProvider` in `layout.tsx`. Add `suppressHydrationWarning` to `<html>`.
 - **Backend**: Uses Prisma - run `npx prisma generate` after schema changes, `npx prisma migrate dev` for migrations.
@@ -45,8 +51,8 @@ cd apps/frontend && npm run dev
 cd apps/backend && npm run start:dev
 
 # Backend tests
-pnpm run test              # unit
-pnpm run test:e2e         # e2e
+cd apps/backend && pnpm run test              # unit
+cd apps/backend && pnpm run test:e2e         # e2e
 
 # Prisma
 cd apps/backend && npx prisma generate
