@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Button from "@/components/ui/Button";
+import ConfirmationDialog from "@/components/ui/ConfirmationDialog";
 import { TH_TEXT } from "@/constants/th";
 import TransactionList from "@/feature/transaction/components/TransactionList";
 import TransactionModal from "@/feature/transaction/components/TransactionModal";
@@ -51,12 +52,14 @@ function OverviewTab({
   onAddSubWallet,
   onEditWallet,
   onDeleteWallet,
+  onShowDeleteConfirm,
 }: {
   wallet: Wallet;
   childCount: number;
   onAddSubWallet: (id: string) => void;
   onEditWallet: (wallet: Wallet) => void;
   onDeleteWallet: (id: string) => void;
+  onShowDeleteConfirm: () => void;
 }) {
   return (
     <>
@@ -90,7 +93,7 @@ function OverviewTab({
           <Button variant="secondary" size="sm" onClick={() => onEditWallet(wallet)}>
             {TH_TEXT.common.edit}
           </Button>
-          <Button variant="danger" size="sm" onClick={() => onDeleteWallet(wallet.id)}>
+          <Button variant="danger" size="sm" onClick={onShowDeleteConfirm}>
             {TH_TEXT.common.delete}
           </Button>
         </div>
@@ -158,8 +161,20 @@ export default function WalletDetail({
   onCreateWallet,
 }: WalletDetailProps) {
   const [activeTab, setActiveTab] = useState<TabType>("overview");
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   const { displayedTransactions, categories, modalOpen, openModal, closeModal, addTransaction, loadMore, hasMore, isLoading, filters, updateFilter, clearFilters } = useTransaction(wallet?.id);
+
+  const handleDeleteClick = () => {
+    setShowDeleteConfirm(true);
+  };
+
+  const handleConfirmDelete = () => {
+    if (wallet) {
+      onDeleteWallet(wallet.id);
+    }
+    setShowDeleteConfirm(false);
+  };
 
   const tabs = [
     { id: "overview" as TabType, label: TH_TEXT.transaction.overview },
@@ -223,6 +238,7 @@ export default function WalletDetail({
             onAddSubWallet={onAddSubWallet}
             onEditWallet={onEditWallet}
             onDeleteWallet={onDeleteWallet}
+            onShowDeleteConfirm={handleDeleteClick}
           />
         )}
 
@@ -259,6 +275,14 @@ export default function WalletDetail({
         categories={categories}
         onClose={closeModal}
         onSave={addTransaction}
+      />
+
+      <ConfirmationDialog
+        isOpen={showDeleteConfirm}
+        title={TH_TEXT.wallet.deleteConfirmTitle}
+        message={`คุณต้องการลบ "${wallet.name}" หรือไม่? การดำเนินการนี้ไม่สามารถย้อนกลับได้`}
+        onConfirm={handleConfirmDelete}
+        onCancel={() => setShowDeleteConfirm(false)}
       />
     </>
   );

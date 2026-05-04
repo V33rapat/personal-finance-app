@@ -78,6 +78,8 @@ export const TH_TEXT = {
     expandWallet: "ขยายกระเป๋า",
     addSubWalletTo: "เพิ่มกระเป๋าย่อยใน",
     useColor: "ใช้สี",
+    deleteConfirmTitle: "ลบกระเป๋า?",
+    deleteConfirmMessage: "คุณต้องการลบ \"%s\" หรือไม่? การดำเนินการนี้ไม่สามารถย้อนกลับได้",
   },
   profile: {
     metadataTitle: "โปรไฟล์ | Walpaca",
