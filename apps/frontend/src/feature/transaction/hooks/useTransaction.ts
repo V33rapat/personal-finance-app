@@ -232,6 +232,14 @@ function createId() {
   return `tx-${Date.now()}-${Math.random().toString(16).slice(2)}`;
 }
 
+export interface TransactionFilters {
+  type: TransactionType | "";
+  categoryId: string;
+  startDate: string;
+  endDate: string;
+  searchQuery: string;
+}
+
 export function useTransaction(walletId?: string) {
   const [transactions, setTransactions] = useState<Transaction[]>(mockTransactions);
   const [modalOpen, setModalOpen] = useState(false);
@@ -239,6 +247,13 @@ export function useTransaction(walletId?: string) {
   const [page, setPage] = useState(1);
   const pageSize = 10;
   const [isLoading, setIsLoading] = useState(false);
+  const [filters, setFilters] = useState<TransactionFilters>({
+    type: "",
+    categoryId: "",
+    startDate: "",
+    endDate: "",
+    searchQuery: "",
+  });
 
   const filteredTransactions = useMemo(() => {
     let filtered = transactions;
@@ -247,16 +262,55 @@ export function useTransaction(walletId?: string) {
       filtered = filtered.filter((t) => t.wallet_id === walletId);
     }
 
+    if (filters.type) {
+      filtered = filtered.filter((t) => t.type === filters.type);
+    }
+
+    if (filters.categoryId) {
+      filtered = filtered.filter((t) => t.category_id === filters.categoryId);
+    }
+
+    if (filters.startDate) {
+      filtered = filtered.filter((t) => t.transaction_date >= filters.startDate);
+    }
+
+    if (filters.endDate) {
+      filtered = filtered.filter((t) => t.transaction_date <= filters.endDate);
+    }
+
+    if (filters.searchQuery) {
+      const query = filters.searchQuery.toLowerCase();
+      filtered = filtered.filter(
+        (t) => t.name.toLowerCase().includes(query) || (t.note && t.note.toLowerCase().includes(query))
+      );
+    }
+
     return filtered.sort(
       (a, b) => new Date(b.transaction_date).getTime() - new Date(a.transaction_date).getTime()
     );
-  }, [transactions, walletId]);
+  }, [transactions, walletId, filters]);
 
   const displayedTransactions = useMemo(() => {
     return filteredTransactions.slice(0, page * pageSize);
   }, [filteredTransactions, page]);
 
   const hasMore = displayedTransactions.length < filteredTransactions.length;
+
+  const updateFilter = <K extends keyof TransactionFilters>(key: K, value: TransactionFilters[K]) => {
+    setFilters((current) => ({ ...current, [key]: value }));
+    setPage(1);
+  };
+
+  const clearFilters = () => {
+    setFilters({
+      type: "",
+      categoryId: "",
+      startDate: "",
+      endDate: "",
+      searchQuery: "",
+    });
+    setPage(1);
+  };
 
   const loadMore = () => {
     if (isLoading) return;
@@ -305,12 +359,15 @@ export function useTransaction(walletId?: string) {
     hasMore,
     isLoading,
     categories,
+    filters,
     modalOpen,
     currentWalletId,
     openModal,
     closeModal,
     addTransaction,
     loadMore,
+    updateFilter,
+    clearFilters,
   };
 }
 

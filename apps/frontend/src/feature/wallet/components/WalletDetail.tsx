@@ -5,6 +5,7 @@ import Button from "@/components/ui/Button";
 import { TH_TEXT } from "@/constants/th";
 import TransactionList from "@/feature/transaction/components/TransactionList";
 import TransactionModal from "@/feature/transaction/components/TransactionModal";
+import WalletTransactionFilter from "./WalletTransactionFilter";
 import { useTransaction } from "@/feature/transaction/hooks/useTransaction";
 import type { Wallet } from "../hooks/useWallet";
 
@@ -158,7 +159,7 @@ export default function WalletDetail({
 }: WalletDetailProps) {
   const [activeTab, setActiveTab] = useState<TabType>("overview");
 
-  const { displayedTransactions, categories, modalOpen, openModal, closeModal, addTransaction, loadMore, hasMore, isLoading } = useTransaction(wallet?.id);
+  const { displayedTransactions, categories, modalOpen, openModal, closeModal, addTransaction, loadMore, hasMore, isLoading, filters, updateFilter, clearFilters } = useTransaction(wallet?.id);
 
   const tabs = [
     { id: "overview" as TabType, label: TH_TEXT.transaction.overview },
@@ -226,13 +227,28 @@ export default function WalletDetail({
         )}
 
         {activeTab === "transactions" && (
-          <TransactionList
-            transactions={displayedTransactions}
-            hasMore={hasMore}
-            isLoading={isLoading}
-            onLoadMore={loadMore}
-            empty={displayedTransactions.length === 0}
-          />
+          <>
+            <WalletTransactionFilter
+              categories={categories}
+              selectedType={filters.type}
+              selectedCategoryId={filters.categoryId}
+              startDate={filters.startDate}
+              endDate={filters.endDate}
+              searchQuery={filters.searchQuery}
+              onTypeChange={(value) => updateFilter("type", value)}
+              onCategoryChange={(value) => updateFilter("categoryId", value)}
+              onStartDateChange={(value) => updateFilter("startDate", value)}
+              onEndDateChange={(value) => updateFilter("endDate", value)}
+              onSearchChange={(value) => updateFilter("searchQuery", value)}
+            />
+            <TransactionList
+              transactions={displayedTransactions}
+              hasMore={hasMore}
+              isLoading={isLoading}
+              onLoadMore={loadMore}
+              empty={displayedTransactions.length === 0}
+            />
+          </>
         )}
       </section>
 
