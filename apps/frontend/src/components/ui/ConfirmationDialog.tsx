@@ -44,12 +44,14 @@ export default function ConfirmationDialog({
         </div>
 
         <div className="mt-6 flex gap-3">
+          {/** Cancel button */}
           <Button variant="secondary" className="flex-1" onClick={onCancel}>
             {cancelText ?? TH_TEXT.common.cancel}
           </Button>
+          {/** Confirm button */}
           <Button
             variant={variant === "danger" ? "danger" : "secondary"}
-            className={variant === "danger" ? "flex-1 bg-red-600 hover:bg-red-700" : "flex-1"}
+            className={variant === "danger" ? "flex-1 bg-red-600 text-white hover:bg-red-700" : "flex-1"}
             onClick={onConfirm}
           >
             {confirmText ?? TH_TEXT.common.delete}
