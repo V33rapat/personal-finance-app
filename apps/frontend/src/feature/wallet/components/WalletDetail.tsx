@@ -158,7 +158,7 @@ export default function WalletDetail({
 }: WalletDetailProps) {
   const [activeTab, setActiveTab] = useState<TabType>("overview");
 
-  const { recentTransactions, categories, modalOpen, openModal, closeModal, addTransaction } = useTransaction(wallet?.id);
+  const { displayedTransactions, categories, modalOpen, openModal, closeModal, addTransaction, loadMore, hasMore, isLoading } = useTransaction(wallet?.id);
 
   const tabs = [
     { id: "overview" as TabType, label: TH_TEXT.transaction.overview },
@@ -227,9 +227,11 @@ export default function WalletDetail({
 
         {activeTab === "transactions" && (
           <TransactionList
-            transactions={recentTransactions}
-            hasMore={false}
-            empty={recentTransactions.length === 0}
+            transactions={displayedTransactions}
+            hasMore={hasMore}
+            isLoading={isLoading}
+            onLoadMore={loadMore}
+            empty={displayedTransactions.length === 0}
           />
         )}
       </section>

@@ -86,6 +86,123 @@ const mockTransactions: Transaction[] = [
     transaction_date: "2026-04-20",
     created_at: now.toISOString(),
   },
+  {
+    id: "tx-7",
+    wallet_id: "wallet-savings",
+    wallet_name: "เงินออม",
+    category_id: "cat-4",
+    category_name: "อาหาร",
+    name: "ค่าข้าวร้าน",
+    type: "expense",
+    amount: "200",
+    note: null,
+    transaction_date: "2026-04-19",
+    created_at: now.toISOString(),
+  },
+  {
+    id: "tx-8",
+    wallet_id: "wallet-savings",
+    wallet_name: "เงินออม",
+    category_id: "cat-4",
+    category_name: "อาหาร",
+    name: "ค่ากาแฟ",
+    type: "expense",
+    amount: "65",
+    note: "Starbucks",
+    transaction_date: "2026-04-18",
+    created_at: now.toISOString(),
+  },
+  {
+    id: "tx-9",
+    wallet_id: "wallet-savings",
+    wallet_name: "เงินออม",
+    category_id: "cat-7",
+    category_name: "บันเทิง",
+    name: "ค่าหนัง",
+    type: "expense",
+    amount: "220",
+    note: "ดูหนังกับเพื่อน",
+    transaction_date: "2026-04-17",
+    created_at: now.toISOString(),
+  },
+  {
+    id: "tx-10",
+    wallet_id: "wallet-savings",
+    wallet_name: "เงินออม",
+    category_id: "cat-8",
+    category_name: "สุขภาพ",
+    name: "ค่ายา",
+    type: "expense",
+    amount: "150",
+    note: null,
+    transaction_date: "2026-04-16",
+    created_at: now.toISOString(),
+  },
+  {
+    id: "tx-11",
+    wallet_id: "wallet-savings",
+    wallet_name: "เงินออม",
+    category_id: "cat-1",
+    category_name: "โอนเงิน",
+    name: "โอนให้แม่",
+    type: "expense",
+    amount: "3000",
+    note: null,
+    transaction_date: "2026-04-15",
+    created_at: now.toISOString(),
+  },
+  {
+    id: "tx-12",
+    wallet_id: "wallet-investment",
+    wallet_name: "ลงทุน",
+    category_id: "cat-10",
+    category_name: "ลงทุน",
+    name: "ซื้อหุ้น",
+    type: "expense",
+    amount: "10000",
+    note: "กองทุน LTF",
+    transaction_date: "2026-04-14",
+    created_at: now.toISOString(),
+  },
+  {
+    id: "tx-13",
+    wallet_id: "wallet-savings",
+    wallet_name: "เงินออม",
+    category_id: "cat-2",
+    category_name: "อาหาร",
+    name: "ซื้อของกิน",
+    type: "expense",
+    amount: "350",
+    note: "ซื้อของเข้าบ้าน",
+    transaction_date: "2026-04-13",
+    created_at: now.toISOString(),
+  },
+  {
+    id: "tx-14",
+    wallet_id: "wallet-travel",
+    wallet_name: "ท่องเที่ยว",
+    category_id: "cat-5",
+    category_name: "ท่องเที่ยว",
+    name: "ค่าเครื่องบิน",
+    type: "expense",
+    amount: "3500",
+    note: "เที่ยวเชียงใหม่",
+    transaction_date: "2026-04-12",
+    created_at: now.toISOString(),
+  },
+  {
+    id: "tx-15",
+    wallet_id: "wallet-savings",
+    wallet_name: "เงินออม",
+    category_id: "cat-9",
+    category_name: "การศึกษา",
+    name: "ค่าหนังสือ",
+    type: "expense",
+    amount: "480",
+    note: null,
+    transaction_date: "2026-04-11",
+    created_at: now.toISOString(),
+  },
 ];
 
 const mockCategories = [
@@ -119,6 +236,9 @@ export function useTransaction(walletId?: string) {
   const [transactions, setTransactions] = useState<Transaction[]>(mockTransactions);
   const [modalOpen, setModalOpen] = useState(false);
   const [currentWalletId, setCurrentWalletId] = useState<string | undefined>(walletId);
+  const [page, setPage] = useState(1);
+  const pageSize = 10;
+  const [isLoading, setIsLoading] = useState(false);
 
   const filteredTransactions = useMemo(() => {
     let filtered = transactions;
@@ -132,9 +252,20 @@ export function useTransaction(walletId?: string) {
     );
   }, [transactions, walletId]);
 
-  const recentTransactions = useMemo(() => {
-    return filteredTransactions.slice(0, 10);
-  }, [filteredTransactions]);
+  const displayedTransactions = useMemo(() => {
+    return filteredTransactions.slice(0, page * pageSize);
+  }, [filteredTransactions, page]);
+
+  const hasMore = displayedTransactions.length < filteredTransactions.length;
+
+  const loadMore = () => {
+    if (isLoading) return;
+    setIsLoading(true);
+    setTimeout(() => {
+      setPage((current) => current + 1);
+      setIsLoading(false);
+    }, 500);
+  };
 
   const categories = useMemo(() => mockCategories, []);
 
@@ -170,13 +301,16 @@ export function useTransaction(walletId?: string) {
 
   return {
     transactions: filteredTransactions,
-    recentTransactions,
+    displayedTransactions,
+    hasMore,
+    isLoading,
     categories,
     modalOpen,
     currentWalletId,
     openModal,
     closeModal,
     addTransaction,
+    loadMore,
   };
 }
 

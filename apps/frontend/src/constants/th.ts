@@ -139,6 +139,7 @@ export const TH_TEXT = {
     search: "ค้นหา",
     searchPlaceholder: "ค้นหารายการ...",
     loadMore: "โหลดเพิ่มเติม",
+    showMore: "แสดงเพิ่มเติม",
     noTransactions: "ยังไม่มีรายการ",
     noTransactionsDescription: "เพิ่มรายการแรกของคุณ",
     overview: "ภาพรวม",
