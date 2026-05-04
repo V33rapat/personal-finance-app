@@ -27,9 +27,18 @@ function ProfileIcon() {
   );
 }
 
+function TransactionsIcon() {
+  return (
+    <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} aria-hidden>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 12h16.5m-16.5 3.75h16.5m-16.5 3.75h16.5M4.5 19.5h15M4.5 15h15" />
+    </svg>
+  );
+}
+
 const navItems = [
   { href: "/dashboard", label: TH_TEXT.navigation.dashboard, icon: <DashboardIcon /> },
   { href: "/wallet", label: TH_TEXT.navigation.wallet, icon: <WalletIcon /> },
+  { href: "/transactions", label: TH_TEXT.navigation.transactions, icon: <TransactionsIcon /> },
   { href: "/profile", label: TH_TEXT.navigation.profile, icon: <ProfileIcon /> },
 ];
 
