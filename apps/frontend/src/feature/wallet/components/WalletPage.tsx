@@ -1,6 +1,7 @@
 "use client";
 
 import Button from "@/components/ui/Button";
+import { TH_TEXT } from "@/constants/th";
 import { useWallet } from "../hooks/useWallet";
 import WalletDetail from "./WalletDetail";
 import WalletFormModal from "./WalletFormModal";
@@ -29,13 +30,13 @@ export default function WalletPage() {
       <header className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <p className="text-xs font-semibold uppercase tracking-widest text-violet-600 dark:text-violet-400">
-            Structure
+            {TH_TEXT.wallet.eyebrow}
           </p>
           <h1 className="mt-2 text-3xl font-bold tracking-tight text-slate-900 dark:text-slate-50">
-            Wallets
+            {TH_TEXT.wallet.title}
           </h1>
           <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-500 dark:text-slate-400">
-            Manage parent wallets, sub-wallets, and investment accounts in one place.
+            {TH_TEXT.wallet.subtitle}
           </p>
         </div>
 
@@ -43,7 +44,7 @@ export default function WalletPage() {
           <svg className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor" aria-hidden>
             <path d="M10 4a1 1 0 0 1 1 1v4h4a1 1 0 1 1 0 2h-4v4a1 1 0 1 1-2 0v-4H5a1 1 0 1 1 0-2h4V5a1 1 0 0 1 1-1Z" />
           </svg>
-          New Wallet
+          {TH_TEXT.wallet.newWallet}
         </Button>
       </header>
 

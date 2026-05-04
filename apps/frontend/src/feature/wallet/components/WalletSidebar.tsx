@@ -1,5 +1,6 @@
 "use client";
 
+import { TH_TEXT } from "@/constants/th";
 import type { WalletNode } from "../hooks/useWallet";
 import WalletTreeItem from "./WalletTreeItem";
 
@@ -26,16 +27,16 @@ export default function WalletSidebar({
     <aside className="flex min-h-[520px] flex-col rounded-2xl border border-slate-200/80 bg-white/85 p-4 shadow-xl shadow-slate-200/50 backdrop-blur-xl dark:border-slate-800 dark:bg-slate-900/80 dark:shadow-slate-950/40">
       <div className="mb-4 flex items-center justify-between gap-3">
         <div>
-          <h2 className="text-sm font-bold text-slate-800 dark:text-slate-100">Wallet Tree</h2>
+          <h2 className="text-sm font-bold text-slate-800 dark:text-slate-100">{TH_TEXT.wallet.walletTree}</h2>
           <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">
-            Organize money by purpose
+            {TH_TEXT.wallet.treeHint}
           </p>
         </div>
 
         <button
           type="button"
           onClick={onCreateWallet}
-          aria-label="Create wallet"
+          aria-label={TH_TEXT.wallet.createWallet}
           className="flex h-9 w-9 items-center justify-center rounded-xl bg-violet-600 text-white shadow-lg shadow-violet-500/25 transition hover:bg-violet-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-violet-500"
         >
           <svg className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor" aria-hidden>
@@ -65,16 +66,16 @@ export default function WalletSidebar({
               <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 7.5A2.25 2.25 0 0 1 6 5.25h11.25A2.25 2.25 0 0 1 19.5 7.5v1.125h.75A1.5 1.5 0 0 1 21.75 10.125v6.75a1.5 1.5 0 0 1-1.5 1.5H6a2.25 2.25 0 0 1-2.25-2.25V7.5Z" />
             </svg>
           </div>
-          <h3 className="mt-4 text-sm font-semibold text-slate-800 dark:text-slate-100">No wallets yet</h3>
+          <h3 className="mt-4 text-sm font-semibold text-slate-800 dark:text-slate-100">{TH_TEXT.wallet.noWalletsTitle}</h3>
           <p className="mt-1 max-w-[220px] text-xs leading-5 text-slate-500 dark:text-slate-400">
-            Create a wallet to start grouping your cash, savings, or investments.
+            {TH_TEXT.wallet.noWalletsDescription}
           </p>
           <button
             type="button"
             onClick={onCreateWallet}
             className="mt-5 rounded-xl bg-violet-600 px-4 py-2.5 text-sm font-semibold text-white shadow-lg shadow-violet-500/25 transition hover:bg-violet-700"
           >
-            New Wallet
+            {TH_TEXT.wallet.newWallet}
           </button>
         </div>
       )}

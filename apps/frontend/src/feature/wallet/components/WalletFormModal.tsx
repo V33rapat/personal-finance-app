@@ -1,7 +1,9 @@
 "use client";
 
 import { FormEvent, useMemo, useState } from "react";
+import Button from "@/components/ui/Button";
 import FormField from "@/components/ui/FormField";
+import { TH_TEXT } from "@/constants/th";
 import type { Wallet, WalletFormValues, WalletType } from "../hooks/useWallet";
 
 interface WalletFormModalProps {
@@ -46,8 +48,8 @@ export default function WalletFormModal({
 
   if (!isOpen) return null;
 
-  const nameError = submitted && !values.name.trim() ? "Wallet name is required" : "";
-  const title = mode === "edit" ? "Edit Wallet" : parentId ? "New Sub-wallet" : "New Wallet";
+  const nameError = submitted && !values.name.trim() ? TH_TEXT.wallet.walletNameRequired : "";
+  const title = mode === "edit" ? TH_TEXT.wallet.editWallet : parentId ? TH_TEXT.wallet.createSubWallet : TH_TEXT.wallet.newWallet;
 
   const updateValue = <Key extends keyof WalletFormValues>(key: Key, value: WalletFormValues[Key]) => {
     setValues((current) => ({ ...current, [key]: value }));
@@ -71,7 +73,7 @@ export default function WalletFormModal({
     >
       <button
         type="button"
-        aria-label="Close modal"
+        aria-label={TH_TEXT.common.close}
         className="absolute inset-0 cursor-default"
         onClick={onClose}
       />
@@ -86,14 +88,14 @@ export default function WalletFormModal({
               {title}
             </h2>
             <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
-              Keep wallet details simple and easy to scan.
+              {TH_TEXT.wallet.modalHint}
             </p>
           </div>
 
           <button
             type="button"
             onClick={onClose}
-            aria-label="Close"
+            aria-label={TH_TEXT.common.close}
             className="flex h-9 w-9 items-center justify-center rounded-xl text-slate-400 transition hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-slate-800 dark:hover:text-slate-200"
           >
             <svg className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor" aria-hidden>
@@ -104,10 +106,10 @@ export default function WalletFormModal({
 
         <div className="mt-6 grid gap-4">
           <FormField
-            label="Wallet Name"
+            label={TH_TEXT.wallet.walletName}
             value={values.name}
             error={nameError}
-            placeholder="Savings"
+            placeholder={TH_TEXT.wallet.walletNamePlaceholder}
             onChange={(event) => updateValue("name", event.target.value)}
           />
 
@@ -116,12 +118,12 @@ export default function WalletFormModal({
               htmlFor="wallet-description"
               className="text-xs font-semibold uppercase tracking-widest text-slate-500 dark:text-slate-400"
             >
-              Description
+              {TH_TEXT.common.description}
             </label>
             <textarea
               id="wallet-description"
               value={values.description}
-              placeholder="Optional note"
+              placeholder={TH_TEXT.common.optionalNote}
               rows={3}
               onChange={(event) => updateValue("description", event.target.value)}
               className="w-full resize-none rounded-xl border border-slate-200 bg-white/60 px-4 py-3 text-sm text-slate-800 outline-none transition focus:border-violet-400 focus:bg-white focus:ring-2 focus:ring-violet-400/20 dark:border-slate-700 dark:bg-slate-800/60 dark:text-slate-100 dark:placeholder:text-slate-500 dark:focus:border-violet-500 dark:focus:ring-violet-500/20"
@@ -134,7 +136,7 @@ export default function WalletFormModal({
                 htmlFor="wallet-type"
                 className="text-xs font-semibold uppercase tracking-widest text-slate-500 dark:text-slate-400"
               >
-                Type
+                {TH_TEXT.wallet.type}
               </label>
               <select
                 id="wallet-type"
@@ -142,8 +144,8 @@ export default function WalletFormModal({
                 onChange={(event) => updateValue("wallet_type", event.target.value as WalletType)}
                 className="h-[46px] rounded-xl border border-slate-200 bg-white/60 px-4 text-sm font-medium text-slate-800 outline-none transition focus:border-violet-400 focus:bg-white focus:ring-2 focus:ring-violet-400/20 dark:border-slate-700 dark:bg-slate-800/60 dark:text-slate-100 dark:focus:border-violet-500 dark:focus:ring-violet-500/20"
               >
-                <option value="normal">Normal</option>
-                <option value="investment">Investment</option>
+                <option value="normal">{TH_TEXT.wallet.normal}</option>
+                <option value="investment">{TH_TEXT.wallet.investment}</option>
               </select>
             </div>
 
@@ -152,7 +154,7 @@ export default function WalletFormModal({
                 htmlFor="wallet-parent"
                 className="text-xs font-semibold uppercase tracking-widest text-slate-500 dark:text-slate-400"
               >
-                Parent
+                {TH_TEXT.wallet.parent}
               </label>
               <select
                 id="wallet-parent"
@@ -160,7 +162,7 @@ export default function WalletFormModal({
                 onChange={(event) => updateValue("parent_wallet_id", event.target.value || null)}
                 className="h-[46px] rounded-xl border border-slate-200 bg-white/60 px-4 text-sm font-medium text-slate-800 outline-none transition focus:border-violet-400 focus:bg-white focus:ring-2 focus:ring-violet-400/20 dark:border-slate-700 dark:bg-slate-800/60 dark:text-slate-100 dark:focus:border-violet-500 dark:focus:ring-violet-500/20"
               >
-                <option value="">None</option>
+                <option value="">{TH_TEXT.common.none}</option>
                 {parentOptions.map((option) => (
                   <option key={option.id} value={option.id}>
                     {option.name}
@@ -172,7 +174,7 @@ export default function WalletFormModal({
 
           <div className="flex flex-col gap-2">
             <span className="text-xs font-semibold uppercase tracking-widest text-slate-500 dark:text-slate-400">
-              Color
+              {TH_TEXT.common.color}
             </span>
             <div className="flex flex-wrap gap-2">
               {colorOptions.map((color) => (
@@ -180,7 +182,7 @@ export default function WalletFormModal({
                   key={color}
                   type="button"
                   onClick={() => updateValue("color", color)}
-                  aria-label={`Use color ${color}`}
+                  aria-label={`${TH_TEXT.wallet.useColor} ${color}`}
                   className={[
                     "h-8 w-8 rounded-full border-2 transition",
                     values.color === color
@@ -195,19 +197,12 @@ export default function WalletFormModal({
         </div>
 
         <div className="mt-7 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
-          <button
-            type="button"
-            onClick={onClose}
-            className="rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
-          >
-            Cancel
-          </button>
-          <button
-            type="submit"
-            className="rounded-xl bg-violet-600 px-4 py-3 text-sm font-semibold text-white shadow-lg shadow-violet-500/25 transition hover:bg-violet-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-violet-500"
-          >
-            {mode === "edit" ? "Save Changes" : "Create Wallet"}
-          </button>
+          <Button variant="secondary" onClick={onClose}>
+            {TH_TEXT.common.cancel}
+          </Button>
+          <Button type="submit">
+            {mode === "edit" ? TH_TEXT.wallet.saveChanges : TH_TEXT.wallet.createWallet}
+          </Button>
         </div>
       </form>
     </div>

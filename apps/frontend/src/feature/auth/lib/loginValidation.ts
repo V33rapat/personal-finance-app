@@ -3,6 +3,7 @@
 // Login validation functions
 // ---------------------------------------------------------------------------
 
+import { TH_TEXT } from "@/constants/th";
 import type { LoginFormData, LoginFormErrors } from "../types/login";
 
 export function validateLoginForm(data: LoginFormData): LoginFormErrors {
@@ -10,14 +11,14 @@ export function validateLoginForm(data: LoginFormData): LoginFormErrors {
 
   // email
   if (!data.email.trim()) {
-    errors.email = "กรุณากรอก Email";
+    errors.email = TH_TEXT.auth.emailRequired;
   } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(data.email.trim())) {
-    errors.email = "รูปแบบ Email ไม่ถูกต้อง";
+    errors.email = TH_TEXT.auth.emailInvalid;
   }
 
   // password
   if (!data.password) {
-    errors.password = "กรุณากรอก Password";
+    errors.password = TH_TEXT.auth.passwordRequired;
   }
 
   return errors;

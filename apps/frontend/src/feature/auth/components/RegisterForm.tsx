@@ -9,6 +9,7 @@ import { useState } from "react";
 import Link from "next/link";
 import FormField from "@/components/ui/FormField";
 import PasswordStrength from "@/components/ui/PasswordStrength";
+import { TH_TEXT } from "@/constants/th";
 import { useRegisterForm } from "../hooks/useRegisterForm";
 
 // ── Icon: Eye / EyeOff ───────────────────────────────────────────────────────
@@ -90,7 +91,7 @@ export default function RegisterForm() {
 
       {/* Username */}
       <FormField
-        label="Username"
+        label={TH_TEXT.auth.username}
         id="username"
         type="text"
         placeholder="เช่น john_doe"
@@ -104,7 +105,7 @@ export default function RegisterForm() {
 
       {/* Email */}
       <FormField
-        label="Email"
+        label={TH_TEXT.auth.email}
         id="email"
         type="email"
         placeholder="your@email.com"
@@ -119,7 +120,7 @@ export default function RegisterForm() {
       {/* Password */}
       <div className="flex flex-col gap-2">
         <FormField
-          label="Password"
+          label={TH_TEXT.auth.password}
           id="password"
           type={showPassword ? "text" : "password"}
           placeholder="อย่างน้อย 8 ตัวอักษร"
@@ -133,7 +134,7 @@ export default function RegisterForm() {
             <button
               type="button"
               tabIndex={-1}
-              aria-label={showPassword ? "ซ่อน password" : "แสดง password"}
+              aria-label={showPassword ? TH_TEXT.auth.hidePassword : TH_TEXT.auth.showPassword}
               onClick={() => setShowPassword((v) => !v)}
             >
               <EyeIcon open={showPassword} />
@@ -145,7 +146,7 @@ export default function RegisterForm() {
 
       {/* Confirm Password */}
       <FormField
-        label="ยืนยัน Password"
+        label={TH_TEXT.auth.confirmPassword}
         id="confirm-password"
         type={showConfirmPassword ? "text" : "password"}
         placeholder="กรอก password อีกครั้ง"
@@ -159,7 +160,7 @@ export default function RegisterForm() {
           <button
             type="button"
             tabIndex={-1}
-            aria-label={showConfirmPassword ? "ซ่อน password" : "แสดง password"}
+            aria-label={showConfirmPassword ? TH_TEXT.auth.hidePassword : TH_TEXT.auth.showPassword}
             onClick={() => setShowConfirm((v) => !v)}
           >
             <EyeIcon open={showConfirmPassword} />

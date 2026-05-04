@@ -8,6 +8,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import FormField from "@/components/ui/FormField";
+import { TH_TEXT } from "@/constants/th";
 import { useLoginForm } from "../hooks/useLoginForm";
 
 // ── Icon: Eye / EyeOff ───────────────────────────────────────────────────────
@@ -82,7 +83,7 @@ export default function LoginForm() {
 
       {/* Email */}
       <FormField
-        label="Email"
+        label={TH_TEXT.auth.email}
         id="email"
         type="email"
         placeholder="your@email.com"
@@ -96,7 +97,7 @@ export default function LoginForm() {
 
       {/* Password */}
       <FormField
-        label="Password"
+        label={TH_TEXT.auth.password}
         id="password"
         type={showPassword ? "text" : "password"}
         placeholder="รหัสผ่านของคุณ"
@@ -110,7 +111,7 @@ export default function LoginForm() {
           <button
             type="button"
             tabIndex={-1}
-            aria-label={showPassword ? "ซ่อน password" : "แสดง password"}
+            aria-label={showPassword ? TH_TEXT.auth.hidePassword : TH_TEXT.auth.showPassword}
             onClick={() => setShowPassword((v) => !v)}
           >
             <EyeIcon open={showPassword} />

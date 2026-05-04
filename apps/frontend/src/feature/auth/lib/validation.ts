@@ -3,6 +3,7 @@
 // Pure validation functions — ไม่มี side-effect ทดสอบง่าย
 // ---------------------------------------------------------------------------
 
+import { TH_TEXT } from "@/constants/th";
 import type { RegisterFormData, RegisterFormErrors } from "../types/auth";
 
 export function validateRegisterForm(data: RegisterFormData): RegisterFormErrors {
@@ -10,34 +11,34 @@ export function validateRegisterForm(data: RegisterFormData): RegisterFormErrors
 
   // username
   if (!data.username.trim()) {
-    errors.username = "กรุณากรอก Username";
+    errors.username = TH_TEXT.auth.usernameRequired;
   } else if (data.username.trim().length < 3) {
-    errors.username = "Username ต้องมีอย่างน้อย 3 ตัวอักษร";
+    errors.username = TH_TEXT.auth.usernameMinLength;
   } else if (!/^[a-zA-Z0-9_]+$/.test(data.username.trim())) {
-    errors.username = "Username ใช้ได้เฉพาะ a-z, 0-9 และ _";
+    errors.username = TH_TEXT.auth.usernamePattern;
   }
 
   // email
   if (!data.email.trim()) {
-    errors.email = "กรุณากรอก Email";
+    errors.email = TH_TEXT.auth.emailRequired;
   } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(data.email.trim())) {
-    errors.email = "รูปแบบ Email ไม่ถูกต้อง";
+    errors.email = TH_TEXT.auth.emailInvalid;
   }
 
   // password
   if (!data.password) {
-    errors.password = "กรุณากรอก Password";
+    errors.password = TH_TEXT.auth.passwordRequired;
   } else if (data.password.length < 8) {
-    errors.password = "Password ต้องมีอย่างน้อย 8 ตัวอักษร";
+    errors.password = TH_TEXT.auth.passwordMinLength;
   } else if (!/(?=.*[a-z])(?=.*[A-Z])/.test(data.password)) {
-    errors.password = "Password ต้องมีตัวพิมพ์เล็กและพิมพ์ใหญ่อย่างน้อย 1 ตัว";
+    errors.password = TH_TEXT.auth.passwordPattern;
   }
 
   // confirmPassword
   if (!data.confirmPassword) {
-    errors.confirmPassword = "กรุณายืนยัน Password";
+    errors.confirmPassword = TH_TEXT.auth.confirmPasswordRequired;
   } else if (data.password !== data.confirmPassword) {
-    errors.confirmPassword = "Password ไม่ตรงกัน";
+    errors.confirmPassword = TH_TEXT.auth.passwordMismatch;
   }
 
   return errors;

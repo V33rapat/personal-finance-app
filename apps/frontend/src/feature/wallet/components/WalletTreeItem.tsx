@@ -1,5 +1,6 @@
 "use client";
 
+import { TH_TEXT } from "@/constants/th";
 import type { WalletNode } from "../hooks/useWallet";
 
 interface WalletTreeItemProps {
@@ -65,7 +66,7 @@ export default function WalletTreeItem({
         <button
           type="button"
           onClick={() => hasChildren && onToggle(wallet.id)}
-          aria-label={isExpanded ? "Collapse wallet" : "Expand wallet"}
+          aria-label={isExpanded ? TH_TEXT.wallet.collapseWallet : TH_TEXT.wallet.expandWallet}
           className={[
             "flex h-7 w-6 shrink-0 items-center justify-center rounded-md text-slate-400",
             hasChildren ? "hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-slate-800 dark:hover:text-slate-200" : "opacity-0",
@@ -96,7 +97,7 @@ export default function WalletTreeItem({
         <button
           type="button"
           onClick={() => onAddSubWallet(wallet.id)}
-          aria-label={`Add sub-wallet to ${wallet.name}`}
+          aria-label={`${TH_TEXT.wallet.addSubWalletTo} ${wallet.name}`}
           className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-slate-400 opacity-0 transition hover:bg-slate-100 hover:text-slate-700 group-hover:opacity-100 focus:opacity-100 dark:hover:bg-slate-800 dark:hover:text-slate-200"
         >
           <svg className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor" aria-hidden>

@@ -1,9 +1,10 @@
 import type { Metadata } from "next";
 import Card from "@/components/ui/Card";
+import { TH_TEXT } from "@/constants/th";
 
 export const metadata: Metadata = {
-  title: "Dashboard | Walpaca",
-  description: "Overview of your personal finance activity.",
+  title: TH_TEXT.dashboard.metadataTitle,
+  description: TH_TEXT.dashboard.metadataDescription,
 };
 
 export default function DashboardPage() {
@@ -11,21 +12,21 @@ export default function DashboardPage() {
     <div className="flex flex-col gap-6">
       <header>
         <p className="text-xs font-semibold uppercase tracking-widest text-violet-600 dark:text-violet-400">
-          Overview
+          {TH_TEXT.dashboard.eyebrow}
         </p>
         <h1 className="mt-2 text-3xl font-bold tracking-tight text-slate-900 dark:text-slate-50">
-          Dashboard
+          {TH_TEXT.dashboard.title}
         </h1>
         <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-500 dark:text-slate-400">
-          A calm starting point for balances, spending, and upcoming insights.
+          {TH_TEXT.dashboard.subtitle}
         </p>
       </header>
 
       <div className="grid gap-4 md:grid-cols-3">
         {[
-          ["Total Balance", "0 THB"],
-          ["Monthly Spending", "0 THB"],
-          ["Active Wallets", "0"],
+          [TH_TEXT.dashboard.totalBalance, TH_TEXT.dashboard.zeroBaht],
+          [TH_TEXT.dashboard.monthlySpending, TH_TEXT.dashboard.zeroBaht],
+          [TH_TEXT.dashboard.activeWallets, "0"],
         ].map(([label, value]) => (
           <Card key={label} className="p-5">
             <p className="text-xs font-semibold uppercase tracking-widest text-slate-400">{label}</p>
@@ -36,9 +37,9 @@ export default function DashboardPage() {
 
       <Card className="flex min-h-[280px] items-center justify-center p-8 text-center">
         <div>
-          <h2 className="text-lg font-bold text-slate-900 dark:text-slate-50">Dashboard coming next</h2>
+          <h2 className="text-lg font-bold text-slate-900 dark:text-slate-50">{TH_TEXT.dashboard.comingTitle}</h2>
           <p className="mt-2 max-w-md text-sm leading-6 text-slate-500 dark:text-slate-400">
-            This page is ready for charts, summaries, and recent transactions once the data layer is connected.
+            {TH_TEXT.dashboard.comingDescription}
           </p>
         </div>
       </Card>
