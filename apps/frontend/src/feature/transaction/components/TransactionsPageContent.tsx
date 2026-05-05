@@ -3,6 +3,7 @@
 import { TH_TEXT } from "@/constants/th";
 import TransactionList from "@/feature/transaction/components/TransactionList";
 import TransactionFilter from "@/feature/transaction/components/TransactionFilter";
+import TransactionModal from "@/feature/transaction/components/TransactionModal";
 import { useTransactionList } from "@/feature/transaction/hooks/useTransaction";
 
 interface TransactionsPageContentProps {
@@ -16,8 +17,13 @@ export default function TransactionsPageContent({ wallets }: TransactionsPageCon
     filters,
     hasMore,
     isLoading,
+    modalOpen,
+    editingTransaction,
     updateFilter,
     loadMore,
+    openEditModal,
+    closeModal,
+    updateTransaction,
   } = useTransactionList();
 
   return (
@@ -58,6 +64,17 @@ export default function TransactionsPageContent({ wallets }: TransactionsPageCon
         hasMore={hasMore}
         isLoading={isLoading}
         empty={transactions.length === 0}
+        onEdit={openEditModal}
+      />
+
+      <TransactionModal
+        isOpen={modalOpen}
+        transaction={editingTransaction}
+        walletName={editingTransaction?.wallet_name}
+        categories={categories}
+        onClose={closeModal}
+        onSave={() => {}}
+        onUpdate={updateTransaction}
       />
     </div>
   );

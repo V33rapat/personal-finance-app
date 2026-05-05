@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import Button from "@/components/ui/Button";
 import { TH_TEXT } from "@/constants/th";
-import type { TransactionType } from "./TransactionItem";
+import type { Transaction, TransactionType } from "./TransactionItem";
 
 interface TransactionFormValues {
   name: string;
@@ -22,12 +22,12 @@ interface Category {
 
 interface TransactionModalProps {
   isOpen: boolean;
-  walletId?: string;
+  transaction?: Transaction | null;
   walletName?: string;
-  wallets?: { id: string; name: string }[];
   categories?: Category[];
   onClose: () => void;
   onSave: (values: TransactionFormValues) => void;
+  onUpdate?: (values: TransactionFormValues) => void;
 }
 
 const defaultValues: TransactionFormValues = {
@@ -58,16 +58,29 @@ function FormField({ label, error, children }: { label: string; error?: string; 
   );
 }
 
-export default function TransactionModal({ isOpen, walletName, categories = [], onClose, onSave }: TransactionModalProps) {
+export default function TransactionModal({ isOpen, transaction, walletName, categories = [], onClose, onSave, onUpdate }: TransactionModalProps) {
   const [values, setValues] = useState<TransactionFormValues>(defaultValues);
   const [errors, setErrors] = useState<Partial<Record<keyof TransactionFormValues, string>>>({});
 
+  const isEditMode = !!transaction;
+
   useEffect(() => {
     if (isOpen) {
-      setValues(defaultValues);
+      if (transaction) {
+        setValues({
+          name: transaction.name,
+          amount: transaction.amount,
+          type: transaction.type,
+          category_id: transaction.category_id,
+          transaction_date: transaction.transaction_date,
+          note: transaction.note ?? "",
+        });
+      } else {
+        setValues(defaultValues);
+      }
       setErrors({});
     }
-  }, [isOpen]);
+  }, [isOpen, transaction]);
 
   const handleChange = (field: keyof TransactionFormValues, value: string) => {
     setValues((prev) => ({ ...prev, [field]: value }));
@@ -96,7 +109,11 @@ export default function TransactionModal({ isOpen, walletName, categories = [], 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (validate()) {
-      onSave(values);
+      if (isEditMode && onUpdate) {
+        onUpdate(values);
+      } else {
+        onSave(values);
+      }
     }
   };
 
@@ -110,7 +127,9 @@ export default function TransactionModal({ isOpen, walletName, categories = [], 
 
       <div className="relative w-full max-w-md rounded-2xl border border-slate-200 bg-white p-6 shadow-2xl dark:border-slate-800 dark:bg-slate-900">
         <div className="mb-6 flex items-center justify-between">
-          <h2 className="text-lg font-bold text-slate-800 dark:text-slate-100">{TH_TEXT.transaction.addTransaction}</h2>
+          <h2 className="text-lg font-bold text-slate-800 dark:text-slate-100">
+            {isEditMode ? TH_TEXT.common.edit : TH_TEXT.transaction.addTransaction}
+          </h2>
           <button onClick={onClose} className="rounded-lg p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-slate-800" aria-label={TH_TEXT.common.close}>
             <svg className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
               <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />

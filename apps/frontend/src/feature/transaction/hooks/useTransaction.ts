@@ -243,6 +243,7 @@ export interface TransactionFilters {
 export function useTransaction(walletId?: string) {
   const [transactions, setTransactions] = useState<Transaction[]>(mockTransactions);
   const [modalOpen, setModalOpen] = useState(false);
+  const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
   const [currentWalletId, setCurrentWalletId] = useState<string | undefined>(walletId);
   const [page, setPage] = useState(1);
   const pageSize = 10;
@@ -325,11 +326,18 @@ export function useTransaction(walletId?: string) {
 
   const openModal = (walletId?: string) => {
     setCurrentWalletId(walletId);
+    setEditingTransaction(null);
+    setModalOpen(true);
+  };
+
+  const openEditModal = (transaction: Transaction) => {
+    setEditingTransaction(transaction);
     setModalOpen(true);
   };
 
   const closeModal = () => {
     setModalOpen(false);
+    setEditingTransaction(null);
   };
 
   const addTransaction = (values: TransactionFormValues) => {
@@ -353,6 +361,28 @@ export function useTransaction(walletId?: string) {
     closeModal();
   };
 
+  const updateTransaction = (values: TransactionFormValues) => {
+    if (!editingTransaction) return;
+
+    setTransactions((current) =>
+      current.map((t) =>
+        t.id === editingTransaction.id
+          ? {
+              ...t,
+              name: values.name.trim(),
+              type: values.type,
+              amount: values.amount,
+              category_id: values.category_id,
+              category_name: mockCategories.find((c) => c.id === values.category_id)?.name,
+              note: values.note.trim() || null,
+              transaction_date: values.transaction_date,
+            }
+          : t
+      )
+    );
+    closeModal();
+  };
+
   return {
     transactions: filteredTransactions,
     displayedTransactions,
@@ -361,10 +391,13 @@ export function useTransaction(walletId?: string) {
     categories,
     filters,
     modalOpen,
+    editingTransaction,
     currentWalletId,
     openModal,
+    openEditModal,
     closeModal,
     addTransaction,
+    updateTransaction,
     loadMore,
     updateFilter,
     clearFilters,
@@ -381,6 +414,8 @@ export function useTransactionList() {
     endDate: "",
     searchQuery: "",
   });
+  const [modalOpen, setModalOpen] = useState(false);
+  const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
   const [hasMore, setHasMore] = useState(true);
   const [isLoading, setIsLoading] = useState(false);
   const [page, setPage] = useState(1);
@@ -458,6 +493,43 @@ export function useTransactionList() {
     setPage(1);
   };
 
+  const openModal = () => {
+    setEditingTransaction(null);
+    setModalOpen(true);
+  };
+
+  const openEditModal = (transaction: Transaction) => {
+    setEditingTransaction(transaction);
+    setModalOpen(true);
+  };
+
+  const closeModal = () => {
+    setModalOpen(false);
+    setEditingTransaction(null);
+  };
+
+  const updateTransaction = (values: TransactionFormValues) => {
+    if (!editingTransaction) return;
+
+    setTransactions((current) =>
+      current.map((t) =>
+        t.id === editingTransaction.id
+          ? {
+              ...t,
+              name: values.name.trim(),
+              type: values.type,
+              amount: values.amount,
+              category_id: values.category_id,
+              category_name: mockCategories.find((c) => c.id === values.category_id)?.name,
+              note: values.note.trim() || null,
+              transaction_date: values.transaction_date,
+            }
+          : t
+      )
+    );
+    closeModal();
+  };
+
   return {
     transactions: displayedTransactions,
     filteredTransactions,
@@ -465,8 +537,14 @@ export function useTransactionList() {
     filters,
     hasMore,
     isLoading,
+    modalOpen,
+    editingTransaction,
     updateFilter,
     clearFilters,
     loadMore,
+    openModal,
+    openEditModal,
+    closeModal,
+    updateTransaction,
   };
 }

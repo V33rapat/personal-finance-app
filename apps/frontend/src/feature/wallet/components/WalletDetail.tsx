@@ -163,7 +163,7 @@ export default function WalletDetail({
   const [activeTab, setActiveTab] = useState<TabType>("overview");
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
-  const { displayedTransactions, categories, modalOpen, openModal, closeModal, addTransaction, loadMore, hasMore, isLoading, filters, updateFilter, clearFilters } = useTransaction(wallet?.id);
+  const { displayedTransactions, categories, modalOpen, editingTransaction, openModal, openEditModal, closeModal, addTransaction, updateTransaction, loadMore, hasMore, isLoading, filters, updateFilter, clearFilters } = useTransaction(wallet?.id);
 
   const handleDeleteClick = () => {
     setShowDeleteConfirm(true);
@@ -263,6 +263,7 @@ export default function WalletDetail({
               isLoading={isLoading}
               onLoadMore={loadMore}
               empty={displayedTransactions.length === 0}
+              onEdit={openEditModal}
             />
           </>
         )}
@@ -270,11 +271,12 @@ export default function WalletDetail({
 
       <TransactionModal
         isOpen={modalOpen}
-        walletId={wallet.id}
+        transaction={editingTransaction}
         walletName={wallet.name}
         categories={categories}
         onClose={closeModal}
         onSave={addTransaction}
+        onUpdate={updateTransaction}
       />
 
       <ConfirmationDialog

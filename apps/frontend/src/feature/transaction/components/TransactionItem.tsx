@@ -22,6 +22,7 @@ interface TransactionItemProps {
   transaction: Transaction;
   showWallet?: boolean;
   currency?: string;
+  onEdit?: (transaction: Transaction) => void;
 }
 
 function formatMoney(amount: string, currency: string = "THB") {
@@ -40,11 +41,11 @@ function formatDate(dateString: string) {
   });
 }
 
-export default function TransactionItem({ transaction, showWallet = false, currency = "THB" }: TransactionItemProps) {
+export default function TransactionItem({ transaction, showWallet = false, currency = "THB", onEdit }: TransactionItemProps) {
   const isIncome = transaction.type === "income";
 
   return (
-    <div className="flex items-center gap-4 rounded-xl px-4 py-3 transition-colors hover:bg-slate-50 dark:hover:bg-slate-800/50">
+    <div className="group flex items-center gap-4 rounded-xl px-4 py-3 transition-colors hover:bg-slate-50 dark:hover:bg-slate-800/50">
       <div
         className={[
           "flex h-10 w-10 shrink-0 items-center justify-center rounded-xl",
@@ -75,14 +76,28 @@ export default function TransactionItem({ transaction, showWallet = false, curre
         </div>
       </div>
 
-      <div className="shrink-0 text-right">
-        <p className={["font-semibold", isIncome ? "text-emerald-600 dark:text-emerald-400" : "text-rose-600 dark:text-rose-400"].join(" ")}>
-          {isIncome ? "+" : "-"}
-          {formatMoney(transaction.amount, currency)}
-        </p>
-        <p className="text-xs text-slate-400 dark:text-slate-500">
-          {isIncome ? TH_TEXT.transaction.income : TH_TEXT.transaction.expense}
-        </p>
+      <div className="shrink-0 flex items-center gap-2">
+        <div className="text-right">
+          <p className={["font-semibold", isIncome ? "text-emerald-600 dark:text-emerald-400" : "text-rose-600 dark:text-rose-400"].join(" ")}>
+            {isIncome ? "+" : "-"}
+            {formatMoney(transaction.amount, currency)}
+          </p>
+          <p className="text-xs text-slate-400 dark:text-slate-500">
+            {isIncome ? TH_TEXT.transaction.income : TH_TEXT.transaction.expense}
+          </p>
+        </div>
+        {onEdit && (
+          <button
+            onClick={() => onEdit(transaction)}
+            className="rounded-lg p-1.5 text-slate-400 opacity-0 transition-opacity hover:bg-slate-100 hover:text-slate-600 group-hover:opacity-100 dark:hover:bg-slate-800 dark:hover:text-slate-300"
+            aria-label={TH_TEXT.common.edit}
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="h-4 w-4">
+              <path d="M21.731 2.269a2.625 2.625 0 0 0-3.712 0l-1.157 1.157 3.712 3.712 1.157-1.157a2.625 2.625 0 0 0 0-3.712ZM19.513 8.199l-3.712-3.712-12.15 12.15a5.25 5.25 0 0 0-1.32 2.214l-.8 2.685a.75.75 0 0 0 .933.933l2.685-.8a5.25 5.25 0 0 0 2.214-1.32L19.513 8.2Z" />
+            </svg>
+
+          </button>
+        )}
       </div>
     </div>
   );

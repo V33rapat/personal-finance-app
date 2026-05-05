@@ -13,6 +13,7 @@ interface TransactionListProps {
   showWallet?: boolean;
   currency?: string;
   empty?: boolean;
+  onEdit?: (transaction: Transaction) => void;
 }
 
 export default function TransactionList({
@@ -23,6 +24,7 @@ export default function TransactionList({
   showWallet = false,
   currency = "THB",
   empty = false,
+  onEdit,
 }: TransactionListProps) {
   if (empty) {
     return (
@@ -42,7 +44,7 @@ export default function TransactionList({
     <div className="flex flex-col">
       <div className="divide-y divide-slate-100 dark:divide-slate-800">
         {transactions.map((transaction) => (
-          <TransactionItem key={transaction.id} transaction={transaction} showWallet={showWallet} currency={currency} />
+          <TransactionItem key={transaction.id} transaction={transaction} showWallet={showWallet} currency={currency} onEdit={onEdit} />
         ))}
       </div>
 
