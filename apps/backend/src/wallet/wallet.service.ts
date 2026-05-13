@@ -19,6 +19,10 @@ export class WalletService {
       if (!parentWallet) {
         throw new NotFoundException('ไม่พบกระเป๋าเงินหลัก');
       }
+
+      if (parentWallet.parent_wallet_id) {
+        throw new BadRequestException('ไม่สามารถสร้างกระเป๋าย่อยภายใต้กระเป๋าย่อยได้ (รองรับแค่ 1 ระดับ)');
+      }
     }
 
     const wallet = await this.prisma.wallets.create({
@@ -96,6 +100,21 @@ export class WalletService {
 
       if (!parentWallet) {
         throw new NotFoundException('ไม่พบกระเป๋าเงินหลัก');
+      }
+
+      if (parentWallet.parent_wallet_id) {
+        throw new BadRequestException('ไม่สามารถย้ายไปอยู่ภายใต้กระเป๋าย่อยได้ (รองรับแค่ 1 ระดับ)');
+      }
+
+      const hasChildren = await this.prisma.wallets.findFirst({
+        where: {
+          parent_wallet_id: walletId,
+          deleted_at: null,
+        },
+      });
+
+      if (hasChildren) {
+        throw new BadRequestException('ไม่สามารถเปลี่ยนกระเป๋าหลักที่มีกระเป๋าย่อยอยู่แล้วไปเป็นกระเป๋าย่อยได้');
       }
     }
 
