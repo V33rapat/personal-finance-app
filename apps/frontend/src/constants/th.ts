@@ -143,6 +143,7 @@ export const TH_TEXT = {
     loadMore: "โหลดเพิ่มเติม",
     showMore: "แสดงเพิ่มเติม",
     editTransaction: "แก้ไขรายการ",
+    deleteSelected: "ลบรายการ",
     noTransactions: "ยังไม่มีรายการ",
     noTransactionsDescription: "เพิ่มรายการแรกของคุณ",
     overview: "ภาพรวม",

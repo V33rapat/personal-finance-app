@@ -3,7 +3,8 @@
 import Button from "@/components/ui/Button";
 import { TH_TEXT } from "@/constants/th";
 import type { Transaction } from "./TransactionItem";
-import TransactionItem from "./TransactionItem";
+import TransactionRow from "./TransactionRow";
+import TransactionBulkActionBar from "./TransactionBulkActionBar";
 
 interface TransactionListProps {
   transactions: Transaction[];
@@ -14,6 +15,11 @@ interface TransactionListProps {
   currency?: string;
   empty?: boolean;
   onEdit?: (transaction: Transaction) => void;
+  selectedIds?: Set<string>;
+  onToggleSelect?: (id: string) => void;
+  onDeleteSelected?: () => void;
+  onClearSelection?: () => void;
+  onSelectAll?: () => void;
 }
 
 export default function TransactionList({
@@ -25,7 +31,16 @@ export default function TransactionList({
   currency = "THB",
   empty = false,
   onEdit,
+  selectedIds,
+  onToggleSelect,
+  onDeleteSelected,
+  onClearSelection,
+  onSelectAll,
 }: TransactionListProps) {
+  const selectedCount = selectedIds?.size ?? 0;
+  const selectionMode = selectedCount > 0;
+  const totalCount = transactions.length;
+
   if (empty) {
     return (
       <div className="flex flex-col items-center justify-center py-12 text-center">
@@ -42,9 +57,28 @@ export default function TransactionList({
 
   return (
     <div className="flex flex-col">
+      {selectionMode && onDeleteSelected && onClearSelection && (
+        <TransactionBulkActionBar
+          selectedCount={selectedCount}
+          totalCount={totalCount}
+          onDelete={onDeleteSelected}
+          onClear={onClearSelection}
+          onSelectAll={onSelectAll}
+        />
+      )}
+
       <div className="divide-y divide-slate-100 dark:divide-slate-800">
         {transactions.map((transaction) => (
-          <TransactionItem key={transaction.id} transaction={transaction} showWallet={showWallet} currency={currency} onEdit={onEdit} />
+          <TransactionRow
+            key={transaction.id}
+            transaction={transaction}
+            showWallet={showWallet}
+            currency={currency}
+            onEdit={onEdit}
+            isSelected={selectedIds?.has(transaction.id)}
+            onToggleSelect={onToggleSelect}
+            selectionMode={selectionMode}
+          />
         ))}
       </div>
 

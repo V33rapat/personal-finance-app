@@ -8,6 +8,7 @@ import TransactionList from "@/feature/transaction/components/TransactionList";
 import TransactionModal from "@/feature/transaction/components/TransactionModal";
 import WalletTransactionFilter from "./WalletTransactionFilter";
 import { useTransaction } from "@/feature/transaction/hooks/useTransaction";
+import { useTransactionSelection } from "@/feature/transaction/hooks/useTransactionSelection";
 import type { Wallet } from "../hooks/useWallet";
 
 type TabType = "overview" | "transactions";
@@ -163,7 +164,18 @@ export default function WalletDetail({
   const [activeTab, setActiveTab] = useState<TabType>("overview");
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
-  const { displayedTransactions, categories, modalOpen, editingTransaction, openModal, openEditModal, closeModal, addTransaction, updateTransaction, loadMore, hasMore, isLoading, filters, updateFilter, clearFilters } = useTransaction(wallet?.id);
+  const { displayedTransactions, categories, modalOpen, editingTransaction, openModal, openEditModal, closeModal, addTransaction, updateTransaction, deleteTransactions, loadMore, hasMore, isLoading, filters, updateFilter, clearFilters } = useTransaction(wallet?.id);
+  const { selectedIds, selectedCount, toggleSelection, clearSelection, selectAll, isSelected } = useTransactionSelection();
+
+  const handleDeleteSelected = () => {
+    setShowDeleteConfirm(true);
+  };
+
+  const confirmDeleteSelected = () => {
+    deleteTransactions(Array.from(selectedIds));
+    clearSelection();
+    setShowDeleteConfirm(false);
+  };
 
   const handleDeleteClick = () => {
     setShowDeleteConfirm(true);
@@ -264,6 +276,11 @@ export default function WalletDetail({
               onLoadMore={loadMore}
               empty={displayedTransactions.length === 0}
               onEdit={openEditModal}
+              selectedIds={selectedIds}
+              onToggleSelect={toggleSelection}
+              onDeleteSelected={handleDeleteSelected}
+              onClearSelection={clearSelection}
+              onSelectAll={() => selectAll(displayedTransactions.map(t => t.id))}
             />
           </>
         )}
@@ -282,8 +299,11 @@ export default function WalletDetail({
       <ConfirmationDialog
         isOpen={showDeleteConfirm}
         title={TH_TEXT.wallet.deleteConfirmTitle}
-        message={`คุณต้องการลบ "${wallet.name}" หรือไม่? การดำเนินการนี้ไม่สามารถย้อนกลับได้`}
-        onConfirm={handleConfirmDelete}
+        message={selectedCount > 0 
+          ? `คุณต้องการลบ ${selectedCount} รายการ หรือไม่? การดำเนินการนี้ไม่สามารถย้อนกลับได้`
+          : `คุณต้องการลบ "${wallet.name}" หรือไม่? การดำเนินการนี้ไม่สามารถย้อนกลับได้`
+        }
+        onConfirm={selectedCount > 0 ? confirmDeleteSelected : handleConfirmDelete}
         onCancel={() => setShowDeleteConfirm(false)}
       />
     </>

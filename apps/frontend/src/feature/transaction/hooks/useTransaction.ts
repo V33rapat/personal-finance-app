@@ -383,6 +383,10 @@ export function useTransaction(walletId?: string) {
     closeModal();
   };
 
+  const deleteTransactions = (ids: string[]) => {
+    setTransactions((current) => current.filter((t) => !ids.includes(t.id)));
+  };
+
   return {
     transactions: filteredTransactions,
     displayedTransactions,
@@ -398,6 +402,7 @@ export function useTransaction(walletId?: string) {
     closeModal,
     addTransaction,
     updateTransaction,
+    deleteTransactions,
     loadMore,
     updateFilter,
     clearFilters,
@@ -530,6 +535,10 @@ export function useTransactionList() {
     closeModal();
   };
 
+  const deleteTransactions = (ids: string[]) => {
+    setTransactions((current) => current.filter((t) => !ids.includes(t.id)));
+  };
+
   return {
     transactions: displayedTransactions,
     filteredTransactions,
@@ -546,5 +555,6 @@ export function useTransactionList() {
     openEditModal,
     closeModal,
     updateTransaction,
+    deleteTransactions,
   };
 }
