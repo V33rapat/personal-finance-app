@@ -26,7 +26,6 @@ export class TransactionService {
         where: {
           id: dto.category_id,
           user_id: userId,
-          deleted_at: null,
         },
       });
 

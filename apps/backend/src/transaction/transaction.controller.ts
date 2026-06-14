@@ -11,26 +11,26 @@ export class TransactionController {
 
   @Post()
   create(@Req() req: any, @Body() dto: CreateTransactionDto) {
-    return this.transactionService.create(dto, req.user.id);
+    return this.transactionService.create(dto, req.user.sub);
   }
 
   @Get()
   findAll(@Req() req: any, @Query('walletId') walletId?: string) {
-    return this.transactionService.findAll(req.user.id, walletId);
+    return this.transactionService.findAll(req.user.sub, walletId);
   }
 
   @Get(':id')
   findOne(@Req() req: any, @Param('id') id: string) {
-    return this.transactionService.findOne(req.user.id, id);
+    return this.transactionService.findOne(req.user.sub, id);
   }
 
   @Patch(':id')
   update(@Req() req: any, @Param('id') id: string, @Body() dto: UpdateTransactionDto) {
-    return this.transactionService.update(req.user.id, dto, id);
+    return this.transactionService.update(req.user.sub, dto, id);
   }
 
   @Delete(':id')
   delete(@Req() req: any, @Param('id') id: string) {
-    return this.transactionService.delete(req.user.id, id);
+    return this.transactionService.delete(req.user.sub, id);
   }
 }
