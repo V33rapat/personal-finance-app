@@ -1,7 +1,7 @@
 import { cookies } from "next/headers";
 import { NextRequest, NextResponse } from "next/server";
 
-function getBackendURL() {
+function getBackendUrl() {
   if (process.env.NEXT_PUBLIC_BACKEND_URL) {
     return process.env.NEXT_PUBLIC_BACKEND_URL;
   }
@@ -29,7 +29,7 @@ export async function GET(request: NextRequest) {
   const searchParams = request.nextUrl.searchParams;
   const walletId = searchParams.get("walletId");
 
-  const url = new URL(`${getBackendURL()}/transaction?walletId=${walletId}`);
+  const url = new URL(`${getBackendUrl()}/transaction?walletId=${walletId}`);
   if(walletId){
     url.searchParams.set("walletId", walletId);
   }
@@ -56,7 +56,7 @@ export async function POST(request: NextRequest) {
 
   const body = await request.json()
 
-  const res = await fetch(`${getBackendURL()}/transaction`, {
+  const res = await fetch(`${getBackendUrl()}/transaction`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
