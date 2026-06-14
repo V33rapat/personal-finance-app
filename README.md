@@ -1,4 +1,4 @@
-# 🦙 Walpaca — Personal Finance Management App
+# ꒰ᐢ.   ̫ .ᐢ꒱ Walpaca — Personal Finance Management App
 
 Walpaca is a personal finance web application designed to help users track income and expenses, manage budgets, and organize financial data in a structured and intuitive way. It supports multi-level wallet management and investment portfolio tracking in a single platform.
 
