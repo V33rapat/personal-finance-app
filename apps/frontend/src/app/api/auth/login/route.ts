@@ -16,7 +16,26 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ message: data.message }, { status: res.status });
     }
 
-    return NextResponse.json(data, { status: res.status });
+    const response = NextResponse.json(data, { status: res.status });
+
+    response.cookies.set("accessToken", data.access_token, {
+      httpOnly: true,
+      sameSite: "lax",
+      secure: process.env.NODE_ENV === "production",
+      path: "/",
+      maxAge: 60 * 15,
+    });
+
+    response.cookies.set("refreshToken", data.refresh_token, {
+      httpOnly: true,
+      sameSite: "lax",
+      secure: process.env.NODE_ENV === "production",
+      path: "/",
+      maxAge: 60 * 60 * 24 * 7,
+    })
+
+    return response;
+
   } catch {
     return NextResponse.json(
       { message: "เซิร์ฟเวอร์ไม่พร้อมใช้งาน" },
