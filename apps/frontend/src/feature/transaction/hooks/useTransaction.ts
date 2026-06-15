@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import type { Transaction, TransactionType } from "../components/TransactionItem";
 
 const USER_ID = "49f2f260-9354-4f2b-a595-f947d299858b";
@@ -228,6 +228,36 @@ interface TransactionFormValues {
   note: string;
 }
 
+interface ApiTransaction {
+  id: string;
+  wallet_id: string;
+  category_id: string | null;
+  name: string;
+  type: TransactionType;
+  amount: string;
+  note: string;
+  transaction_date: string;
+  created_at: string;
+  categories?: { name: string } | null;
+  wallets?: { name: string } | null;
+}
+
+function mapApiTransaction(transaction: ApiTransaction): Transaction {
+  return {
+    id: transaction.id,
+    wallet_id: transaction.wallet_id,
+    wallet_name: transaction.wallets?.name,
+    category_id: transaction.category_id,
+    category_name: transaction.categories?.name,
+    name: transaction.name,
+    type: transaction.type,
+    amount: String(transaction.amount),
+    note: transaction.note,
+    transaction_date: transaction.transaction_date.split("T")[0],
+    created_at: transaction.created_at,
+  };
+}
+
 function createId() {
   return `tx-${Date.now()}-${Math.random().toString(16).slice(2)}`;
 }
@@ -241,13 +271,14 @@ export interface TransactionFilters {
 }
 
 export function useTransaction(walletId?: string) {
-  const [transactions, setTransactions] = useState<Transaction[]>(mockTransactions);
+  const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [modalOpen, setModalOpen] = useState(false);
   const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
   const [currentWalletId, setCurrentWalletId] = useState<string | undefined>(walletId);
   const [page, setPage] = useState(1);
   const pageSize = 10;
   const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState("");
   const [filters, setFilters] = useState<TransactionFilters>({
     type: "",
     categoryId: "",
@@ -256,6 +287,31 @@ export function useTransaction(walletId?: string) {
     searchQuery: "",
   });
 
+  const loadTransactions = useCallback(async () => {
+    setIsLoading(true);
+    try {
+      const query = walletId ? `?walletId=${walletId}` : "";
+      const res = await fetch(`/api/transaction${query}`);
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.message ?? "โหลดรายการไม่สำเร็จ");
+      }
+
+      setTransactions(data.map(mapApiTransaction));
+      setPage(1);
+    } catch (error) {
+      setError(error instanceof Error ? error.message : "โหลดรายการไม่สำเร็จ");
+    } finally {
+      setIsLoading(false);
+    }
+  }, [walletId]);
+
+  useEffect(() => {
+    loadTransactions();
+  }, [loadTransactions]);
+  
   const filteredTransactions = useMemo(() => {
     let filtered = transactions;
 
@@ -340,51 +396,91 @@ export function useTransaction(walletId?: string) {
     setEditingTransaction(null);
   };
 
-  const addTransaction = (values: TransactionFormValues) => {
-    const wallet = transactions.find((t) => t.wallet_id === (walletId ?? currentWalletId));
+  const addTransaction = async (values: TransactionFormValues) => {
+    const targetWalletId = walletId ?? currentWalletId;
 
-    const newTransaction: Transaction = {
-      id: createId(),
-      wallet_id: walletId ?? currentWalletId ?? "wallet-savings",
-      wallet_name: wallet?.wallet_name,
-      category_id: values.category_id,
-      category_name: mockCategories.find((c) => c.id === values.category_id)?.name,
+    if (!targetWalletId) {
+      setError("กรุณาเลือกกระเป๋าเงินก่อนเพิ่มรายการ");
+      return;
+    }
+
+    const payload = {
+      wallet_id: targetWalletId,
       name: values.name.trim(),
+      amount: Number(values.amount),
       type: values.type,
-      amount: values.amount,
-      note: values.note.trim() || null,
+      category_id: values.category_id || undefined,
       transaction_date: values.transaction_date,
-      created_at: new Date().toISOString(),
+      note: values.note.trim() || undefined,
     };
 
-    setTransactions((current) => [newTransaction, ...current]);
+    const res = await fetch ("/api/transaction", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+
+    const data = await res.json();
+
+    if (!res.ok) {
+      setError(data.message ?? "เพิ่มรายการไม่สําเร็จ");
+      return;
+    }
+
+    setTransactions((current) => [mapApiTransaction(data), ...current]);
     closeModal();
   };
 
-  const updateTransaction = (values: TransactionFormValues) => {
+  const updateTransaction = async (values: TransactionFormValues) => {
     if (!editingTransaction) return;
 
+    const payload = {
+      name: values.name.trim(),
+      amount: Number(values.amount),
+      type: values.type,
+      category_id: values.category_id || null,
+      transaction_date: values.transaction_date,
+      note: values.note.trim() || null,
+    }
+
+    const rest = await fetch (`/api/transaction/${editingTransaction.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    })
+
+    const data = await rest.json();
+
+    if (!rest.ok) {
+      setError(data.message ?? "แก้ไขรายการไม่สําเร็จ");
+      return;
+    }
+
     setTransactions((current) =>
-      current.map((t) =>
-        t.id === editingTransaction.id
-          ? {
-              ...t,
-              name: values.name.trim(),
-              type: values.type,
-              amount: values.amount,
-              category_id: values.category_id,
-              category_name: mockCategories.find((c) => c.id === values.category_id)?.name,
-              note: values.note.trim() || null,
-              transaction_date: values.transaction_date,
-            }
-          : t
+      current.map((transaction) =>
+        transaction.id === editingTransaction.id ? mapApiTransaction(data) : transaction
       )
     );
+
     closeModal();
   };
 
-  const deleteTransactions = (ids: string[]) => {
-    setTransactions((current) => current.filter((t) => !ids.includes(t.id)));
+  const deleteTransactions = async (ids: string[]) => {
+    const results = await Promise.all(
+      ids.map((id) => fetch(`/api/transaction/${id}`, { method: "DELETE" }))
+    );
+
+    const failed = results.find((res) => !res.ok);
+
+    if (failed) {
+      const data = await failed.json();
+      setError(data.message ?? "ลบรายการไม่สําเร็จ");
+      return;
+    }
+
+    setTransactions((current) => 
+      current.filter((transaction) => !ids.includes(transaction.id))
+    );
   };
 
   return {
@@ -392,6 +488,7 @@ export function useTransaction(walletId?: string) {
     displayedTransactions,
     hasMore,
     isLoading,
+    error,
     categories,
     filters,
     modalOpen,
@@ -404,11 +501,13 @@ export function useTransaction(walletId?: string) {
     updateTransaction,
     deleteTransactions,
     loadMore,
+    reload: loadTransactions,
     updateFilter,
     clearFilters,
   };
 }
 
+/*
 export function useTransactionList() {
   const [transactions, setTransactions] = useState<Transaction[]>(mockTransactions);
   const [filters, setFilters] = useState({
@@ -558,3 +657,4 @@ export function useTransactionList() {
     deleteTransactions,
   };
 }
+  */

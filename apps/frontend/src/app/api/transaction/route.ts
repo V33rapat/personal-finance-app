@@ -29,7 +29,7 @@ export async function GET(request: NextRequest) {
   const searchParams = request.nextUrl.searchParams;
   const walletId = searchParams.get("walletId");
 
-  const url = new URL(`${getBackendUrl()}/transaction?walletId=${walletId}`);
+  const url = new URL(`${getBackendUrl()}/transaction`);
   if(walletId){
     url.searchParams.set("walletId", walletId);
   }
