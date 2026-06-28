@@ -56,8 +56,8 @@ export class TransactionService {
 
   async findAll(userId: string, walletId?: string) {
     const where = walletId 
-      ? { wallet: { user_id: userId, id: walletId }, deleted_at: null }
-      : { wallet: { user_id: userId }, deleted_at: null };
+      ? { wallets: { user_id: userId, id: walletId }, deleted_at: null }
+      : { wallets: { user_id: userId }, deleted_at: null };
 
     return this.prisma.transactions.findMany({
       where,
@@ -70,7 +70,7 @@ export class TransactionService {
     const transaction = await this.prisma.transactions.findFirst({
       where: {
         id,
-        wallet: { user_id: userId },
+        wallets: { user_id: userId },
         deleted_at: null,
       },
       include: { categories: true, wallets: true },
