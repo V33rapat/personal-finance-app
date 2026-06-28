@@ -17,8 +17,10 @@ export async function POST(request: NextRequest) {
     }
 
     const response = NextResponse.json(data, { status: res.status });
+    const accessToken = data.accessToken ?? data.access_token;
+    const refreshToken = data.refreshToken ?? data.refresh_token;
 
-    response.cookies.set("accessToken", data.access_token, {
+    response.cookies.set("accessToken", accessToken, {
       httpOnly: true,
       sameSite: "lax",
       secure: process.env.NODE_ENV === "production",
@@ -26,13 +28,13 @@ export async function POST(request: NextRequest) {
       maxAge: 60 * 15,
     });
 
-    response.cookies.set("refreshToken", data.refresh_token, {
+    response.cookies.set("refreshToken", refreshToken, {
       httpOnly: true,
       sameSite: "lax",
       secure: process.env.NODE_ENV === "production",
       path: "/",
       maxAge: 60 * 60 * 24 * 7,
-    })
+    });
 
     return response;
 
