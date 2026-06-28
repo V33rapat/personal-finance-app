@@ -12,8 +12,10 @@ interface WalletFormModalProps {
   wallet: Wallet | null;
   wallets: Wallet[];
   parentId: string | null;
+  isSaving?: boolean;
+  error?: string | null;
   onClose: () => void;
-  onSave: (values: WalletFormValues) => void;
+  onSave: (values: WalletFormValues) => void | Promise<void>;
 }
 
 const colorOptions = ["#7c3aed", "#2563eb", "#059669", "#db2777", "#ea580c", "#475569"];
@@ -35,6 +37,8 @@ export default function WalletFormModal({
   wallet,
   wallets,
   parentId,
+  isSaving = false,
+  error,
   onClose,
   onSave,
 }: WalletFormModalProps) {
@@ -59,9 +63,9 @@ export default function WalletFormModal({
     event.preventDefault();
     setSubmitted(true);
 
-    if (!values.name.trim()) return;
+    if (!values.name.trim() || isSaving) return;
 
-    onSave(values);
+    void onSave(values);
   };
 
   return (
@@ -105,6 +109,12 @@ export default function WalletFormModal({
         </div>
 
         <div className="mt-6 grid gap-4">
+          {error && (
+            <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-900/70 dark:bg-red-950/30 dark:text-red-300">
+              {error}
+            </div>
+          )}
+
           <FormField
             label={TH_TEXT.wallet.walletName}
             value={values.name}
@@ -200,7 +210,7 @@ export default function WalletFormModal({
           <Button variant="secondary" onClick={onClose}>
             {TH_TEXT.common.cancel}
           </Button>
-          <Button type="submit">
+          <Button type="submit" disabled={isSaving}>
             {mode === "edit" ? TH_TEXT.wallet.saveChanges : TH_TEXT.wallet.createWallet}
           </Button>
         </div>

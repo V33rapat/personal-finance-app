@@ -3,10 +3,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { Transaction, TransactionType } from "../components/TransactionItem";
 
-const USER_ID = "49f2f260-9354-4f2b-a595-f947d299858b";
-
-const now = new Date();
-
 interface UserTransactionOptions {
   walletId?: string | null;
   autoLoad?: boolean;
@@ -120,6 +116,10 @@ export function useTransaction(options: UserTransactionOptions = {}) {
         throw new Error(data.message ?? "โหลดรายการไม่สำเร็จ");
       }
 
+      if (!Array.isArray(data)) {
+        throw new Error(data.message ?? "à¹‚à¸«à¸¥à¸”à¸£à¸²à¸¢à¸à¸²à¸£à¹„à¸¡à¹ˆà¸ªà¸³à¹€à¸£à¹‡à¸ˆ");
+      }
+
       setTransactions(data.map(mapApiTransaction));
       setPage(1);
     } catch (error) {
@@ -135,7 +135,7 @@ export function useTransaction(options: UserTransactionOptions = {}) {
   }, [autoLoad, loadTransactions]);
   
   const filteredTransactions = useMemo(() => {
-    let filtered = {...transactions};
+    let filtered = [...transactions];
 
     if (filters.type) {
       filtered = filtered.filter((transaction) => transaction.type === filters.type);

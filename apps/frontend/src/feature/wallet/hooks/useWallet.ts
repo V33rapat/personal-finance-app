@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 export type WalletType = "normal" | "investment";
 
@@ -44,81 +44,6 @@ interface WalletModalState {
   parentId: string | null;
 }
 
-const USER_ID = "49f2f260-9354-4f2b-a595-f947d299858b";
-
-const now = "2026-05-03T00:00:00.000Z";
-
-const mockWallets: Wallet[] = [
-  {
-    id: "wallet-savings",
-    user_id: USER_ID,
-    parent_wallet_id: null,
-    name: "เงินออม",
-    description: "เงินออมระยะยาวและเงินสำรอง",
-    wallet_type: "normal",
-    balance: "52000",
-    currency: "THB",
-    color: "#7c3aed",
-    icon: "piggy",
-    sort_order: 0,
-    is_active: true,
-    created_at: now,
-    updated_at: now,
-    deleted_at: null,
-  },
-  {
-    id: "wallet-travel",
-    user_id: USER_ID,
-    parent_wallet_id: "wallet-savings",
-    name: "ท่องเที่ยว",
-    description: "ค่าเดินทาง โรงแรม และค่าใช้จ่ายตอนเที่ยว",
-    wallet_type: "normal",
-    balance: "12500",
-    currency: "THB",
-    color: "#2563eb",
-    icon: "plane",
-    sort_order: 1,
-    is_active: true,
-    created_at: now,
-    updated_at: now,
-    deleted_at: null,
-  },
-  {
-    id: "wallet-emergency",
-    user_id: USER_ID,
-    parent_wallet_id: "wallet-savings",
-    name: "ฉุกเฉิน",
-    description: "เงินสำรองสำหรับค่าใช้จ่ายที่ไม่คาดคิด",
-    wallet_type: "normal",
-    balance: "39500",
-    currency: "THB",
-    color: "#059669",
-    icon: "shield",
-    sort_order: 2,
-    is_active: true,
-    created_at: now,
-    updated_at: now,
-    deleted_at: null,
-  },
-  {
-    id: "wallet-investment",
-    user_id: USER_ID,
-    parent_wallet_id: null,
-    name: "ลงทุน",
-    description: "เงินลงทุนและพอร์ตการลงทุน",
-    wallet_type: "investment",
-    balance: "84500",
-    currency: "THB",
-    color: "#db2777",
-    icon: "chart",
-    sort_order: 3,
-    is_active: true,
-    created_at: now,
-    updated_at: now,
-    deleted_at: null,
-  },
-];
-
 function buildWalletTree(wallets: Wallet[]): WalletNode[] {
   const nodes = new Map<string, WalletNode>();
   const roots: WalletNode[] = [];
@@ -142,22 +67,88 @@ function buildWalletTree(wallets: Wallet[]): WalletNode[] {
   return roots;
 }
 
-function createId() {
-  return `wallet-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+function normalizeWallet(wallet: Wallet): Wallet {
+  return {
+    ...wallet,
+    balance: String(wallet.balance ?? "0"),
+    currency: wallet.currency ?? "THB",
+    sort_order: wallet.sort_order ?? 0,
+    is_active: wallet.is_active ?? true,
+  };
+}
+
+async function readWalletResponse(response: Response) {
+  const data = await response.json().catch(() => null);
+
+  if (!response.ok) {
+    throw new Error(data?.message ?? "Failed to load wallets");
+  }
+
+  return data;
+}
+
+function toWalletPayload(values: WalletFormValues) {
+  return {
+    name: values.name.trim(),
+    description: values.description.trim() || null,
+    wallet_type: values.wallet_type,
+    parent_wallet_id: values.parent_wallet_id,
+    color: values.color || null,
+    icon: values.icon.trim() || null,
+  };
 }
 
 export function useWallet() {
-  const [wallets, setWallets] = useState<Wallet[]>(mockWallets);
-  const [selectedWalletId, setSelectedWalletId] = useState<string | null>(mockWallets[0]?.id ?? null);
-  const [expandedIds, setExpandedIds] = useState<Set<string>>(
-    () => new Set(mockWallets.filter((wallet) => wallet.parent_wallet_id === null).map((wallet) => wallet.id))
-  );
+  const [wallets, setWallets] = useState<Wallet[]>([]);
+  const [selectedWalletId, setSelectedWalletId] = useState<string | null>(null);
+  const [expandedIds, setExpandedIds] = useState<Set<string>>(() => new Set());
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [modal, setModal] = useState<WalletModalState>({
     isOpen: false,
     mode: "create",
     wallet: null,
     parentId: null,
   });
+
+  const loadWallets = useCallback(async () => {
+    setIsLoading(true);
+    setError(null);
+
+    try {
+      const response = await fetch("/api/wallet");
+      const data = await readWalletResponse(response);
+      const nextWallets = Array.isArray(data) ? data.map(normalizeWallet) : [];
+
+      setWallets(nextWallets);
+      setSelectedWalletId((current) => {
+        if (current && nextWallets.some((wallet) => wallet.id === current)) {
+          return current;
+        }
+
+        return nextWallets[0]?.id ?? null;
+      });
+      setExpandedIds(
+        new Set(
+          nextWallets
+            .filter((wallet) => wallet.parent_wallet_id === null)
+            .map((wallet) => wallet.id)
+        )
+      );
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to load wallets");
+      setWallets([]);
+      setSelectedWalletId(null);
+      setExpandedIds(new Set());
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    void loadWallets();
+  }, [loadWallets]);
 
   const walletTree = useMemo(() => buildWalletTree(wallets), [wallets]);
 
@@ -189,10 +180,12 @@ export function useWallet() {
   };
 
   const openCreateWallet = (parentId: string | null = null) => {
+    setError(null);
     setModal({ isOpen: true, mode: "create", wallet: null, parentId });
   };
 
   const openEditWallet = (wallet: Wallet) => {
+    setError(null);
     setModal({ isOpen: true, mode: "edit", wallet, parentId: wallet.parent_wallet_id });
   };
 
@@ -200,79 +193,100 @@ export function useWallet() {
     setModal((current) => ({ ...current, isOpen: false }));
   };
 
-  const saveWallet = (values: WalletFormValues) => {
+  const saveWallet = async (values: WalletFormValues) => {
+    setIsSaving(true);
+    setError(null);
+
     if (modal.mode === "edit" && modal.wallet) {
-      setWallets((current) =>
-        current.map((wallet) =>
-          wallet.id === modal.wallet?.id
-            ? {
-                ...wallet,
-                name: values.name.trim(),
-                description: values.description.trim() || null,
-                wallet_type: values.wallet_type,
-                parent_wallet_id: values.parent_wallet_id,
-                color: values.color || null,
-                icon: values.icon.trim() || null,
-                updated_at: new Date().toISOString(),
-              }
-            : wallet
-        )
-      );
-      closeModal();
+      try {
+        const response = await fetch(`/api/wallet/${modal.wallet.id}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(toWalletPayload(values)),
+        });
+        const updatedWallet = normalizeWallet(await readWalletResponse(response));
+
+        setWallets((current) =>
+          current.map((wallet) =>
+            wallet.id === updatedWallet.id ? updatedWallet : wallet
+          )
+        );
+        setSelectedWalletId(updatedWallet.id);
+
+        if (updatedWallet.parent_wallet_id) {
+          setExpandedIds((current) => new Set(current).add(updatedWallet.parent_wallet_id as string));
+        }
+
+        closeModal();
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Failed to update wallet");
+      } finally {
+        setIsSaving(false);
+      }
       return;
     }
 
-    const wallet: Wallet = {
-      id: createId(),
-      user_id: USER_ID,
-      parent_wallet_id: values.parent_wallet_id,
-      name: values.name.trim(),
-      description: values.description.trim() || null,
-      wallet_type: values.wallet_type,
-      balance: "0",
-      currency: "THB",
-      color: values.color || null,
-      icon: values.icon.trim() || null,
-      sort_order: activeWallets.length,
-      is_active: true,
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-      deleted_at: null,
-    };
+    try {
+      const response = await fetch("/api/wallet", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(toWalletPayload(values)),
+      });
+      const wallet = normalizeWallet(await readWalletResponse(response));
 
-    setWallets((current) => [...current, wallet]);
-    setSelectedWalletId(wallet.id);
+      setWallets((current) => [...current, wallet]);
+      setSelectedWalletId(wallet.id);
 
-    if (wallet.parent_wallet_id) {
-      setExpandedIds((current) => new Set(current).add(wallet.parent_wallet_id as string));
+      if (wallet.parent_wallet_id) {
+        setExpandedIds((current) => new Set(current).add(wallet.parent_wallet_id as string));
+      }
+
+      closeModal();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to create wallet");
+    } finally {
+      setIsSaving(false);
     }
-
-    closeModal();
   };
 
-  const deleteWallet = (walletId: string) => {
+  const deleteWallet = async (walletId: string) => {
     const wallet = activeWallets.find((item) => item.id === walletId);
     if (!wallet) return;
 
-    setWallets((current) =>
-      current.map((item) => {
-        if (item.id === walletId) {
-          return { ...item, deleted_at: new Date().toISOString(), updated_at: new Date().toISOString() };
-        }
+    setIsSaving(true);
+    setError(null);
 
-        if (item.parent_wallet_id === walletId) {
-          return { ...item, parent_wallet_id: wallet.parent_wallet_id, updated_at: new Date().toISOString() };
-        }
+    try {
+      const response = await fetch(`/api/wallet/${walletId}`, {
+        method: "DELETE",
+      });
 
-        return item;
-      })
-    );
+      await readWalletResponse(response);
 
-    const fallback = activeWallets.find((item) => item.id !== walletId && item.parent_wallet_id === wallet.parent_wallet_id)
-      ?? activeWallets.find((item) => item.id !== walletId)
-      ?? null;
+      setWallets((current) =>
+        current.map((item) => {
+          if (item.id === walletId) {
+            return { ...item, deleted_at: new Date().toISOString(), updated_at: new Date().toISOString() };
+          }
 
-    setSelectedWalletId(fallback?.id ?? null);
+          if (item.parent_wallet_id === walletId) {
+            return { ...item, parent_wallet_id: wallet.parent_wallet_id, updated_at: new Date().toISOString() };
+          }
+
+          return item;
+        })
+      );
+
+      const fallback = activeWallets.find((item) => item.id !== walletId && item.parent_wallet_id === wallet.parent_wallet_id)
+        ?? activeWallets.find((item) => item.id !== walletId)
+        ?? null;
+
+      setSelectedWalletId(fallback?.id ?? null);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to delete wallet");
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   return {
@@ -283,11 +297,15 @@ export function useWallet() {
     expandedIds,
     modal,
     childCount,
+    isLoading,
+    isSaving,
+    error,
     selectWallet: setSelectedWalletId,
     toggleExpanded,
     openCreateWallet,
     openEditWallet,
     closeModal,
+    reloadWallets: loadWallets,
     saveWallet,
     deleteWallet,
   };

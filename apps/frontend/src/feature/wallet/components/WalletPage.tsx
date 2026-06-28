@@ -16,11 +16,15 @@ export default function WalletPage() {
     expandedIds,
     modal,
     childCount,
+    isLoading,
+    isSaving,
+    error,
     selectWallet,
     toggleExpanded,
     openCreateWallet,
     openEditWallet,
     closeModal,
+    reloadWallets,
     saveWallet,
     deleteWallet,
   } = useWallet();
@@ -40,7 +44,7 @@ export default function WalletPage() {
           </p>
         </div>
 
-        <Button onClick={() => openCreateWallet()}>
+        <Button onClick={() => openCreateWallet()} disabled={isLoading || isSaving}>
           <svg className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor" aria-hidden>
             <path d="M10 4a1 1 0 0 1 1 1v4h4a1 1 0 1 1 0 2h-4v4a1 1 0 1 1-2 0v-4H5a1 1 0 1 1 0-2h4V5a1 1 0 0 1 1-1Z" />
           </svg>
@@ -48,26 +52,56 @@ export default function WalletPage() {
         </Button>
       </header>
 
-      <div className="grid gap-6 xl:grid-cols-[340px_minmax(0,1fr)]">
-        <WalletSidebar
-          walletTree={walletTree}
-          expandedIds={expandedIds}
-          selectedWalletId={selectedWalletId}
-          onSelectWallet={selectWallet}
-          onToggleWallet={toggleExpanded}
-          onCreateWallet={() => openCreateWallet()}
-          onAddSubWallet={(parentId) => openCreateWallet(parentId)}
-        />
+      {error && (
+        <div className="flex flex-col gap-3 rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-700 dark:border-red-900/70 dark:bg-red-950/30 dark:text-red-300 sm:flex-row sm:items-center sm:justify-between">
+          <p>{error}</p>
+          <Button variant="secondary" size="sm" onClick={reloadWallets} disabled={isLoading}>
+            Retry
+          </Button>
+        </div>
+      )}
 
-        <WalletDetail
-          wallet={selectedWallet}
-          childCount={childCount}
-          onEditWallet={openEditWallet}
-          onDeleteWallet={deleteWallet}
-          onAddSubWallet={(parentId) => openCreateWallet(parentId)}
-          onCreateWallet={() => openCreateWallet()}
-        />
-      </div>
+      {isLoading ? (
+        <div className="grid gap-6 xl:grid-cols-[340px_minmax(0,1fr)]">
+          <div className="min-h-[520px] rounded-2xl border border-slate-200/80 bg-white/85 p-4 shadow-xl shadow-slate-200/50 dark:border-slate-800 dark:bg-slate-900/80">
+            <div className="h-5 w-32 rounded bg-slate-200 dark:bg-slate-800" />
+            <div className="mt-6 space-y-3">
+              {Array.from({ length: 5 }).map((_, index) => (
+                <div key={index} className="h-12 rounded-xl bg-slate-100 dark:bg-slate-800" />
+              ))}
+            </div>
+          </div>
+          <div className="min-h-[520px] rounded-2xl border border-slate-200/80 bg-white/85 p-6 shadow-xl shadow-slate-200/50 dark:border-slate-800 dark:bg-slate-900/80">
+            <div className="h-8 w-56 rounded bg-slate-200 dark:bg-slate-800" />
+            <div className="mt-8 grid gap-4 sm:grid-cols-3">
+              {Array.from({ length: 3 }).map((_, index) => (
+                <div key={index} className="h-28 rounded-2xl bg-slate-100 dark:bg-slate-800" />
+              ))}
+            </div>
+          </div>
+        </div>
+      ) : (
+        <div className="grid gap-6 xl:grid-cols-[340px_minmax(0,1fr)]">
+          <WalletSidebar
+            walletTree={walletTree}
+            expandedIds={expandedIds}
+            selectedWalletId={selectedWalletId}
+            onSelectWallet={selectWallet}
+            onToggleWallet={toggleExpanded}
+            onCreateWallet={() => openCreateWallet()}
+            onAddSubWallet={(parentId) => openCreateWallet(parentId)}
+          />
+
+          <WalletDetail
+            wallet={selectedWallet}
+            childCount={childCount}
+            onEditWallet={openEditWallet}
+            onDeleteWallet={deleteWallet}
+            onAddSubWallet={(parentId) => openCreateWallet(parentId)}
+            onCreateWallet={() => openCreateWallet()}
+          />
+        </div>
+      )}
 
       {modal.isOpen && (
         <WalletFormModal
@@ -77,6 +111,8 @@ export default function WalletPage() {
           wallet={modal.wallet}
           wallets={wallets}
           parentId={modal.parentId}
+          isSaving={isSaving}
+          error={error}
           onClose={closeModal}
           onSave={saveWallet}
         />

@@ -6,7 +6,7 @@ import TransactionList from "@/feature/transaction/components/TransactionList";
 import TransactionFilter from "@/feature/transaction/components/TransactionFilter";
 import TransactionModal from "@/feature/transaction/components/TransactionModal";
 import ConfirmationDialog from "@/components/ui/ConfirmationDialog";
-import { useTransactionList } from "@/feature/transaction/hooks/useTransaction";
+import { useTransaction } from "@/feature/transaction/hooks/useTransaction";
 import { useTransactionSelection } from "@/feature/transaction/hooks/useTransactionSelection";
 
 interface TransactionsPageContentProps {
@@ -28,9 +28,10 @@ export default function TransactionsPageContent({ wallets }: TransactionsPageCon
     loadMore,
     openEditModal,
     closeModal,
+    addTransaction,
     updateTransaction,
     deleteTransactions,
-  } = useTransactionList();
+  } = useTransaction();
 
   const { selectedIds, selectedCount, toggleSelection, clearSelection, selectAll } = useTransactionSelection();
 
@@ -96,7 +97,7 @@ export default function TransactionsPageContent({ wallets }: TransactionsPageCon
         walletName={editingTransaction?.wallet_name}
         categories={categories}
         onClose={closeModal}
-        onSave={() => {}}
+        onSave={addTransaction}
         onUpdate={updateTransaction}
       />
 

@@ -52,14 +52,12 @@ function OverviewTab({
   childCount,
   onAddSubWallet,
   onEditWallet,
-  onDeleteWallet,
   onShowDeleteConfirm,
 }: {
   wallet: Wallet;
   childCount: number;
   onAddSubWallet: (id: string) => void;
   onEditWallet: (wallet: Wallet) => void;
-  onDeleteWallet: (id: string) => void;
   onShowDeleteConfirm: () => void;
 }) {
   return (
@@ -164,8 +162,8 @@ export default function WalletDetail({
   const [activeTab, setActiveTab] = useState<TabType>("overview");
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
-  const { displayedTransactions, categories, modalOpen, editingTransaction, openModal, openEditModal, closeModal, addTransaction, updateTransaction, deleteTransactions, loadMore, hasMore, isLoading, filters, updateFilter, clearFilters } = useTransaction(wallet?.id);
-  const { selectedIds, selectedCount, toggleSelection, clearSelection, selectAll, isSelected } = useTransactionSelection();
+  const { displayedTransactions, categories, modalOpen, editingTransaction, openModal, openEditModal, closeModal, addTransaction, updateTransaction, deleteTransactions, loadMore, hasMore, isLoading, filters, updateFilter } = useTransaction({ walletId: wallet?.id });
+  const { selectedIds, selectedCount, toggleSelection, clearSelection, selectAll } = useTransactionSelection();
 
   const handleDeleteSelected = () => {
     setShowDeleteConfirm(true);
@@ -249,7 +247,6 @@ export default function WalletDetail({
             childCount={childCount}
             onAddSubWallet={onAddSubWallet}
             onEditWallet={onEditWallet}
-            onDeleteWallet={onDeleteWallet}
             onShowDeleteConfirm={handleDeleteClick}
           />
         )}
