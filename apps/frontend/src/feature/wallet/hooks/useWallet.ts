@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useToast } from "@/components/providers/ToastProvider";
 
 export type WalletType = "normal" | "investment";
 
@@ -99,6 +100,7 @@ function toWalletPayload(values: WalletFormValues) {
 }
 
 export function useWallet() {
+  const { showToast } = useToast();
   const [wallets, setWallets] = useState<Wallet[]>([]);
   const [selectedWalletId, setSelectedWalletId] = useState<string | null>(null);
   const [expandedIds, setExpandedIds] = useState<Set<string>>(() => new Set());
@@ -218,12 +220,16 @@ export function useWallet() {
         }
 
         closeModal();
+        showToast({ title: "แก้ไขกระเป๋าเงินสำเร็จ" });
+        return true;
       } catch (err) {
-        setError(err instanceof Error ? err.message : "Failed to update wallet");
+        const message = err instanceof Error ? err.message : "Failed to update wallet";
+        setError(message);
+        showToast({ title: "แก้ไขกระเป๋าเงินไม่สำเร็จ", description: message, type: "error" });
+        return false;
       } finally {
         setIsSaving(false);
       }
-      return;
     }
 
     try {
@@ -242,8 +248,13 @@ export function useWallet() {
       }
 
       closeModal();
+      showToast({ title: "สร้างกระเป๋าเงินสำเร็จ" });
+      return true;
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to create wallet");
+      const message = err instanceof Error ? err.message : "Failed to create wallet";
+      setError(message);
+      showToast({ title: "สร้างกระเป๋าเงินไม่สำเร็จ", description: message, type: "error" });
+      return false;
     } finally {
       setIsSaving(false);
     }
@@ -251,7 +262,7 @@ export function useWallet() {
 
   const deleteWallet = async (walletId: string) => {
     const wallet = activeWallets.find((item) => item.id === walletId);
-    if (!wallet) return;
+    if (!wallet) return false;
 
     setIsSaving(true);
     setError(null);
@@ -282,8 +293,13 @@ export function useWallet() {
         ?? null;
 
       setSelectedWalletId(fallback?.id ?? null);
+      showToast({ title: "ลบกระเป๋าเงินสำเร็จ" });
+      return true;
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to delete wallet");
+      const message = err instanceof Error ? err.message : "Failed to delete wallet";
+      setError(message);
+      showToast({ title: "ลบกระเป๋าเงินไม่สำเร็จ", description: message, type: "error" });
+      return false;
     } finally {
       setIsSaving(false);
     }

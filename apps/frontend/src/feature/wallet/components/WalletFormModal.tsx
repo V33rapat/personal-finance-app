@@ -15,10 +15,10 @@ interface WalletFormModalProps {
   isSaving?: boolean;
   error?: string | null;
   onClose: () => void;
-  onSave: (values: WalletFormValues) => void | Promise<void>;
+  onSave: (values: WalletFormValues) => void | Promise<unknown>;
 }
 
-const colorOptions = ["#7c3aed", "#2563eb", "#059669", "#db2777", "#ea580c", "#475569"];
+const presetColors = ["#7c3aed", "#2563eb", "#059669", "#db2777", "#ea580c", "#475569"];
 
 function getInitialValues(wallet: Wallet | null, parentId: string | null): WalletFormValues {
   return {
@@ -26,7 +26,7 @@ function getInitialValues(wallet: Wallet | null, parentId: string | null): Walle
     description: wallet?.description ?? "",
     wallet_type: wallet?.wallet_type ?? "normal",
     parent_wallet_id: wallet?.parent_wallet_id ?? parentId,
-    color: wallet?.color ?? colorOptions[0],
+    color: wallet?.color ?? presetColors[0],
     icon: wallet?.icon ?? "",
   };
 }
@@ -54,6 +54,7 @@ export default function WalletFormModal({
 
   const nameError = submitted && !values.name.trim() ? TH_TEXT.wallet.walletNameRequired : "";
   const title = mode === "edit" ? TH_TEXT.wallet.editWallet : parentId ? TH_TEXT.wallet.createSubWallet : TH_TEXT.wallet.newWallet;
+  const isCustomColor = !presetColors.includes(values.color.toLowerCase());
 
   const updateValue = <Key extends keyof WalletFormValues>(key: Key, value: WalletFormValues[Key]) => {
     setValues((current) => ({ ...current, [key]: value }));
@@ -136,7 +137,7 @@ export default function WalletFormModal({
               placeholder={TH_TEXT.common.optionalNote}
               rows={3}
               onChange={(event) => updateValue("description", event.target.value)}
-              className="w-full resize-none rounded-xl border border-slate-200 bg-white/60 px-4 py-3 text-sm text-slate-800 outline-none transition focus:border-violet-400 focus:bg-white focus:ring-2 focus:ring-violet-400/20 dark:border-slate-700 dark:bg-slate-800/60 dark:text-slate-100 dark:placeholder:text-slate-500 dark:focus:border-violet-500 dark:focus:ring-violet-500/20"
+              className="w-full resize-none rounded-xl border border-slate-200 bg-white/60 px-4 py-3 text-sm text-slate-800 outline-none transition focus:border-violet-400 focus:bg-white focus:ring-2 focus:ring-violet-400/20 dark:border-slate-700 dark:bg-slate-800/60 dark:text-slate-100 dark:placeholder:text-slate-500 dark:focus:border-violet-500 dark:focus:bg-slate-800 dark:focus:ring-violet-500/20"
             />
           </div>
 
@@ -152,7 +153,7 @@ export default function WalletFormModal({
                 id="wallet-type"
                 value={values.wallet_type}
                 onChange={(event) => updateValue("wallet_type", event.target.value as WalletType)}
-                className="h-[46px] rounded-xl border border-slate-200 bg-white/60 px-4 text-sm font-medium text-slate-800 outline-none transition focus:border-violet-400 focus:bg-white focus:ring-2 focus:ring-violet-400/20 dark:border-slate-700 dark:bg-slate-800/60 dark:text-slate-100 dark:focus:border-violet-500 dark:focus:ring-violet-500/20"
+                className="h-[46px] rounded-xl border border-slate-200 bg-white/60 px-4 text-sm font-medium text-slate-800 outline-none transition focus:border-violet-400 focus:bg-white focus:ring-2 focus:ring-violet-400/20 dark:border-slate-700 dark:bg-slate-800/60 dark:text-slate-100 dark:focus:border-violet-500 dark:focus:bg-slate-800 dark:focus:ring-violet-500/20"
               >
                 <option value="normal">{TH_TEXT.wallet.normal}</option>
                 <option value="investment">{TH_TEXT.wallet.investment}</option>
@@ -170,7 +171,7 @@ export default function WalletFormModal({
                 id="wallet-parent"
                 value={values.parent_wallet_id ?? ""}
                 onChange={(event) => updateValue("parent_wallet_id", event.target.value || null)}
-                className="h-[46px] rounded-xl border border-slate-200 bg-white/60 px-4 text-sm font-medium text-slate-800 outline-none transition focus:border-violet-400 focus:bg-white focus:ring-2 focus:ring-violet-400/20 dark:border-slate-700 dark:bg-slate-800/60 dark:text-slate-100 dark:focus:border-violet-500 dark:focus:ring-violet-500/20"
+                className="h-[46px] rounded-xl border border-slate-200 bg-white/60 px-4 text-sm font-medium text-slate-800 outline-none transition focus:border-violet-400 focus:bg-white focus:ring-2 focus:ring-violet-400/20 dark:border-slate-700 dark:bg-slate-800/60 dark:text-slate-100 dark:focus:border-violet-500 dark:focus:bg-slate-800 dark:focus:ring-violet-500/20"
               >
                 <option value="">{TH_TEXT.common.none}</option>
                 {parentOptions.map((option) => (
@@ -187,7 +188,7 @@ export default function WalletFormModal({
               {TH_TEXT.common.color}
             </span>
             <div className="flex flex-wrap gap-2">
-              {colorOptions.map((color) => (
+              {presetColors.map((color) => (
                 <button
                   key={color}
                   type="button"
@@ -202,6 +203,28 @@ export default function WalletFormModal({
                   style={{ backgroundColor: color }}
                 />
               ))}
+              <label
+                className={[
+                  "relative h-8 w-8 cursor-pointer overflow-hidden rounded-full border-2 transition",
+                  isCustomColor
+                    ? "border-slate-900 ring-2 ring-slate-900/10 dark:border-white dark:ring-white/20"
+                    : "border-white ring-1 ring-slate-200 dark:border-slate-900 dark:ring-slate-700",
+                ].join(" ")}
+                style={{
+                  background: isCustomColor
+                    ? values.color
+                    : "linear-gradient(135deg, #ef4444 0%, #f97316 18%, #eab308 34%, #22c55e 50%, #06b6d4 66%, #3b82f6 82%, #8b5cf6 100%)",
+                }}
+                aria-label="เลือกสีเอง"
+                title="เลือกสีเอง"
+              >
+                <input
+                  type="color"
+                  value={values.color || presetColors[0]}
+                  onChange={(event) => updateValue("color", event.target.value)}
+                  className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
+                />
+              </label>
             </div>
           </div>
         </div>

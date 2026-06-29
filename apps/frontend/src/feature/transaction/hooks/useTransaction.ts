@@ -1,9 +1,10 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useToast } from "@/components/providers/ToastProvider";
 import type { Transaction, TransactionType } from "../components/TransactionItem";
 
-interface UserTransactionOptions {
+interface UseTransactionOptions {
   walletId?: string | null;
   autoLoad?: boolean;
 }
@@ -38,27 +39,23 @@ interface ApiTransaction {
   category_id: string | null;
   name: string;
   type: TransactionType;
-  amount: string;
-  note: string;
+  amount: string | number;
+  note: string | null;
   transaction_date: string;
   created_at: string;
-  categories?: { name: string } | null;
+  categories?: { id: string; name: string; type?: TransactionType } | null;
   wallets?: { name: string } | null;
 }
 
-const temporaryCategories: TransactionCategory[] = [
-  { id: "cat-1", name: "เงินเดือน", type: "income" },
-  { id: "cat-2", name: "โอนเงิน", type: "income" },
-  { id: "cat-3", name: "อื่นๆ (รายรับ)", type: "income" },
-  { id: "cat-4", name: "อาหาร", type: "expense" },
-  { id: "cat-5", name: "เดินทาง", type: "expense" },
-  { id: "cat-6", name: "ช็อปปิ้ง", type: "expense" },
-  { id: "cat-7", name: "บันเทิง", type: "expense" },
-  { id: "cat-8", name: "สุขภาพ", type: "expense" },
-  { id: "cat-9", name: "การศึกษา", type: "expense" },
-  { id: "cat-10", name: "ท่องเที่ยว", type: "expense" },
-  { id: "cat-11", name: "อื่นๆ (รายจ่าย)", type: "expense" },
-];
+async function readApiResponse(response: Response) {
+  const data = await response.json().catch(() => null);
+
+  if (!response.ok) {
+    throw new Error(data?.message ?? "Request failed");
+  }
+
+  return data;
+}
 
 function mapApiTransaction(transaction: ApiTransaction): Transaction {
   return {
@@ -70,18 +67,33 @@ function mapApiTransaction(transaction: ApiTransaction): Transaction {
     name: transaction.name,
     type: transaction.type,
     amount: String(transaction.amount),
-    note: transaction.note,
+    note: transaction.note ?? "",
     transaction_date: transaction.transaction_date.split("T")[0],
     created_at: transaction.created_at,
   };
 }
 
-export function useTransaction(options: UserTransactionOptions = {}) {
+function getCategoryOptions(transactions: Transaction[]): TransactionCategory[] {
+  const categoryMap = new Map<string, TransactionCategory>();
+
+  transactions.forEach((transaction) => {
+    if (!transaction.category_id || !transaction.category_name) return;
+
+    categoryMap.set(transaction.category_id, {
+      id: transaction.category_id,
+      name: transaction.category_name,
+      type: transaction.type,
+    });
+  });
+
+  return Array.from(categoryMap.values());
+}
+
+export function useTransaction(options: UseTransactionOptions = {}) {
   const { walletId, autoLoad = true } = options;
-  
+  const { showToast } = useToast();
+
   const [transactions, setTransactions] = useState<Transaction[]>([]);
-  const [categories] = useState<TransactionCategory[]>(temporaryCategories); 
-  
   const [filters, setFilters] = useState<TransactionFilters>({
     walletId: "",
     type: "",
@@ -90,40 +102,35 @@ export function useTransaction(options: UserTransactionOptions = {}) {
     endDate: "",
     searchQuery: "",
   });
-
   const [modalOpen, setModalOpen] = useState(false);
   const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
   const [currentWalletId, setCurrentWalletId] = useState<string | null>(walletId ?? null);
-  
   const [page, setPage] = useState(1);
-  const pageSize = 10;
-  
   const [isLoading, setIsLoading] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState("");
 
+  const pageSize = 10;
   const effectiveWalletId = walletId ?? filters.walletId;
-  
+  const categories = useMemo(() => getCategoryOptions(transactions), [transactions]);
+
   const loadTransactions = useCallback(async () => {
     setIsLoading(true);
     setError("");
-    
+
     try {
       const query = effectiveWalletId ? `?walletId=${effectiveWalletId}` : "";
-      const res = await fetch(`/api/transaction${query}`);
-      const data = await res.json();
-
-      if (!res.ok) {
-        throw new Error(data.message ?? "โหลดรายการไม่สำเร็จ");
-      }
+      const response = await fetch(`/api/transaction${query}`);
+      const data = await readApiResponse(response);
 
       if (!Array.isArray(data)) {
-        throw new Error(data.message ?? "à¹‚à¸«à¸¥à¸”à¸£à¸²à¸¢à¸à¸²à¸£à¹„à¸¡à¹ˆà¸ªà¸³à¹€à¸£à¹‡à¸ˆ");
+        throw new Error(data?.message ?? "โหลดรายการไม่สำเร็จ");
       }
 
       setTransactions(data.map(mapApiTransaction));
       setPage(1);
-    } catch (error) {
-      setError(error instanceof Error ? error.message : "โหลดรายการไม่สำเร็จ");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "โหลดรายการไม่สำเร็จ");
     } finally {
       setIsLoading(false);
     }
@@ -133,7 +140,7 @@ export function useTransaction(options: UserTransactionOptions = {}) {
     if (!autoLoad) return;
     void loadTransactions();
   }, [autoLoad, loadTransactions]);
-  
+
   const filteredTransactions = useMemo(() => {
     let filtered = [...transactions];
 
@@ -155,10 +162,9 @@ export function useTransaction(options: UserTransactionOptions = {}) {
 
     if (filters.searchQuery) {
       const query = filters.searchQuery.toLowerCase();
-
       filtered = filtered.filter(
-        (transaction) => 
-          transaction.name.toLowerCase().includes(query) || 
+        (transaction) =>
+          transaction.name.toLowerCase().includes(query) ||
           (transaction.note && transaction.note.toLowerCase().includes(query))
       );
     }
@@ -175,7 +181,8 @@ export function useTransaction(options: UserTransactionOptions = {}) {
   const hasMore = displayedTransactions.length < filteredTransactions.length;
 
   const updateFilter = <Key extends keyof TransactionFilters>(
-    key: Key, value: TransactionFilters[Key]
+    key: Key,
+    value: TransactionFilters[Key]
   ) => {
     setFilters((current) => ({ ...current, [key]: value }));
     setPage(1);
@@ -198,13 +205,15 @@ export function useTransaction(options: UserTransactionOptions = {}) {
     setPage((current) => current + 1);
   };
 
-  const openModal = (walletId?: string) => {
-    setCurrentWalletId(walletId ?? null);
+  const openModal = (nextWalletId?: string) => {
+    setError("");
+    setCurrentWalletId(nextWalletId ?? null);
     setEditingTransaction(null);
     setModalOpen(true);
   };
 
   const openEditModal = (transaction: Transaction) => {
+    setError("");
     setCurrentWalletId(transaction.wallet_id);
     setEditingTransaction(transaction);
     setModalOpen(true);
@@ -220,86 +229,111 @@ export function useTransaction(options: UserTransactionOptions = {}) {
 
     if (!targetWalletId) {
       setError("กรุณาเลือกกระเป๋าเงินก่อนเพิ่มรายการ");
-      return;
+      return false;
     }
 
-    const payload = {
-      wallet_id: targetWalletId,
-      name: values.name.trim(),
-      amount: Number(values.amount),
-      type: values.type,
-      category_id: values.category_id || undefined,
-      transaction_date: values.transaction_date,
-      note: values.note.trim() || undefined,
-    };
+    setIsSaving(true);
+    setError("");
 
-    const res = await fetch ("/api/transaction", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
-    });
+    try {
+      const response = await fetch("/api/transaction", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          wallet_id: targetWalletId,
+          name: values.name.trim(),
+          amount: Number(values.amount),
+          type: values.type,
+          category_id: values.category_id || null,
+          transaction_date: values.transaction_date,
+          note: values.note.trim() || null,
+        }),
+      });
+      const data = await readApiResponse(response);
 
-    const data = await res.json();
-
-    if (!res.ok) {
-      setError(data.message ?? "เพิ่มรายการไม่สําเร็จ");
-      return;
+      setTransactions((current) => [mapApiTransaction(data), ...current]);
+      closeModal();
+      showToast({ title: "สร้างรายการสำเร็จ" });
+      return true;
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "เพิ่มรายการไม่สำเร็จ";
+      setError(message);
+      showToast({ title: "เพิ่มรายการไม่สำเร็จ", description: message, type: "error" });
+      return false;
+    } finally {
+      setIsSaving(false);
     }
-
-    setTransactions((current) => [mapApiTransaction(data), ...current]);
-    closeModal();
   };
 
   const updateTransaction = async (values: TransactionFormValues) => {
-    if (!editingTransaction) return;
+    if (!editingTransaction) return false;
 
-    const payload = {
-      name: values.name.trim(),
-      amount: Number(values.amount),
-      type: values.type,
-      category_id: values.category_id || null,
-      transaction_date: values.transaction_date,
-      note: values.note.trim() || null,
+    setIsSaving(true);
+    setError("");
+
+    try {
+      const response = await fetch(`/api/transaction/${editingTransaction.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: values.name.trim(),
+          amount: Number(values.amount),
+          type: values.type,
+          category_id: values.category_id || null,
+          transaction_date: values.transaction_date,
+          note: values.note.trim() || null,
+        }),
+      });
+      const data = await readApiResponse(response);
+
+      setTransactions((current) =>
+        current.map((transaction) =>
+          transaction.id === editingTransaction.id ? mapApiTransaction(data) : transaction
+        )
+      );
+
+      closeModal();
+      showToast({ title: "แก้ไขรายการสำเร็จ" });
+      return true;
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "แก้ไขรายการไม่สำเร็จ";
+      setError(message);
+      showToast({ title: "แก้ไขรายการไม่สำเร็จ", description: message, type: "error" });
+      return false;
+    } finally {
+      setIsSaving(false);
     }
-
-    const rest = await fetch (`/api/transaction/${editingTransaction.id}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
-    })
-
-    const data = await rest.json();
-
-    if (!rest.ok) {
-      setError(data.message ?? "แก้ไขรายการไม่สําเร็จ");
-      return;
-    }
-
-    setTransactions((current) =>
-      current.map((transaction) =>
-        transaction.id === editingTransaction.id ? mapApiTransaction(data) : transaction
-      )
-    );
-
-    closeModal();
   };
 
   const deleteTransactions = async (ids: string[]) => {
-    const results = await Promise.all(
-      ids.map((id) => fetch(`/api/transaction/${id}`, { method: "DELETE" }))
-    );
+    if (ids.length === 0) return false;
 
-    const failed = results.find((res) => !res.ok);
+    setIsSaving(true);
+    setError("");
 
-    if (failed) {
-      const data = await failed.json();
-      setError(data.message ?? "ลบรายการไม่สําเร็จ");
-      return;
+    try {
+      const results = await Promise.all(
+        ids.map((id) => fetch(`/api/transaction/${id}`, { method: "DELETE" }))
+      );
+      const failed = results.find((response) => !response.ok);
+
+      if (failed) {
+        await readApiResponse(failed);
+      }
+
+      setTransactions((current) =>
+        current.filter((transaction) => !ids.includes(transaction.id))
+      );
+      showToast({ title: "ลบรายการสำเร็จ" });
+      return true;
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "ลบรายการไม่สำเร็จ";
+      setError(message);
+      showToast({ title: "ลบรายการไม่สำเร็จ", description: message, type: "error" });
+      return false;
+    } finally {
+      setIsSaving(false);
     }
-
-    setTransactions((current) => 
-      current.filter((transaction) => !ids.includes(transaction.id))
-    );
   };
 
   return {
@@ -307,6 +341,7 @@ export function useTransaction(options: UserTransactionOptions = {}) {
     displayedTransactions,
     hasMore,
     isLoading,
+    isSaving,
     error,
     categories,
     filters,

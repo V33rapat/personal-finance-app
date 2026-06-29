@@ -17,9 +17,10 @@ interface WalletDetailProps {
   wallet: Wallet | null;
   childCount: number;
   onEditWallet: (wallet: Wallet) => void;
-  onDeleteWallet: (walletId: string) => void;
+  onDeleteWallet: (walletId: string) => void | Promise<unknown>;
   onAddSubWallet: (parentId: string) => void;
   onCreateWallet: () => void;
+  onTransactionsChanged?: () => void | Promise<void>;
 }
 
 function formatMoney(balance: string, currency: string) {
@@ -158,19 +159,37 @@ export default function WalletDetail({
   onDeleteWallet,
   onAddSubWallet,
   onCreateWallet,
+  onTransactionsChanged,
 }: WalletDetailProps) {
   const [activeTab, setActiveTab] = useState<TabType>("overview");
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
-  const { displayedTransactions, categories, modalOpen, editingTransaction, openModal, openEditModal, closeModal, addTransaction, updateTransaction, deleteTransactions, loadMore, hasMore, isLoading, filters, updateFilter } = useTransaction({ walletId: wallet?.id });
+  const { displayedTransactions, categories, modalOpen, editingTransaction, openModal, openEditModal, closeModal, addTransaction, updateTransaction, deleteTransactions, loadMore, hasMore, isLoading, isSaving, error, filters, updateFilter } = useTransaction({ walletId: wallet?.id });
   const { selectedIds, selectedCount, toggleSelection, clearSelection, selectAll } = useTransactionSelection();
 
   const handleDeleteSelected = () => {
     setShowDeleteConfirm(true);
   };
 
-  const confirmDeleteSelected = () => {
-    deleteTransactions(Array.from(selectedIds));
+  const handleTransactionSaved = async (...args: Parameters<typeof addTransaction>) => {
+    const success = await addTransaction(...args);
+    if (success) {
+      await onTransactionsChanged?.();
+    }
+  };
+
+  const handleTransactionUpdated = async (...args: Parameters<typeof updateTransaction>) => {
+    const success = await updateTransaction(...args);
+    if (success) {
+      await onTransactionsChanged?.();
+    }
+  };
+
+  const confirmDeleteSelected = async () => {
+    const success = await deleteTransactions(Array.from(selectedIds));
+    if (!success) return;
+
+    await onTransactionsChanged?.();
     clearSelection();
     setShowDeleteConfirm(false);
   };
@@ -179,9 +198,9 @@ export default function WalletDetail({
     setShowDeleteConfirm(true);
   };
 
-  const handleConfirmDelete = () => {
+  const handleConfirmDelete = async () => {
     if (wallet) {
-      onDeleteWallet(wallet.id);
+      await onDeleteWallet(wallet.id);
     }
     setShowDeleteConfirm(false);
   };
@@ -288,9 +307,11 @@ export default function WalletDetail({
         transaction={editingTransaction}
         walletName={wallet.name}
         categories={categories}
+        isSaving={isSaving}
+        error={error}
         onClose={closeModal}
-        onSave={addTransaction}
-        onUpdate={updateTransaction}
+        onSave={handleTransactionSaved}
+        onUpdate={handleTransactionUpdated}
       />
 
       <ConfirmationDialog

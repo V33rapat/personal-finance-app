@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Button from "@/components/ui/Button";
 import { TH_TEXT } from "@/constants/th";
 import TransactionList from "@/feature/transaction/components/TransactionList";
 import TransactionFilter from "@/feature/transaction/components/TransactionFilter";
@@ -22,10 +23,13 @@ export default function TransactionsPageContent({ wallets }: TransactionsPageCon
     filters,
     hasMore,
     isLoading,
+    isSaving,
+    error,
     modalOpen,
     editingTransaction,
     updateFilter,
     loadMore,
+    openModal,
     openEditModal,
     closeModal,
     addTransaction,
@@ -39,24 +43,43 @@ export default function TransactionsPageContent({ wallets }: TransactionsPageCon
     setShowDeleteConfirm(true);
   };
 
-  const confirmDeleteSelected = () => {
-    deleteTransactions(Array.from(selectedIds));
+  const createWalletId = filters.walletId || wallets[0]?.id || "";
+  const createWalletName = wallets.find((wallet) => wallet.id === createWalletId)?.name;
+
+  const handleCreateTransaction = () => {
+    if (!createWalletId) return;
+    openModal(createWalletId);
+  };
+
+  const confirmDeleteSelected = async () => {
+    const success = await deleteTransactions(Array.from(selectedIds));
+    if (!success) return;
+
     clearSelection();
     setShowDeleteConfirm(false);
   };
 
   return (
     <div className="flex flex-col gap-6">
-      <header>
-        <p className="text-xs font-semibold uppercase tracking-widest text-violet-600 dark:text-violet-400">
-          {TH_TEXT.transaction.eyebrow}
-        </p>
-        <h1 className="mt-2 text-3xl font-bold tracking-tight text-slate-900 dark:text-slate-50">
-          {TH_TEXT.transaction.title}
-        </h1>
-        <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-500 dark:text-slate-400">
-          {TH_TEXT.transaction.subtitle}
-        </p>
+      <header className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-widest text-violet-600 dark:text-violet-400">
+            {TH_TEXT.transaction.eyebrow}
+          </p>
+          <h1 className="mt-2 text-3xl font-bold tracking-tight text-slate-900 dark:text-slate-50">
+            {TH_TEXT.transaction.title}
+          </h1>
+          <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-500 dark:text-slate-400">
+            {TH_TEXT.transaction.subtitle}
+          </p>
+        </div>
+
+        <Button onClick={handleCreateTransaction} disabled={!createWalletId || isSaving}>
+          <svg className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor" aria-hidden>
+            <path d="M10 4a1 1 0 0 1 1 1v4h4a1 1 0 1 1 0 2h-4v4a1 1 0 1 1-2 0v-4H5a1 1 0 1 1 0-2h4V5a1 1 0 0 1 1-1Z" />
+          </svg>
+          {TH_TEXT.transaction.addTransaction}
+        </Button>
       </header>
 
       <TransactionFilter
@@ -94,8 +117,10 @@ export default function TransactionsPageContent({ wallets }: TransactionsPageCon
       <TransactionModal
         isOpen={modalOpen}
         transaction={editingTransaction}
-        walletName={editingTransaction?.wallet_name}
+        walletName={editingTransaction?.wallet_name ?? createWalletName}
         categories={categories}
+        isSaving={isSaving}
+        error={error}
         onClose={closeModal}
         onSave={addTransaction}
         onUpdate={updateTransaction}

@@ -77,7 +77,6 @@ export default function TransactionList({
             onEdit={onEdit}
             isSelected={selectedIds?.has(transaction.id)}
             onToggleSelect={onToggleSelect}
-            selectionMode={selectionMode}
           />
         ))}
       </div>

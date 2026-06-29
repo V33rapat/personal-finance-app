@@ -99,6 +99,7 @@ export default function WalletPage() {
             onDeleteWallet={deleteWallet}
             onAddSubWallet={(parentId) => openCreateWallet(parentId)}
             onCreateWallet={() => openCreateWallet()}
+            onTransactionsChanged={reloadWallets}
           />
         </div>
       )}

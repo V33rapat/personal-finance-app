@@ -1,7 +1,7 @@
 "use client";
 
 import { TH_TEXT } from "@/constants/th";
-import type { Transaction, TransactionType } from "./TransactionItem";
+import type { Transaction } from "./TransactionItem";
 
 interface TransactionRowProps {
   transaction: Transaction;
@@ -10,7 +10,6 @@ interface TransactionRowProps {
   onEdit?: (transaction: Transaction) => void;
   isSelected?: boolean;
   onToggleSelect?: (id: string) => void;
-  selectionMode?: boolean;
 }
 
 function formatMoney(amount: string, currency: string = "THB") {
@@ -36,7 +35,6 @@ export default function TransactionRow({
   onEdit,
   isSelected = false,
   onToggleSelect,
-  selectionMode = false,
 }: TransactionRowProps) {
   const isIncome = transaction.type === "income";
 
