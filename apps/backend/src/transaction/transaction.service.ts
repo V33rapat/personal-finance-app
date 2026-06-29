@@ -25,7 +25,10 @@ export class TransactionService {
       const category = await this.prisma.categories.findFirst({
         where: {
           id: dto.category_id,
-          user_id: userId,
+          OR: [
+            {user_id: userId},
+            {user_id: null, is_system: true}
+          ],
         },
       });
 
@@ -33,6 +36,7 @@ export class TransactionService {
         throw new NotFoundException('ไม่พบหมวดหมู่');
       }
     }
+
     const transaction = await this.prisma.transactions.create({
       data: {
         name: dto.name,
@@ -97,6 +101,22 @@ export class TransactionService {
 
     if (!wallet) {
       throw new ForbiddenException('ไม่มีสิทธิ์แก้ไขรายการนี้');
+    }
+
+    if(dto.category_id){
+      const category = await this.prisma.categories.findFirst({
+        where: {
+          id: dto.category_id,
+          OR: [
+            {user_id: userId},
+            {user_id: null, is_system: true}
+          ],
+        },
+      });
+
+      if (!category) {
+        throw new NotFoundException('ไม่พบหมวดหมู่');
+      }
     }
 
     const transaction = await this.prisma.transactions.update({
