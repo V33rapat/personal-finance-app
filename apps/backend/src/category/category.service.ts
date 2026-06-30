@@ -1,7 +1,7 @@
 import { ConflictException, Injectable } from '@nestjs/common';
 import { Prisma, transaction_type } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
-import { CreateCategoryDto } from './dto/create-cateogry.dto';
+import { CreateCategoryDto } from './dto/create-category.dto';
 import { FindCategoryDto } from './dto/find-category.dto';
 
 @Injectable()
