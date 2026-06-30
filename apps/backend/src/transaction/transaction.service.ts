@@ -25,6 +25,7 @@ export class TransactionService {
       const category = await this.prisma.categories.findFirst({
         where: {
           id: dto.category_id,
+          type: dto.type,
           OR: [
             {user_id: userId},
             {user_id: null, is_system: true}
