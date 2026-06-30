@@ -1,5 +1,11 @@
-import { cookies } from "next/headers";
 import { NextRequest, NextResponse } from "next/server";
+import {
+  getAuthHeader,
+  getBackendUrl,
+  readJson,
+  serverNotReadyResponse,
+  unauthorizedResponse,
+} from "../_lib/bff";
 
 type CategoryType = "income" | "expense";
 
@@ -8,33 +14,6 @@ interface CategoryRequestBody {
   type?: CategoryType;
   color?: string | null;
   icon?: string | null;
-}
-
-function getBackendUrl() {
-  const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL;
-
-  if(!backendUrl) {
-    throw new Error("NEXT_PUBLIC_BACKEND_URL is not configured");
-  }
-
-  return backendUrl;
-}
-
-async function getAuthHeader() {
-  const token = (await cookies()).get("accessToken")?.value;
-
-  if(!token) {
-    return null;
-  }
-
-  return {
-    Authorization: `Bearer ${token}`,
-  };
-}
-
-async function readJson(response: Response) {
-  const text = await response.text();
-  return text ? JSON.parse(text) : null;
 }
 
 function buildCategoryUrl(request: NextRequest) {
@@ -67,7 +46,7 @@ export async function GET(request: NextRequest) {
     const authHeader = await getAuthHeader();
 
     if (!authHeader) {
-      return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
+      return unauthorizedResponse();
     }
 
     const res = await fetch(buildCategoryUrl(request), {
@@ -86,10 +65,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json(data, { status: res.status });
   } catch {
-    return NextResponse.json(
-      { message: "Server is not ready" },
-      { status: 500 }
-    );
+    return serverNotReadyResponse();
   }
 }
 
@@ -98,7 +74,7 @@ export async function POST(request: NextRequest) {
     const authHeader = await getAuthHeader();
 
     if (!authHeader) {
-      return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
+      return unauthorizedResponse();
     }
 
     const body = (await request.json()) as CategoryRequestBody;
@@ -115,15 +91,15 @@ export async function POST(request: NextRequest) {
 
     const data = await readJson(res);
 
-    if(!res.ok) {
-      return NextResponse.json({ message: "Failed to create category" }, { status: res.status });
+    if (!res.ok) {
+      return NextResponse.json(
+        { message: data?.message ?? "Failed to create category" },
+        { status: res.status }
+      );
     }
 
     return NextResponse.json(data, { status: res.status });
   } catch {
-    return NextResponse.json(
-      { message: "Server is not ready" },
-      { status: 500 }
-    );
+    return serverNotReadyResponse();
   }
 }

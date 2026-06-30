@@ -1,97 +1,109 @@
-import { cookies } from "next/headers";
 import { NextRequest, NextResponse } from "next/server";
-
-function getBackendUrl() {
-  if (process.env.NEXT_PUBLIC_BACKEND_URL) {
-    return process.env.NEXT_PUBLIC_BACKEND_URL;
-  }
-}
-
-async function getAuthHeader() {
-  const token = (await cookies()).get("accessToken")?.value;
-
-  if (!token) {
-    return null;
-  }
-
-  return {
-    Authorization: `Bearer ${token}`,
-  };
-}
+import {
+  getAuthHeader,
+  getBackendUrl,
+  readJson,
+  serverNotReadyResponse,
+  unauthorizedResponse,
+} from "../../_lib/bff";
 
 interface RouteContext {
   params: Promise<{ id: string }>;
 }
 
 export async function GET(_: NextRequest, context: RouteContext) {
-  const authHeader = await getAuthHeader();
+  try {
+    const authHeader = await getAuthHeader();
 
-  if (!authHeader) {
-    return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
+    if (!authHeader) {
+      return unauthorizedResponse();
+    }
+
+    const { id } = await context.params;
+
+    const res = await fetch(`${getBackendUrl()}/transaction/${id}`, {
+      headers: authHeader,
+      cache: "no-store",
+    });
+
+    const data = await readJson(res);
+
+    if (!res.ok) {
+      return NextResponse.json(
+        { message: data?.message ?? "Failed to load transaction" },
+        { status: res.status }
+      );
+    }
+
+    return NextResponse.json(data, { status: res.status });
+  } catch {
+    return serverNotReadyResponse();
   }
-
-  const { id } = await context.params;
-
-  const res = await fetch(`${getBackendUrl()}/transaction/${id}`, {
-    headers: authHeader,
-  });
-
-  const data = await res.json();
-
-  if (!res.ok) {
-    return NextResponse.json({ message: data.message }, { status: res.status });
-  }
-
-  return NextResponse.json(data, { status: res.status });
 }
 
 export async function PATCH(request: NextRequest, context: RouteContext) {
-  const authHeader = await getAuthHeader();
+  try {
+    const authHeader = await getAuthHeader();
 
-  if (!authHeader) {
-    return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
+    if (!authHeader) {
+      return unauthorizedResponse();
+    }
+
+    const { id } = await context.params;
+    const body = await request.json();
+
+    const res = await fetch(`${getBackendUrl()}/transaction/${id}`, {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+        ...authHeader,
+      },
+      body: JSON.stringify(body),
+      cache: "no-store",
+    });
+
+    const data = await readJson(res);
+
+    if (!res.ok) {
+      return NextResponse.json(
+        { message: data?.message ?? "Failed to update transaction" },
+        { status: res.status }
+      );
+    }
+
+    return NextResponse.json(data, { status: res.status });
+  } catch {
+    return serverNotReadyResponse();
   }
-
-  const { id } = await context.params;
-  const body = await request.json();
-
-  const res = await fetch(`${getBackendUrl()}/transaction/${id}`, {
-    method: "PATCH",
-    headers: {
-      "Content-Type": "application/json",
-      ...authHeader,
-    },
-    body: JSON.stringify(body),
-  });
-
-  const data = await res.json();
-
-  if (!res.ok) {
-    return NextResponse.json({ message: data.message }, { status: res.status });
-  }
-
-  return NextResponse.json(data, { status: res.status });
 }
 
 export async function DELETE(_: NextRequest, context: RouteContext) {
-  const authHeader = await getAuthHeader();
+  try {
+    const authHeader = await getAuthHeader();
 
-  if (!authHeader) {
-    return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
+    if (!authHeader) {
+      return unauthorizedResponse();
+    }
+
+    const { id } = await context.params;
+
+    const res = await fetch(`${getBackendUrl()}/transaction/${id}`, {
+      method: "DELETE",
+      headers: authHeader,
+      cache: "no-store",
+    });
+
+    const data = await readJson(res);
+
+    if (!res.ok) {
+      return NextResponse.json(
+        { message: data?.message ?? "Failed to delete transaction" },
+        { status: res.status }
+      );
+    }
+
+    return NextResponse.json(data, { status: res.status });
+  } catch {
+    return serverNotReadyResponse();
   }
-
-  const { id } = await context.params;
-
-  const res = await fetch(`${getBackendUrl()}/transaction/${id}`, {
-    method: "DELETE",
-    headers: authHeader,
-  });
-
-  const data = await res.json();
-
-  if (!res.ok) {
-    return NextResponse.json({ message: data.message }, { status: res.status });
-  }
-
-  return NextResponse.json(data, { status: res.status });
 }
