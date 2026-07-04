@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useMemo, useState, useEffect } from "react";
 import { useToast } from "@/components/providers/ToastProvider";
 import type { TransactionType } from "../components/TransactionItem";
 
