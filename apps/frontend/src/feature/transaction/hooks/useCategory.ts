@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useMemo, useState, useEffect } from "react";
+import { useCallback, useMemo, useState, useEffect, useRef } from "react";
 import { useToast } from "@/components/providers/ToastProvider";
 import type { TransactionType } from "../components/TransactionItem";
 
@@ -12,8 +12,8 @@ export interface Category {
   color: string | null;
   icon: string | null;
   is_system: boolean;
-  create_at: string;
-  update_at: string;
+  created_at: string;
+  updated_at: string;
 }
 
 interface UseCategoryOptions {
@@ -22,7 +22,7 @@ interface UseCategoryOptions {
   autoLoad?: boolean;
 }
 
-interface CCreateCategoryInput {
+interface CreateCategoryInput {
   name: string;
   type: TransactionType;
   color?: string | null;
@@ -69,17 +69,27 @@ export function useCategory({
   const [isLoading, setIsLoading] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const abortControllerRef = useRef<AbortController | null>(null);
 
   const queryString = useMemo(() => {
     return buildCategoryQuery(type, search); 
   }, [type, search]);
 
   const loadCategories = useCallback(async () => {
+    abortControllerRef.current?.abort();
+
+    const controller = new AbortController();
+    abortControllerRef.current = controller;
+
     setIsLoading(true);
     setError(null);
     
     try{
-      const response = await fetch(`/api/category?${queryString}`);
+      const response = await fetch(`/api/category?${queryString}`,{
+        signal: controller.signal,
+        cache: "no-store",
+      });
+      
       const data = await readApiResponse(response);
 
       if(!Array.isArray(data)){
@@ -88,10 +98,17 @@ export function useCategory({
 
       setCategories(data);
     } catch (err) {
+      if (err instanceof DOMException && err.name === "AbortError") {
+        return;
+      }
+
       const message = err instanceof Error ? err.message : "โหลดหมวดหมู่ไม่สำเร็จ";
       setError(message);
     } finally {
-      setIsLoading(false);
+      if (abortControllerRef.current === controller) {
+        setIsLoading(false);
+        abortControllerRef.current = null;
+      }
     }
   }, [queryString]);
 
@@ -105,12 +122,19 @@ export function useCategory({
     return () => clearTimeout(timeout);
   }, [autoLoad, loadCategories]);
 
+  useEffect(() => {
+    return () => {
+      abortControllerRef.current?.abort();
+    };
+  }, []);
+
   const createCategory = useCallback(
-    async (input: CCreateCategoryInput) => {
+    async (input: CreateCategoryInput) => {
       const name = normalizeSearch(input.name);
 
       if (!name){
         setError("กรุณากรอกชื่อหมวดหมู่");
+        showToast({ title: "กรุณากรอกชื่อหมวดหมู่", type: "error" });
         return null;
       }
 
@@ -138,6 +162,10 @@ export function useCategory({
             return current.map((item) =>
               item.id === category.id ? category : item
             );
+          }
+
+          if (category.type !== type) {
+            return current;
           }
           
           return [category, ...current];
