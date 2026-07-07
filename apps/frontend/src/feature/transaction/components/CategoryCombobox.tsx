@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { forwardRef, useEffect, useImperativeHandle, useMemo, useRef, useState } from "react";
 import { useCategory, type Category } from "../hooks/useCategory";
 import type { TransactionType } from "./TransactionItem";
 import { TH_TEXT } from "@/constants/th";
@@ -12,12 +12,17 @@ interface CategoryComboboxProps {
   disabled?: boolean;
 }
 
-export default function CategoryCombobox({
+export interface CategoryComboboxHandle {
+  resolveCategory: () => Promise<Category | null>;
+}
+
+const CategoryCombobox = forwardRef<CategoryComboboxHandle, CategoryComboboxProps>(
+function CategoryCombobox({
   type,
   valueId,
   onChange,
   disabled = false,
-}: CategoryComboboxProps) {
+}: CategoryComboboxProps, ref) {
   const rootRef = useRef<HTMLDivElement | null>(null);
   const [isOpen, setIsOpen] = useState(false);
   const [inputState, setInputState] = useState<{ valueId: string | null; value: string }>({
@@ -68,24 +73,27 @@ export default function CategoryCombobox({
   };
 
   const createOrSelectCategory = async () => {
-    if (isCreating) return;
+    if (isCreating) return null;
 
     const name = inputValue.trim();
     if (!name){
       onChange(null);
-      return;
+      return null;
     }
 
     const existingCategory = findCategoryByName(name);
     if(existingCategory){
       selectCategory(existingCategory);
-      return;
+      return existingCategory;
     }
 
     const createdCategory = await createCategory({name, type});
     if (createdCategory) {
       selectCategory(createdCategory);
+      return createdCategory;
     }
+
+    return null;
   };
 
   const handleInputChange = (value: string) => {
@@ -129,6 +137,10 @@ export default function CategoryCombobox({
       await createOrSelectCategory();
     }
   };
+
+  useImperativeHandle(ref, () => ({
+    resolveCategory: createOrSelectCategory,
+  }));
 
   return (
     <div ref={rootRef} className="relative">
@@ -197,4 +209,6 @@ export default function CategoryCombobox({
             )}
           </div>
         );
-      }      
+      });
+
+export default CategoryCombobox;

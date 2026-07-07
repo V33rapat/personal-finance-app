@@ -1,9 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import Button from "@/components/ui/Button";
 import { TH_TEXT } from "@/constants/th";
-import CategoryCombobox from "./CategoryCombobox";
+import CategoryCombobox, { type CategoryComboboxHandle } from "./CategoryCombobox";
 import type { Transaction, TransactionType } from "./TransactionItem";
 
 
@@ -93,6 +93,7 @@ function TransactionModalForm({
   onSave,
   onUpdate,
 }: TransactionModalFormProps) {
+  const categoryComboboxRef = useRef<CategoryComboboxHandle>(null);
   const [values, setValues] = useState<TransactionFormValues>(initialValues);
   const [errors, setErrors] = useState<Partial<Record<keyof TransactionFormValues, string>>>({});
 
@@ -110,6 +111,10 @@ function TransactionModalForm({
     const nextErrors: Partial<Record<keyof TransactionFormValues, string>> = {};
     
     const amount = Number(values.amount);
+
+    if (!values.name.trim()) {
+      nextErrors.name = TH_TEXT.transaction.nameRequired;
+    }
 
     if (!values.amount.trim()) {
       nextErrors.amount = TH_TEXT.transaction.amountRequired;
@@ -130,16 +135,22 @@ function TransactionModalForm({
     }));
   };
 
-  const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (!validate() || isSaving) return;
 
+    const resolvedCategory = await categoryComboboxRef.current?.resolveCategory();
+    const submitValues = {
+      ...values,
+      category_id: resolvedCategory?.id ?? values.category_id,
+    };
+
     if (isEditMode && onUpdate) {
-      void onUpdate(values);
+      void onUpdate(submitValues);
       return;
     }
 
-    void onSave(values);
+    void onSave(submitValues);
   };
 
   return (
@@ -236,6 +247,7 @@ function TransactionModalForm({
 
           <FormField label={TH_TEXT.transaction.category}>
             <CategoryCombobox
+              ref={categoryComboboxRef}
               key={values.type}
               type={values.type}
               valueId={values.category_id}
