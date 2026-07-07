@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Card from "@/components/ui/Card";
 import Button from "@/components/ui/Button";
 import { TH_TEXT } from "@/constants/th";
+import LogoutButton from "@/feature/auth/components/LogoutButton";
 
 export const metadata: Metadata = {
   title: TH_TEXT.profile.metadataTitle,
@@ -37,7 +38,10 @@ export default function ProfilePage() {
             </div>
           </div>
 
-          <Button variant="secondary">{TH_TEXT.profile.editProfile}</Button>
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+            <Button variant="secondary">{TH_TEXT.profile.editProfile}</Button>
+            <LogoutButton />
+          </div>
         </div>
       </Card>
     </div>
