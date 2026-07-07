@@ -306,7 +306,6 @@ export default function WalletDetail({
         isOpen={modalOpen}
         transaction={editingTransaction}
         walletName={wallet.name}
-        categories={categories}
         isSaving={isSaving}
         error={error}
         onClose={closeModal}

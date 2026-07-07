@@ -3,7 +3,9 @@
 import { useState } from "react";
 import Button from "@/components/ui/Button";
 import { TH_TEXT } from "@/constants/th";
+import CategoryCombobox from "./CategoryCombobox";
 import type { Transaction, TransactionType } from "./TransactionItem";
+
 
 interface TransactionFormValues {
   name: string;
@@ -14,17 +16,10 @@ interface TransactionFormValues {
   note: string;
 }
 
-interface Category {
-  id: string;
-  name: string;
-  type: TransactionType;
-}
-
 interface TransactionModalProps {
   isOpen: boolean;
   transaction?: Transaction | null;
   walletName?: string;
-  categories?: Category[];
   isSaving?: boolean;
   error?: string | null;
   onClose: () => void;
@@ -92,7 +87,6 @@ function TransactionModalForm({
   initialValues,
   isEditMode,
   walletName,
-  categories = [],
   isSaving = false,
   error,
   onClose,
@@ -114,19 +108,26 @@ function TransactionModalForm({
 
   const validate = () => {
     const nextErrors: Partial<Record<keyof TransactionFormValues, string>> = {};
-
-    if (!values.name.trim()) {
-      nextErrors.name = TH_TEXT.transaction.nameRequired;
-    }
+    
+    const amount = Number(values.amount);
 
     if (!values.amount.trim()) {
       nextErrors.amount = TH_TEXT.transaction.amountRequired;
-    } else if (Number.isNaN(Number(values.amount)) || Number(values.amount) <= 0) {
+    } else if (!Number.isFinite(amount) || amount <= 0) {
       nextErrors.amount = "กรุณากรอกจำนวนเงินที่ถูกต้อง";
     }
 
     setErrors(nextErrors);
     return Object.keys(nextErrors).length === 0;
+  };
+
+
+  const updateType = (type: TransactionType) => {
+    setValues((current) => ({ 
+      ...current, 
+      type, 
+      category_id: current.type === type ? current.category_id : null
+    }));
   };
 
   const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
@@ -140,8 +141,6 @@ function TransactionModalForm({
 
     void onSave(values);
   };
-
-  const filteredCategories = categories.filter((category) => category.type === values.type);
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
@@ -189,7 +188,7 @@ function TransactionModalForm({
           <div className="flex gap-2">
             <button
               type="button"
-              onClick={() => updateValue("type", "income")}
+              onClick={() => updateType("income")}
               className={[
                 "flex-1 rounded-lg py-2.5 text-sm font-semibold transition-colors",
                 values.type === "income"
@@ -201,7 +200,7 @@ function TransactionModalForm({
             </button>
             <button
               type="button"
-              onClick={() => updateValue("type", "expense")}
+              onClick={() => updateType("expense")}
               className={[
                 "flex-1 rounded-lg py-2.5 text-sm font-semibold transition-colors",
                 values.type === "expense"
@@ -236,18 +235,13 @@ function TransactionModalForm({
           </FormField>
 
           <FormField label={TH_TEXT.transaction.category}>
-            <select
-              value={values.category_id ?? ""}
-              onChange={(event) => updateValue("category_id", event.target.value || null)}
-              className="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-800 focus:border-violet-500 focus:outline-none focus:ring-2 focus:ring-violet-500/20 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
-            >
-              <option value={""}>{TH_TEXT.transaction.selectCategory}</option>
-              {filteredCategories.map((category) => (
-                <option key={category.id} value={category.id}>
-                  {category.name}
-                </option>
-              ))}
-            </select>
+            <CategoryCombobox
+              key={values.type}
+              type={values.type}
+              valueId={values.category_id}
+              disabled={isSaving}
+              onChange={(category) => updateValue("category_id", category?.id ?? null)}
+            />
           </FormField>
 
           <FormField label={TH_TEXT.transaction.date}>

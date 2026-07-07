@@ -118,7 +118,6 @@ export default function TransactionsPageContent({ wallets }: TransactionsPageCon
         isOpen={modalOpen}
         transaction={editingTransaction}
         walletName={editingTransaction?.wallet_name ?? createWalletName}
-        categories={categories}
         isSaving={isSaving}
         error={error}
         onClose={closeModal}
