@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
+import { AuthRedirectProvider } from "@/components/providers/AuthRedirectProvider";
 import { ThemeProvider } from "@/components/providers/ThemeProvider";
 import { ToastProvider } from "@/components/providers/ToastProvider";
 import { TH_TEXT } from "@/constants/th";
@@ -33,7 +34,9 @@ export default function RootLayout({
     >
       <body className="min-h-full flex flex-col">
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
-          <ToastProvider>{children}</ToastProvider>
+          <AuthRedirectProvider>
+            <ToastProvider>{children}</ToastProvider>
+          </AuthRedirectProvider>
         </ThemeProvider>
       </body>
     </html>

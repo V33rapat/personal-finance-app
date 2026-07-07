@@ -1,10 +1,18 @@
+import { cookies } from "next/headers";
+import { redirect } from "next/navigation";
 import Sidebar from "@/components/layout/Sidebar";
 
-export default function MainLayout({
+export default async function MainLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const accessToken = (await cookies()).get("accessToken")?.value;
+
+  if (!accessToken) {
+    redirect("/login");
+  }
+
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900 dark:bg-slate-950 dark:text-slate-50">
       <div className="flex min-h-screen flex-col lg:flex-row">
