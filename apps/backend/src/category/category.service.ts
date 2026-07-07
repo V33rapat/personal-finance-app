@@ -1,4 +1,9 @@
-import { ConflictException, Injectable } from '@nestjs/common';
+import {
+  ConflictException,
+  ForbiddenException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { Prisma, transaction_type } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateCategoryDto } from './dto/create-category.dto';
@@ -74,5 +79,47 @@ export class CategoryService {
 
       throw error;
     }
+  }
+
+  async delete(userId: string, id: string) {
+    const category = await this.prisma.categories.findUnique({
+      where: { id },
+    });
+
+    if (!category) {
+      throw new NotFoundException('Category not found');
+    }
+
+    if (category.is_system || category.user_id !== userId) {
+      throw new ForbiddenException('You cannot delete this category');
+    }
+
+    return this.prisma.$transaction(async (tx) => {
+      await tx.transaction_templates.updateMany({
+        where: {
+          user_id: userId,
+          category_id: id,
+        },
+        data: {
+          category_id: null,
+        },
+      });
+
+      await tx.transactions.updateMany({
+        where: {
+          category_id: id,
+          wallets: {
+            user_id: userId,
+          },
+        },
+        data: {
+          category_id: null,
+        },
+      });
+
+      return tx.categories.delete({
+        where: { id },
+      });
+    });
   }
 }

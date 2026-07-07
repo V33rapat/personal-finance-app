@@ -38,6 +38,8 @@ function CategoryCombobox({
     isCreating,
     error,
     createCategory,
+    deleteCategory,
+    deletingCategoryId,
     findCategoryByName,
   } = useCategory({ type });
   
@@ -104,6 +106,24 @@ function CategoryCombobox({
     onChange(null);
   };
 
+  const handleDeleteCategory = async (
+    event: React.MouseEvent<HTMLButtonElement>,
+    category: Category
+  ) => {
+    event.preventDefault();
+    event.stopPropagation();
+
+    const success = await deleteCategory(category);
+
+    if (success && valueId === category.id) {
+      onChange(null);
+      setInputState({ valueId: null, value: "" });
+      setSearch("");
+    }
+
+    setActiveIndex(-1);
+  };
+
   const handleKeyDown = async (event: React.KeyboardEvent<HTMLInputElement>) => {
     if (event.key === "ArrowDown") {
       event.preventDefault();
@@ -165,22 +185,44 @@ function CategoryCombobox({
 
                 {!isLoading &&
                   suggestions.map((category, index) => (
-                    <button
+                    <div
                       key={category.id}
-                      type="button"
-                      onClick={() => selectCategory(category)}
                       className={[
-                        "flex w-full items-center justify-between px-3 py-2 text-left text-sm",
+                        "group flex items-center",
                         index === activeIndex
                           ? "bg-violet-50 text-violet-700 dark:bg-violet-950/40 dark:text-violet-200"
                           : "text-slate-700 hover:bg-slate-50 dark:text-slate-200 dark:hover:bg-slate-800",
                       ].join(" ")}
                     >
-                      <span>{category.name}</span>
-                      {category.is_system && (
-                        <span className="text-xs text-slate-400">default</span>
+                      <button
+                        type="button"
+                        onClick={() => selectCategory(category)}
+                        className="flex min-w-0 flex-1 items-center justify-between px-3 py-2 text-left text-sm"
+                      >
+                        <span className="truncate">{category.name}</span>
+                        {category.is_system && (
+                          <span className="ml-3 shrink-0 text-xs text-slate-400">default</span>
+                        )}
+                      </button>
+
+                      {!category.is_system && (
+                        <button
+                          type="button"
+                          onClick={(event) => handleDeleteCategory(event, category)}
+                          disabled={deletingCategoryId === category.id}
+                          className="mr-2 flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-slate-400 opacity-0 transition hover:bg-red-50 hover:text-red-600 focus:opacity-100 focus:outline-none focus:ring-2 focus:ring-red-500/20 disabled:cursor-not-allowed disabled:opacity-50 group-hover:opacity-100 dark:hover:bg-red-950/40 dark:hover:text-red-300"
+                          aria-label={`ลบหมวดหมู่ ${category.name}`}
+                        >
+                          <svg className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor" aria-hidden>
+                            <path
+                              fillRule="evenodd"
+                              d="M4.293 4.293a1 1 0 0 1 1.414 0L10 8.586l4.293-4.293a1 1 0 1 1 1.414 1.414L11.414 10l4.293 4.293a1 1 0 0 1-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 0 1-1.414-1.414L8.586 10 4.293 5.707a1 1 0 0 1 0-1.414Z"
+                              clipRule="evenodd"
+                            />
+                          </svg>
+                        </button>
                       )}
-                    </button>
+                    </div>
                   ))}
 
                 {!isLoading && inputValue.trim() && !findCategoryByName(inputValue) && (

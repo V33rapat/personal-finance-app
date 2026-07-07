@@ -68,6 +68,7 @@ export function useCategory({
   const [search, setSearch] = useState(initialSearch);
   const [isLoading, setIsLoading] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
+  const [deletingCategoryId, setDeletingCategoryId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
 
@@ -200,17 +201,60 @@ export function useCategory({
     [categories, type]
   );
 
+  const deleteCategory = useCallback(
+    async (category: Category) => {
+      if (category.is_system) {
+        const message = "ไม่สามารถลบหมวดหมู่ของระบบได้";
+        setError(message);
+        showToast({ title: message, type: "error" });
+        return false;
+      }
+
+      setDeletingCategoryId(category.id);
+      setError(null);
+
+      try {
+        const response = await fetch(`/api/category/${category.id}`, {
+          method: "DELETE",
+        });
+
+        await readApiResponse(response);
+
+        setCategories((current) =>
+          current.filter((item) => item.id !== category.id)
+        );
+        showToast({ title: "ลบหมวดหมู่สำเร็จ" });
+        return true;
+      } catch (err) {
+        const message = err instanceof Error ? err.message : "ลบหมวดหมู่ไม่สำเร็จ";
+        setError(message);
+        showToast({
+          title: "ลบหมวดหมู่ไม่สำเร็จ",
+          description: message,
+          type: "error",
+        });
+        return false;
+      } finally {
+        setDeletingCategoryId(null);
+      }
+    },
+    [showToast]
+  );
+
   return {
     categories,
     search,
     isLoading,
     isCreating,
+    isDeleting: deletingCategoryId !== null,
+    deletingCategoryId,
     error,
     
     setSearch,
     loadCategories,
     reloadCategories: loadCategories,
     createCategory,
+    deleteCategory,
     findCategoryByName,
   };
 }
