@@ -1,4 +1,9 @@
-import { Injectable, NotFoundException, ForbiddenException } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+  ForbiddenException,
+} from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateTransactionDto } from './dto/create-transaction.dto';
 import { UpdateTransactionDto } from './dto/update-transaction.dto';
@@ -90,6 +95,7 @@ export class TransactionService {
 
   async update(userId: string, dto: UpdateTransactionDto, id: string) {
     const existing = await this.findOne(userId, id);
+    await this.assertNotTransferManagedTransaction(id);
 
     // Verify wallet belongs to user
     const wallet = await this.prisma.wallets.findFirst({
@@ -158,6 +164,7 @@ export class TransactionService {
 
   async delete(userId: string, id: string) {
     const transaction = await this.findOne(userId, id);
+    await this.assertNotTransferManagedTransaction(id);
 
     const wallet = await this.prisma.wallets.findFirst({
       where: { id: transaction.wallet_id, user_id: userId },
@@ -181,5 +188,24 @@ export class TransactionService {
       where: { id },
       data: { deleted_at: new Date() },
     });
+  }
+
+  private async assertNotTransferManagedTransaction(id: string) {
+    const transfer = await this.prisma.transfers.findFirst({
+      where: {
+        deleted_at: null,
+        OR: [
+          { from_transaction_id: id },
+          { to_transaction_id: id },
+        ],
+      },
+      select: { id: true },
+    });
+
+    if (transfer) {
+      throw new BadRequestException(
+        'This transaction belongs to a transfer. Please edit or delete it through Transfer.',
+      );
+    }
   }
 }

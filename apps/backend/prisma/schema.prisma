@@ -105,12 +105,14 @@ model transfers {
   transfer_date                                            DateTime      @db.Date
   created_at                                               DateTime      @default(now()) @db.Timestamptz(6)
   updated_at                                               DateTime      @default(now()) @db.Timestamptz(6)
+  deleted_at                                               DateTime?     @db.Timestamptz(6)
   transactions_transfers_from_transaction_idTotransactions transactions? @relation("transfers_from_transaction_idTotransactions", fields: [from_transaction_id], references: [id], onUpdate: NoAction)
   wallets_transfers_from_wallet_idTowallets                wallets       @relation("transfers_from_wallet_idTowallets", fields: [from_wallet_id], references: [id], onUpdate: NoAction)
   transactions_transfers_to_transaction_idTotransactions   transactions? @relation("transfers_to_transaction_idTotransactions", fields: [to_transaction_id], references: [id], onUpdate: NoAction)
   wallets_transfers_to_wallet_idTowallets                  wallets       @relation("transfers_to_wallet_idTowallets", fields: [to_wallet_id], references: [id], onUpdate: NoAction)
 
   @@index([transfer_date(sort: Desc)], map: "idx_transfers_date")
+  @@index([deleted_at], map: "idx_transfers_deleted_at")
   @@index([from_wallet_id, transfer_date(sort: Desc)], map: "idx_transfers_from_wallet")
   @@index([to_wallet_id, transfer_date(sort: Desc)], map: "idx_transfers_to_wallet")
 }
