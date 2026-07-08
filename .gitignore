@@ -1,3 +1,6 @@
 backups
 supabase
 node_modules
+docker-compose.yml
+/docker
+.pnpm-store/
