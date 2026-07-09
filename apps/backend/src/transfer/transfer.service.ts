@@ -37,6 +37,7 @@ export class TransferService {
         values.from_wallet_id,
         values.to_wallet_id,
       );
+      const transferDate = this.toTransferDate(values.transfer_date);
 
       await this.applyTransferBalance(tx, userId, values);
 
@@ -46,7 +47,7 @@ export class TransferService {
           name: this.getFromTransactionName(toWallet.name),
           type: 'expense',
           amount: values.amount,
-          transaction_date: values.transfer_date,
+          transaction_date: transferDate,
           note: values.note,
           category_id: null,
         },
@@ -58,7 +59,7 @@ export class TransferService {
           name: this.getToTransactionName(fromWallet.name),
           type: 'income',
           amount: values.amount,
-          transaction_date: values.transfer_date,
+          transaction_date: transferDate,
           note: values.note,
           category_id: null,
         },
@@ -72,7 +73,7 @@ export class TransferService {
           to_transaction_id: toTransaction.id,
           amount: values.amount,
           note: values.note,
-          transfer_date: values.transfer_date,
+          transfer_date: transferDate,
         },
         include: transferInclude,
       });
@@ -114,6 +115,7 @@ export class TransferService {
         values.from_wallet_id,
         values.to_wallet_id,
       );
+      const transferDate = this.toTransferDate(values.transfer_date);
 
       await this.reverseTransferBalance(tx, userId, {
         from_wallet_id: existing.from_wallet_id,
@@ -134,7 +136,7 @@ export class TransferService {
           name: this.getFromTransactionName(toWallet.name),
           type: 'expense',
           amount: values.amount,
-          transaction_date: values.transfer_date,
+          transaction_date: transferDate,
           note: values.note,
           category_id: null,
           deleted_at: null,
@@ -149,7 +151,7 @@ export class TransferService {
           name: this.getToTransactionName(fromWallet.name),
           type: 'income',
           amount: values.amount,
-          transaction_date: values.transfer_date,
+          transaction_date: transferDate,
           note: values.note,
           category_id: null,
           deleted_at: null,
@@ -164,7 +166,7 @@ export class TransferService {
           to_wallet_id: values.to_wallet_id,
           amount: values.amount,
           note: values.note,
-          transfer_date: values.transfer_date,
+          transfer_date: transferDate,
           updated_at: new Date(),
         },
         include: transferInclude,
@@ -361,6 +363,16 @@ export class TransferService {
     if (transferDate > today) {
       throw new BadRequestException('Transfer date cannot be in the future');
     }
+  }
+
+  private toTransferDate(value: string) {
+    const date = new Date(value);
+
+    if (Number.isNaN(date.getTime())) {
+      throw new BadRequestException('Invalid transfer date');
+    }
+
+    return date;
   }
 
   private getFromTransactionName(destinationWalletName: string) {
