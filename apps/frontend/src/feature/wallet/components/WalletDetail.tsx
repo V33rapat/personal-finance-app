@@ -9,6 +9,8 @@ import TransactionModal from "@/feature/transaction/components/TransactionModal"
 import WalletTransactionFilter from "./WalletTransactionFilter";
 import { useTransaction } from "@/feature/transaction/hooks/useTransaction";
 import { useTransactionSelection } from "@/feature/transaction/hooks/useTransactionSelection";
+import { useTransactionTemplate } from "@/feature/transaction/hooks/useTransactionTemplate";
+import { toTemplateValuesFromTransaction } from "@/feature/transaction/lib/transactionTemplate";
 import type { Wallet } from "../hooks/useWallet";
 
 type TabType = "overview" | "transactions";
@@ -166,6 +168,10 @@ export default function WalletDetail({
 
   const { displayedTransactions, categories, modalOpen, editingTransaction, openModal, openEditModal, closeModal, addTransaction, updateTransaction, deleteTransactions, loadMore, hasMore, isLoading, isSaving, error, filters, updateFilter } = useTransaction({ walletId: wallet?.id });
   const { selectedIds, selectedCount, toggleSelection, clearSelection, selectAll } = useTransactionSelection();
+  const {
+    createTemplate,
+    isSaving: isSavingTemplate,
+  } = useTransactionTemplate({ autoLoad: false });
 
   const handleDeleteSelected = () => {
     setShowDeleteConfirm(true);
@@ -292,6 +298,10 @@ export default function WalletDetail({
               onLoadMore={loadMore}
               empty={displayedTransactions.length === 0}
               onEdit={openEditModal}
+              onSaveAsTemplate={(transaction) =>
+                createTemplate(toTemplateValuesFromTransaction(transaction))
+              }
+              isSavingTemplate={isSavingTemplate}
               selectedIds={selectedIds}
               onToggleSelect={toggleSelection}
               onDeleteSelected={handleDeleteSelected}

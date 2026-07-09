@@ -24,6 +24,8 @@ interface TransactionItemProps {
   showWallet?: boolean;
   currency?: string;
   onEdit?: (transaction: Transaction) => void;
+  onSaveAsTemplate?: (transaction: Transaction) => void;
+  isSavingTemplate?: boolean;
 }
 
 function formatMoney(amount: string, currency: string = "THB") {
@@ -42,7 +44,14 @@ function formatDate(dateString: string) {
   });
 }
 
-export default function TransactionItem({ transaction, showWallet = false, currency = "THB", onEdit }: TransactionItemProps) {
+export default function TransactionItem({
+  transaction,
+  showWallet = false,
+  currency = "THB",
+  onEdit,
+  onSaveAsTemplate,
+  isSavingTemplate = false,
+}: TransactionItemProps) {
   const isIncome = transaction.type === "income";
 
   return (
@@ -87,6 +96,21 @@ export default function TransactionItem({ transaction, showWallet = false, curre
             {isIncome ? TH_TEXT.transaction.income : TH_TEXT.transaction.expense}
           </p>
         </div>
+        {onSaveAsTemplate && (
+          <button
+            onClick={() => onSaveAsTemplate(transaction)}
+            disabled={isSavingTemplate}
+            className="rounded-lg p-1.5 text-slate-400 opacity-0 transition-opacity hover:bg-violet-50 hover:text-violet-600 disabled:cursor-not-allowed disabled:opacity-40 group-hover:opacity-100 dark:hover:bg-violet-950/30 dark:hover:text-violet-300"
+            aria-label={TH_TEXT.transactionTemplate.saveFromTransaction}
+            title={TH_TEXT.transactionTemplate.saveFromTransaction}
+          >
+            <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} aria-hidden>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M19 21l-7-4-7 4V5a2 2 0 0 1 2-2h6" />
+              <path strokeLinecap="round" strokeLinejoin="round" d="M17 3v8" />
+              <path strokeLinecap="round" strokeLinejoin="round" d="M13 7h8" />
+            </svg>
+          </button>
+        )}
         {onEdit && (
           <button
             onClick={() => onEdit(transaction)}

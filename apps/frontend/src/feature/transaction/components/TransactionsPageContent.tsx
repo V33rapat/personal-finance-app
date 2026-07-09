@@ -9,6 +9,8 @@ import TransactionModal from "@/feature/transaction/components/TransactionModal"
 import ConfirmationDialog from "@/components/ui/ConfirmationDialog";
 import { useTransaction } from "@/feature/transaction/hooks/useTransaction";
 import { useTransactionSelection } from "@/feature/transaction/hooks/useTransactionSelection";
+import { useTransactionTemplate } from "@/feature/transaction/hooks/useTransactionTemplate";
+import { toTemplateValuesFromTransaction } from "@/feature/transaction/lib/transactionTemplate";
 
 interface TransactionsPageContentProps {
   wallets: { id: string; name: string }[];
@@ -36,6 +38,10 @@ export default function TransactionsPageContent({ wallets }: TransactionsPageCon
     updateTransaction,
     deleteTransactions,
   } = useTransaction();
+  const {
+    createTemplate,
+    isSaving: isSavingTemplate,
+  } = useTransactionTemplate({ autoLoad: false });
 
   const { selectedIds, selectedCount, toggleSelection, clearSelection, selectAll } = useTransactionSelection();
 
@@ -107,6 +113,10 @@ export default function TransactionsPageContent({ wallets }: TransactionsPageCon
         isLoading={isLoading}
         empty={transactions.length === 0}
         onEdit={openEditModal}
+        onSaveAsTemplate={(transaction) =>
+          createTemplate(toTemplateValuesFromTransaction(transaction))
+        }
+        isSavingTemplate={isSavingTemplate}
         selectedIds={selectedIds}
         onToggleSelect={toggleSelection}
         onDeleteSelected={handleDeleteSelected}
