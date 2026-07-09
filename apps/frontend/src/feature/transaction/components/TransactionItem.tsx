@@ -9,6 +9,7 @@ export interface Transaction {
   wallet_id: string;
   wallet_name?: string;
   category_id: string | null;
+  template_id?: string | null;
   category_name?: string;
   name: string;
   type: TransactionType;

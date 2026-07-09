@@ -5,6 +5,7 @@ import Button from "@/components/ui/Button";
 import { TH_TEXT } from "@/constants/th";
 import CategoryCombobox, { type CategoryComboboxHandle } from "./CategoryCombobox";
 import type { Transaction, TransactionType } from "./TransactionItem";
+import { useTransactionTemplate } from "../hooks/useTransactionTemplate";
 
 
 interface TransactionFormValues {
@@ -12,6 +13,7 @@ interface TransactionFormValues {
   amount: string;
   type: TransactionType;
   category_id: string | null;
+  template_id?: string | null;
   transaction_date: string;
   note: string;
 }
@@ -38,6 +40,7 @@ function getDefaultValues(): TransactionFormValues {
     amount: "",
     type: "expense",
     category_id: null,
+    template_id: null,
     transaction_date: new Date().toISOString().split("T")[0],
     note: "",
   };
@@ -51,6 +54,7 @@ function getInitialValues(transaction?: Transaction | null): TransactionFormValu
     amount: transaction.amount,
     type: transaction.type,
     category_id: transaction.category_id,
+    template_id: transaction.template_id ?? null,
     transaction_date: transaction.transaction_date,
     note: transaction.note ?? "",
   };
@@ -94,6 +98,9 @@ function TransactionModalForm({
   onUpdate,
 }: TransactionModalFormProps) {
   const categoryComboboxRef = useRef<CategoryComboboxHandle>(null);
+  const { templates, isLoading: isTemplateLoading } = useTransactionTemplate({
+    autoLoad: !isEditMode,
+  });
   const [values, setValues] = useState<TransactionFormValues>(initialValues);
   const [errors, setErrors] = useState<Partial<Record<keyof TransactionFormValues, string>>>({});
 
@@ -132,6 +139,27 @@ function TransactionModalForm({
       ...current, 
       type, 
       category_id: current.type === type ? current.category_id : null
+    }));
+  };
+
+  const applyTemplate = (templateId: string) => {
+    if (!templateId) {
+      setValues((current) => ({ ...current, template_id: null }));
+      return;
+    }
+
+    const template = templates.find((item) => item.id === templateId);
+
+    if (!template) return;
+
+    setValues((current) => ({
+      ...current,
+      template_id: template.id,
+      name: template.name,
+      amount: template.default_amount,
+      type: template.type,
+      category_id: template.category_id,
+      note: template.note,
     }));
   };
 
@@ -194,6 +222,29 @@ function TransactionModalForm({
             <div className="rounded-lg bg-slate-50 px-4 py-2 text-sm text-slate-600 dark:bg-slate-800 dark:text-slate-300">
               {TH_TEXT.transaction.wallet}: <span className="font-medium">{walletName}</span>
             </div>
+          )}
+
+          {!isEditMode && (
+            <FormField label={TH_TEXT.transactionTemplate.selectTemplate}>
+              <select
+                value={values.template_id ?? ""}
+                disabled={isSaving || isTemplateLoading}
+                onChange={(event) => applyTemplate(event.target.value)}
+                className="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-800 focus:border-violet-500 focus:outline-none focus:ring-2 focus:ring-violet-500/20 disabled:cursor-not-allowed disabled:opacity-60 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
+              >
+                <option value="">
+                  {TH_TEXT.transactionTemplate.noTemplateSelected}
+                </option>
+                {templates.map((template) => (
+                  <option key={template.id} value={template.id}>
+                    {template.name} - {Number(template.default_amount).toLocaleString("th-TH")}
+                  </option>
+                ))}
+              </select>
+              <p className="text-xs text-slate-500 dark:text-slate-400">
+                {TH_TEXT.transactionTemplate.applyHint}
+              </p>
+            </FormField>
           )}
 
           <div className="flex gap-2">

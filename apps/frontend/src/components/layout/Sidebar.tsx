@@ -35,6 +35,15 @@ function TransactionsIcon() {
   );
 }
 
+function TemplateIcon() {
+  return (
+    <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} aria-hidden>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M6.75 3.75h10.5A2.25 2.25 0 0 1 19.5 6v12A2.25 2.25 0 0 1 17.25 20.25H6.75A2.25 2.25 0 0 1 4.5 18V6A2.25 2.25 0 0 1 6.75 3.75Z" />
+      <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 8.25h7.5M8.25 12h7.5M8.25 15.75h4.5" />
+    </svg>
+  );
+}
+
 function TransferIcon() {
   return (
     <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} aria-hidden>
@@ -47,6 +56,7 @@ const navItems = [
   { href: "/dashboard", label: TH_TEXT.navigation.dashboard, icon: <DashboardIcon /> },
   { href: "/wallet", label: TH_TEXT.navigation.wallet, icon: <WalletIcon /> },
   { href: "/transactions", label: TH_TEXT.navigation.transactions, icon: <TransactionsIcon /> },
+  { href: "/transaction-templates", label: TH_TEXT.navigation.transactionTemplates, icon: <TemplateIcon /> },
   { href: "/transfer", label: TH_TEXT.navigation.transfer, icon: <TransferIcon /> },
   { href: "/profile", label: TH_TEXT.navigation.profile, icon: <ProfileIcon /> },
 ];

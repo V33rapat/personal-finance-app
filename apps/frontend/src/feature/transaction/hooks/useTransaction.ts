@@ -14,6 +14,7 @@ interface TransactionFormValues {
   amount: string;
   type: TransactionType;
   category_id: string | null;
+  template_id?: string | null;
   transaction_date: string;
   note: string;
 }
@@ -37,6 +38,7 @@ interface ApiTransaction {
   id: string;
   wallet_id: string;
   category_id: string | null;
+  template_id: string | null;
   name: string;
   type: TransactionType;
   amount: string | number;
@@ -63,6 +65,7 @@ function mapApiTransaction(transaction: ApiTransaction): Transaction {
     wallet_id: transaction.wallet_id,
     wallet_name: transaction.wallets?.name,
     category_id: transaction.category_id,
+    template_id: transaction.template_id,
     category_name: transaction.categories?.name,
     name: transaction.name,
     type: transaction.type,
@@ -245,6 +248,7 @@ export function useTransaction(options: UseTransactionOptions = {}) {
           amount: Number(values.amount),
           type: values.type,
           category_id: values.category_id || null,
+          template_id: values.template_id || null,
           transaction_date: values.transaction_date,
           note: values.note.trim() || null,
         }),
