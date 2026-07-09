@@ -7,13 +7,6 @@ export const metadata: Metadata = {
   description: TH_TEXT.transaction.metadataDescription,
 };
 
-const mockWallets = [
-  { id: "wallet-savings", name: "เงินออม" },
-  { id: "wallet-travel", name: "ท่องเที่ยว" },
-  { id: "wallet-emergency", name: "ฉุกเฉิน" },
-  { id: "wallet-investment", name: "ลงทุน" },
-];
-
 export default function TransactionsPage() {
-  return <TransactionsPageContent wallets={mockWallets} />;
+  return <TransactionsPageContent />;
 }

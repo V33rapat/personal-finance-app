@@ -147,6 +147,10 @@ export function useTransaction(options: UseTransactionOptions = {}) {
   const filteredTransactions = useMemo(() => {
     let filtered = [...transactions];
 
+    if (!walletId && filters.walletId) {
+      filtered = filtered.filter((transaction) => transaction.wallet_id === filters.walletId);
+    }
+
     if (filters.type) {
       filtered = filtered.filter((transaction) => transaction.type === filters.type);
     }
@@ -175,7 +179,7 @@ export function useTransaction(options: UseTransactionOptions = {}) {
     return filtered.sort(
       (a, b) => new Date(b.transaction_date).getTime() - new Date(a.transaction_date).getTime()
     );
-  }, [transactions, filters]);
+  }, [transactions, filters, walletId]);
 
   const displayedTransactions = useMemo(() => {
     return filteredTransactions.slice(0, page * pageSize);

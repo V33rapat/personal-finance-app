@@ -11,13 +11,14 @@ import { useTransaction } from "@/feature/transaction/hooks/useTransaction";
 import { useTransactionSelection } from "@/feature/transaction/hooks/useTransactionSelection";
 import { useTransactionTemplate } from "@/feature/transaction/hooks/useTransactionTemplate";
 import { toTemplateValuesFromTransaction } from "@/feature/transaction/lib/transactionTemplate";
+import { useWallet } from "@/feature/wallet/hooks/useWallet";
 
-interface TransactionsPageContentProps {
-  wallets: { id: string; name: string }[];
-}
-
-export default function TransactionsPageContent({ wallets }: TransactionsPageContentProps) {
+export default function TransactionsPageContent() {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const {
+    wallets,
+    isLoading: isWalletLoading,
+  } = useWallet();
 
   const {
     transactions,
@@ -80,7 +81,7 @@ export default function TransactionsPageContent({ wallets }: TransactionsPageCon
           </p>
         </div>
 
-        <Button onClick={handleCreateTransaction} disabled={!createWalletId || isSaving}>
+        <Button onClick={handleCreateTransaction} disabled={!createWalletId || isSaving || isWalletLoading}>
           <svg className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor" aria-hidden>
             <path d="M10 4a1 1 0 0 1 1 1v4h4a1 1 0 1 1 0 2h-4v4a1 1 0 1 1-2 0v-4H5a1 1 0 1 1 0-2h4V5a1 1 0 0 1 1-1Z" />
           </svg>
