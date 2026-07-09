@@ -153,7 +153,8 @@ export default function TransferPage() {
   }, [editingTransfer]);
 
   const totalBalance = wallets.reduce(
-    (sum, wallet) => sum + Number(wallet.balance || 0),
+    (sum, wallet) =>
+      wallet.parent_wallet_id ? sum : sum + Number(wallet.balance || 0),
     0
   );
 

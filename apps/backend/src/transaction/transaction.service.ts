@@ -7,6 +7,7 @@ import {
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateTransactionDto } from './dto/create-transaction.dto';
 import { UpdateTransactionDto } from './dto/update-transaction.dto';
+import { applyWalletBalanceDelta } from '../wallet/wallet-balance.util';
 
 @Injectable()
 export class TransactionService {
@@ -43,22 +44,24 @@ export class TransactionService {
       }
     }
 
-    const transaction = await this.prisma.transactions.create({
-      data: {
-        name: dto.name,
-        amount: dto.amount,
-        type: dto.type,
-        wallet_id: dto.wallet_id,
-        category_id: dto.category_id || null,
-        transaction_date: this.toTransactionDate(dto.transaction_date),
-        note: dto.note || null,
-      },
-    });
-
     const balanceChange = dto.type === 'income' ? dto.amount : -dto.amount;
-    await this.prisma.wallets.update({
-      where: { id: dto.wallet_id },
-      data: { balance: { increment: balanceChange } },
+
+    const transaction = await this.prisma.$transaction(async (tx) => {
+      const createdTransaction = await tx.transactions.create({
+        data: {
+          name: dto.name,
+          amount: dto.amount,
+          type: dto.type,
+          wallet_id: dto.wallet_id,
+          category_id: dto.category_id || null,
+          transaction_date: this.toTransactionDate(dto.transaction_date),
+          note: dto.note || null,
+        },
+      });
+
+      await applyWalletBalanceDelta(tx, dto.wallet_id, balanceChange);
+
+      return createdTransaction;
     });
 
     return transaction;
@@ -126,42 +129,40 @@ export class TransactionService {
       }
     }
 
-    const transaction = await this.prisma.transactions.update({
-      where: { id },
-      data: {
-        ...(dto.name && { name: dto.name }),
-        ...(dto.amount && { amount: dto.amount }),
-        ...(dto.type && { type: dto.type }),
-        ...(dto.note !== undefined && { note: dto.note }),
-        ...(dto.transaction_date && {
-          transaction_date: this.toTransactionDate(dto.transaction_date),
-        }),
-        ...(dto.category_id !== undefined && { category_id: dto.category_id || null }),
-      },
-    });
-    
-    // Recalculate wallet balance if amount or type changed
-    if (dto.amount !== undefined || dto.type !== undefined) {
-      const newAmount = dto.amount !== undefined ? dto.amount : Number(existing.amount);
-      const newType = dto.type ?? existing.type;
+    const newAmount = dto.amount !== undefined ? dto.amount : Number(existing.amount);
+    const newType = dto.type ?? existing.type;
 
-      const oldBalanceEffect = existing.type === 'income'
-        ? Number(existing.amount)
-        : -Number(existing.amount);
+    const oldBalanceEffect = existing.type === 'income'
+      ? Number(existing.amount)
+      : -Number(existing.amount);
 
-      const newBalanceEffect = newType === 'income'
-        ? Number(newAmount)
-        : -Number(newAmount);
+    const newBalanceEffect = newType === 'income'
+      ? Number(newAmount)
+      : -Number(newAmount);
 
-      const balanceDelta = newBalanceEffect - oldBalanceEffect;
-      
+    const balanceDelta = newBalanceEffect - oldBalanceEffect;
+
+    const transaction = await this.prisma.$transaction(async (tx) => {
+      const updatedTransaction = await tx.transactions.update({
+        where: { id },
+        data: {
+          ...(dto.name && { name: dto.name }),
+          ...(dto.amount && { amount: dto.amount }),
+          ...(dto.type && { type: dto.type }),
+          ...(dto.note !== undefined && { note: dto.note }),
+          ...(dto.transaction_date && {
+            transaction_date: this.toTransactionDate(dto.transaction_date),
+          }),
+          ...(dto.category_id !== undefined && { category_id: dto.category_id || null }),
+        },
+      });
+
       if (balanceDelta !== 0) {
-        await this.prisma.wallets.update({
-          where: { id: existing.wallet_id },
-          data: { balance: { increment: balanceDelta } },
-        });
+        await applyWalletBalanceDelta(tx, existing.wallet_id, balanceDelta);
       }
-    }
+
+      return updatedTransaction;
+    });
     
     return transaction;
   }
@@ -182,15 +183,14 @@ export class TransactionService {
      ? -Number(transaction.amount)
       : Number(transaction.amount);
 
-    await this.prisma.wallets.update({
-      where: { id: transaction.wallet_id },
-      data: { balance: { increment: balanceChange } },
-    });
+    return this.prisma.$transaction(async (tx) => {
+      await applyWalletBalanceDelta(tx, transaction.wallet_id, balanceChange);
 
-    // Soft delete
-    return this.prisma.transactions.update({
-      where: { id },
-      data: { deleted_at: new Date() },
+      // Soft delete
+      return tx.transactions.update({
+        where: { id },
+        data: { deleted_at: new Date() },
+      });
     });
   }
 

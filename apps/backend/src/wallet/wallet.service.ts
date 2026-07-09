@@ -1,7 +1,9 @@
 import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import { Prisma } from '@prisma/client';
 import { CreateWalletDto } from './dto/create-wallet.dto';
 import { UpdateWalletDto } from './dto/update-wallet.dto';
 import { PrismaService } from '../prisma/prisma.service';
+import { syncWalletBalances } from './wallet-balance.util';
 
 @Injectable()
 export class WalletService {
@@ -43,6 +45,8 @@ export class WalletService {
   }
 
   async findAll(userId: string) {
+    await syncWalletBalances(this.prisma, userId);
+
     const wallets = await this.prisma.wallets.findMany({
       where: {
         user_id: userId,
@@ -118,19 +122,47 @@ export class WalletService {
       }
     }
 
-    const updatedWallet = await this.prisma.wallets.update({
-      where: {
-        id: walletId,
-      },
-      data: {
-        name: dto.name,
-        parent_wallet_id: dto.parentWalletId || null,
-        wallet_type: dto.walletType || 'normal',
-        description: dto.description,
-        color: dto.color,
-        icon: dto.icon,
-        updated_at: new Date(),
-      },
+    const nextParentWalletId = dto.parentWalletId || null;
+    const updatedAt = new Date();
+    const parentWalletChanged = wallet.parent_wallet_id !== nextParentWalletId;
+
+    const updatedWallet = await this.prisma.$transaction(async (tx) => {
+      const nextWallet = await tx.wallets.update({
+        where: {
+          id: walletId,
+        },
+        data: {
+          name: dto.name,
+          parent_wallet_id: nextParentWalletId,
+          wallet_type: dto.walletType || 'normal',
+          description: dto.description,
+          color: dto.color,
+          icon: dto.icon,
+          updated_at: updatedAt,
+        },
+      });
+
+      if (parentWalletChanged && wallet.parent_wallet_id) {
+        await tx.wallets.update({
+          where: { id: wallet.parent_wallet_id },
+          data: {
+            balance: { decrement: wallet.balance },
+            updated_at: updatedAt,
+          },
+        });
+      }
+
+      if (parentWalletChanged && nextParentWalletId) {
+        await tx.wallets.update({
+          where: { id: nextParentWalletId },
+          data: {
+            balance: { increment: wallet.balance },
+            updated_at: updatedAt,
+          },
+        });
+      }
+
+      return nextWallet;
     });
 
     return updatedWallet;
@@ -157,6 +189,11 @@ export class WalletService {
     });
 
     const deletedAt = new Date();
+    const childBalanceTotal = childWallets.reduce(
+      (sum, childWallet) => sum.plus(childWallet.balance),
+      new Prisma.Decimal(0),
+    );
+    const parentBalanceDelta = childBalanceTotal.minus(wallet.balance);
 
     await this.prisma.$transaction(async (tx) => {
       if (childWallets.length > 0) {
@@ -167,6 +204,16 @@ export class WalletService {
           },
           data: {
             parent_wallet_id: wallet.parent_wallet_id,
+            updated_at: deletedAt,
+          },
+        });
+      }
+
+      if (wallet.parent_wallet_id && !parentBalanceDelta.isZero()) {
+        await tx.wallets.update({
+          where: { id: wallet.parent_wallet_id },
+          data: {
+            balance: { increment: parentBalanceDelta },
             updated_at: deletedAt,
           },
         });

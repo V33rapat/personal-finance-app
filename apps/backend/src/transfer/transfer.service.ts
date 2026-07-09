@@ -3,6 +3,10 @@ import { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateTransferDto } from './dto/create-transfer.dto';
 import { UpdateTransferDto } from './dto/update-transfer.dto';
+import {
+  applyParentWalletBalanceDelta,
+  applyWalletBalanceDelta,
+} from '../wallet/wallet-balance.util';
 
 const transferInclude = {
   wallets_transfers_from_wallet_idTowallets: true,
@@ -349,13 +353,12 @@ export class TransferService {
       throw new BadRequestException('Source wallet balance is not enough');
     }
 
-    await tx.wallets.update({
-      where: { id: values.to_wallet_id },
-      data: {
-        balance: { increment: values.amount },
-        updated_at: new Date(),
-      },
-    });
+    await applyParentWalletBalanceDelta(
+      tx,
+      values.from_wallet_id,
+      values.amount.mul(-1),
+    );
+    await applyWalletBalanceDelta(tx, values.to_wallet_id, values.amount);
   }
 
   private async reverseTransferBalance(
@@ -382,13 +385,12 @@ export class TransferService {
       );
     }
 
-    await tx.wallets.update({
-      where: { id: values.from_wallet_id },
-      data: {
-        balance: { increment: values.amount },
-        updated_at: new Date(),
-      },
-    });
+    await applyParentWalletBalanceDelta(
+      tx,
+      values.to_wallet_id,
+      values.amount.mul(-1),
+    );
+    await applyWalletBalanceDelta(tx, values.from_wallet_id, values.amount);
   }
 
   private assertNotFutureDate(dateString: string) {
