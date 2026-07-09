@@ -114,8 +114,11 @@ export function useWallet() {
     parentId: null,
   });
 
-  const loadWallets = useCallback(async () => {
-    setIsLoading(true);
+  const loadWallets = useCallback(async (showLoading = true) => {
+    if (showLoading) {
+      setIsLoading(true);
+    }
+
     setError(null);
 
     try {
@@ -144,13 +147,17 @@ export function useWallet() {
       setSelectedWalletId(null);
       setExpandedIds(new Set());
     } finally {
-      setIsLoading(false);
+      if (showLoading) {
+        setIsLoading(false);
+      }
     }
   }, []);
 
   useEffect(() => {
     void loadWallets();
   }, [loadWallets]);
+
+  const reloadWallets = useCallback(() => loadWallets(false), [loadWallets]);
 
   const walletTree = useMemo(() => buildWalletTree(wallets), [wallets]);
 
@@ -321,7 +328,7 @@ export function useWallet() {
     openCreateWallet,
     openEditWallet,
     closeModal,
-    reloadWallets: loadWallets,
+    reloadWallets,
     saveWallet,
     deleteWallet,
   };
