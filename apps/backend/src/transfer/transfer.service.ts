@@ -109,55 +109,79 @@ export class TransferService {
     const values = this.toUpdateValues(existing, dto);
 
     return this.prisma.$transaction(async (tx) => {
-      const { fromWallet, toWallet } = await this.getTransferWallets(
-        tx,
-        userId,
-        values.from_wallet_id,
-        values.to_wallet_id,
-      );
       const transferDate = this.toTransferDate(values.transfer_date);
-
-      await this.reverseTransferBalance(tx, userId, {
-        from_wallet_id: existing.from_wallet_id,
-        to_wallet_id: existing.to_wallet_id,
-        amount: new Prisma.Decimal(existing.amount),
-      });
-
-      await this.applyTransferBalance(tx, userId, values);
+      const affectsBalance = this.hasBalanceAffectingChanges(existing, values);
 
       if (!existing.from_transaction_id || !existing.to_transaction_id) {
         throw new BadRequestException('Transfer is missing paired transactions');
       }
 
-      await tx.transactions.update({
-        where: { id: existing.from_transaction_id },
-        data: {
-          wallet_id: values.from_wallet_id,
-          name: this.getFromTransactionName(toWallet.name),
-          type: 'expense',
-          amount: values.amount,
-          transaction_date: transferDate,
-          note: values.note,
-          category_id: null,
-          deleted_at: null,
-          updated_at: new Date(),
-        },
-      });
+      if (affectsBalance) {
+        const { fromWallet, toWallet } = await this.getTransferWallets(
+          tx,
+          userId,
+          values.from_wallet_id,
+          values.to_wallet_id,
+        );
 
-      await tx.transactions.update({
-        where: { id: existing.to_transaction_id },
-        data: {
-          wallet_id: values.to_wallet_id,
-          name: this.getToTransactionName(fromWallet.name),
-          type: 'income',
-          amount: values.amount,
-          transaction_date: transferDate,
-          note: values.note,
-          category_id: null,
-          deleted_at: null,
-          updated_at: new Date(),
-        },
-      });
+        await this.reverseTransferBalance(tx, userId, {
+          from_wallet_id: existing.from_wallet_id,
+          to_wallet_id: existing.to_wallet_id,
+          amount: new Prisma.Decimal(existing.amount),
+        });
+
+        await this.applyTransferBalance(tx, userId, values);
+
+        await tx.transactions.update({
+          where: { id: existing.from_transaction_id },
+          data: {
+            wallet_id: values.from_wallet_id,
+            name: this.getFromTransactionName(toWallet.name),
+            type: 'expense',
+            amount: values.amount,
+            transaction_date: transferDate,
+            note: values.note,
+            category_id: null,
+            deleted_at: null,
+            updated_at: new Date(),
+          },
+        });
+
+        await tx.transactions.update({
+          where: { id: existing.to_transaction_id },
+          data: {
+            wallet_id: values.to_wallet_id,
+            name: this.getToTransactionName(fromWallet.name),
+            type: 'income',
+            amount: values.amount,
+            transaction_date: transferDate,
+            note: values.note,
+            category_id: null,
+            deleted_at: null,
+            updated_at: new Date(),
+          },
+        });
+      } else {
+        await tx.transactions.update({
+          where: { id: existing.from_transaction_id },
+          data: {
+            transaction_date: transferDate,
+            note: values.note,
+            deleted_at: null,
+            updated_at: new Date(),
+          },
+        });
+
+        await tx.transactions.update({
+          where: { id: existing.to_transaction_id },
+          data: {
+            transaction_date: transferDate,
+            note: values.note,
+            deleted_at: null,
+            updated_at: new Date(),
+          },
+        });
+      }
 
       return tx.transfers.update({
         where: { id },
@@ -290,6 +314,17 @@ export class TransferService {
     }
 
     return { fromWallet, toWallet };
+  }
+
+  private hasBalanceAffectingChanges(
+    existing: { from_wallet_id: string; to_wallet_id: string; amount: Prisma.Decimal },
+    values: Pick<TransferValues, 'from_wallet_id' | 'to_wallet_id' | 'amount'>,
+  ) {
+    return (
+      existing.from_wallet_id !== values.from_wallet_id ||
+      existing.to_wallet_id !== values.to_wallet_id ||
+      !new Prisma.Decimal(existing.amount).equals(values.amount)
+    );
   }
 
   private async applyTransferBalance(

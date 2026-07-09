@@ -1,11 +1,18 @@
 "use client";
 
+import { useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import Button from "@/components/ui/Button";
+import ConfirmationDialog from "@/components/ui/ConfirmationDialog";
 import { TH_TEXT } from "@/constants/th";
 import { useWallet } from "@/feature/wallet/hooks/useWallet";
-import { useTransfer } from "../hooks/useTransfer";
+import {
+  type Transfer,
+  type TransferFormValues,
+  useTransfer,
+} from "../hooks/useTransfer";
 import TransferForm from "./TransferForm";
+import TransferHistory from "./TransferHistory";
 
 function TransferSkeleton() {
   return (
@@ -102,7 +109,18 @@ function WalletSummaryPanel({
   );
 }
 
+function getTransferLabel(transfer: Transfer) {
+  const source = transfer.sourceWalletName || TH_TEXT.transfer.sourceWallet;
+  const destination =
+    transfer.destinationWalletName || TH_TEXT.transfer.destinationWallet;
+
+  return `${source} -> ${destination}`;
+}
+
 export default function TransferPage() {
+  const formRef = useRef<HTMLDivElement>(null);
+  const [editingTransfer, setEditingTransfer] = useState<Transfer | null>(null);
+  const [deletingTransfer, setDeletingTransfer] = useState<Transfer | null>(null);
   const {
     wallets,
     isLoading: isWalletLoading,
@@ -110,18 +128,69 @@ export default function TransferPage() {
     reloadWallets,
   } = useWallet();
   const {
+    transfers,
     createTransfer,
+    updateTransfer,
+    deleteTransfer,
+    isLoading: isTransferLoading,
     isSaving,
     error: transferError,
   } = useTransfer({
     wallets,
+    autoLoad: true,
     onChanged: reloadWallets,
   });
+  const editingInitialValues = useMemo<TransferFormValues | undefined>(() => {
+    if (!editingTransfer) return undefined;
+
+    return {
+      from_wallet_id: editingTransfer.from_wallet_id,
+      to_wallet_id: editingTransfer.to_wallet_id,
+      amount: editingTransfer.amount,
+      transfer_date: editingTransfer.transfer_date,
+      note: editingTransfer.note,
+    };
+  }, [editingTransfer]);
 
   const totalBalance = wallets.reduce(
     (sum, wallet) => sum + Number(wallet.balance || 0),
     0
   );
+
+  const handleEditTransfer = (transfer: Transfer) => {
+    setEditingTransfer(transfer);
+    window.requestAnimationFrame(() => {
+      formRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
+  };
+
+  const handleSubmitTransfer = async (values: TransferFormValues) => {
+    if (!editingTransfer) {
+      return createTransfer(values);
+    }
+
+    const success = await updateTransfer(editingTransfer.id, values);
+
+    if (success) {
+      setEditingTransfer(null);
+    }
+
+    return success;
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!deletingTransfer) return;
+
+    const success = await deleteTransfer(deletingTransfer.id);
+
+    if (success) {
+      if (editingTransfer?.id === deletingTransfer.id) {
+        setEditingTransfer(null);
+      }
+
+      setDeletingTransfer(null);
+    }
+  };
 
   return (
     <div className="flex flex-col gap-6">
@@ -153,18 +222,48 @@ export default function TransferPage() {
       ) : wallets.length < 2 ? (
         <WalletRequirementEmptyState />
       ) : (
-        <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
-          <TransferForm
-            wallets={wallets}
+        <>
+          <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
+            <div ref={formRef}>
+              <TransferForm
+                key={editingTransfer?.id ?? "create"}
+                wallets={wallets}
+                isSaving={isSaving}
+                error={transferError}
+                mode={editingTransfer ? "edit" : "create"}
+                initialValues={editingInitialValues}
+                editingTransfer={editingTransfer}
+                onCancelEdit={() => setEditingTransfer(null)}
+                onSubmit={handleSubmitTransfer}
+              />
+            </div>
+            <WalletSummaryPanel
+              walletCount={wallets.length}
+              totalBalance={totalBalance}
+            />
+          </div>
+
+          <TransferHistory
+            transfers={transfers}
+            isLoading={isTransferLoading}
             isSaving={isSaving}
-            error={transferError}
-            onSubmit={createTransfer}
+            editingTransferId={editingTransfer?.id ?? null}
+            onEdit={handleEditTransfer}
+            onDelete={setDeletingTransfer}
           />
-          <WalletSummaryPanel
-            walletCount={wallets.length}
-            totalBalance={totalBalance}
+
+          <ConfirmationDialog
+            isOpen={!!deletingTransfer}
+            title={TH_TEXT.transfer.deleteConfirmTitle}
+            message={TH_TEXT.transfer.deleteConfirmMessage.replace(
+              "%s",
+              deletingTransfer ? getTransferLabel(deletingTransfer) : ""
+            )}
+            confirmText={TH_TEXT.common.delete}
+            onConfirm={handleConfirmDelete}
+            onCancel={() => setDeletingTransfer(null)}
           />
-        </div>
+        </>
       )}
     </div>
   );

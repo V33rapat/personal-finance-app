@@ -5,13 +5,17 @@ import Button from "@/components/ui/Button";
 import FormField from "@/components/ui/FormField";
 import { TH_TEXT } from "@/constants/th";
 import type { Wallet } from "@/feature/wallet/hooks/useWallet";
-import type { TransferFormValues } from "../hooks/useTransfer";
+import type { Transfer, TransferFormValues } from "../hooks/useTransfer";
 import TransferBalancePreview from "./TransferBalancePreview";
 
 interface TransferFormProps {
   wallets: Wallet[];
   isSaving: boolean;
   error?: string | null;
+  mode?: "create" | "edit";
+  initialValues?: TransferFormValues;
+  editingTransfer?: Transfer | null;
+  onCancelEdit?: () => void;
   onSubmit: (values: TransferFormValues) => Promise<boolean>;
 }
 
@@ -65,11 +69,41 @@ function getInitialValues(wallets: Wallet[]): TransferFormValues {
   };
 }
 
-function getFieldErrors(values: TransferFormValues, wallets: Wallet[]): FieldErrors {
+function getAvailableSourceBalance(
+  sourceWallet: Wallet | undefined,
+  values: TransferFormValues,
+  editingTransfer?: Transfer | null
+) {
+  const sourceBalance = toMoneyNumber(sourceWallet?.balance);
+  const existingAmount = toMoneyNumber(editingTransfer?.amount);
+  let availableBalance = Number.isFinite(sourceBalance) ? sourceBalance : 0;
+
+  if (editingTransfer && Number.isFinite(existingAmount)) {
+    if (editingTransfer.from_wallet_id === values.from_wallet_id) {
+      availableBalance += existingAmount;
+    }
+
+    if (editingTransfer.to_wallet_id === values.from_wallet_id) {
+      availableBalance -= existingAmount;
+    }
+  }
+
+  return availableBalance;
+}
+
+function getFieldErrors(
+  values: TransferFormValues,
+  wallets: Wallet[],
+  editingTransfer?: Transfer | null
+): FieldErrors {
   const errors: FieldErrors = {};
   const sourceWallet = wallets.find((wallet) => wallet.id === values.from_wallet_id);
   const amount = toMoneyNumber(values.amount);
-  const sourceBalance = toMoneyNumber(sourceWallet?.balance);
+  const availableBalance = getAvailableSourceBalance(
+    sourceWallet,
+    values,
+    editingTransfer
+  );
 
   if (!values.from_wallet_id) {
     errors.from_wallet_id = TH_TEXT.transfer.sourceWalletRequired;
@@ -91,7 +125,7 @@ function getFieldErrors(values: TransferFormValues, wallets: Wallet[]): FieldErr
     errors.amount = TH_TEXT.transfer.amountRequired;
   } else if (!Number.isFinite(amount) || amount <= 0) {
     errors.amount = TH_TEXT.transfer.amountInvalid;
-  } else if (sourceWallet && Number.isFinite(sourceBalance) && sourceBalance < amount) {
+  } else if (sourceWallet && availableBalance < amount) {
     errors.amount = TH_TEXT.transfer.balanceNotEnough;
   }
 
@@ -122,10 +156,15 @@ export default function TransferForm({
   wallets,
   isSaving,
   error,
+  mode = "create",
+  initialValues,
+  editingTransfer,
+  onCancelEdit,
   onSubmit,
 }: TransferFormProps) {
+  const isEditMode = mode === "edit";
   const [values, setValues] = useState<TransferFormValues>(() =>
-    getInitialValues(wallets)
+    initialValues ?? getInitialValues(wallets)
   );
   const [touched, setTouched] = useState<TouchedFields>({});
   const [submitted, setSubmitted] = useState(false);
@@ -139,8 +178,8 @@ export default function TransferForm({
     [values.to_wallet_id, wallets]
   );
   const fieldErrors = useMemo(
-    () => getFieldErrors(values, wallets),
-    [values, wallets]
+    () => getFieldErrors(values, wallets, editingTransfer),
+    [editingTransfer, values, wallets]
   );
   const visibleErrors = useMemo(
     () => getVisibleErrors(fieldErrors, touched, submitted),
@@ -148,6 +187,13 @@ export default function TransferForm({
   );
   const hasErrors = Object.keys(fieldErrors).length > 0;
   const submitDisabled = isSaving || hasErrors;
+  const submitLabel = isSaving
+    ? isEditMode
+      ? TH_TEXT.transfer.savingChanges
+      : TH_TEXT.transfer.saving
+    : isEditMode
+      ? TH_TEXT.transfer.saveChanges
+      : TH_TEXT.transfer.submit;
 
   const updateValue = <Key extends FieldName>(
     key: Key,
@@ -180,11 +226,14 @@ export default function TransferForm({
 
     if (!success) return;
 
-    setValues((current) => ({
-      ...current,
-      amount: "",
-      note: "",
-    }));
+    if (!isEditMode) {
+      setValues((current) => ({
+        ...current,
+        amount: "",
+        note: "",
+      }));
+    }
+
     setTouched({});
     setSubmitted(false);
   };
@@ -196,10 +245,12 @@ export default function TransferForm({
     >
       <div>
         <h2 className="text-lg font-bold text-slate-900 dark:text-slate-50">
-          {TH_TEXT.transfer.title}
+          {isEditMode ? TH_TEXT.transfer.editTitle : TH_TEXT.transfer.title}
         </h2>
         <p className="mt-1 text-sm leading-6 text-slate-500 dark:text-slate-400">
-          {TH_TEXT.transfer.formDescription}
+          {isEditMode
+            ? TH_TEXT.transfer.editDescription
+            : TH_TEXT.transfer.formDescription}
         </p>
       </div>
 
@@ -338,6 +389,7 @@ export default function TransferForm({
           sourceWallet={sourceWallet}
           destinationWallet={destinationWallet}
           amount={values.amount}
+          editingTransfer={editingTransfer}
         />
       </div>
 
@@ -347,16 +399,24 @@ export default function TransferForm({
             {TH_TEXT.transfer.submitHint}
           </p>
         )}
-        <Button
-          type="submit"
-          disabled={submitDisabled}
-          className="sm:ml-auto"
-        >
-          <svg className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor" aria-hidden>
-            <path d="M3 10a1 1 0 0 1 1-1h9.59l-3.3-3.29a1 1 0 1 1 1.42-1.42l5 5a1 1 0 0 1 0 1.42l-5 5a1 1 0 0 1-1.42-1.42l3.3-3.29H4a1 1 0 0 1-1-1Z" />
-          </svg>
-          {isSaving ? TH_TEXT.transfer.saving : TH_TEXT.transfer.submit}
-        </Button>
+        <div className="flex flex-col gap-3 sm:ml-auto sm:flex-row">
+          {isEditMode && onCancelEdit && (
+            <Button
+              type="button"
+              variant="secondary"
+              disabled={isSaving}
+              onClick={onCancelEdit}
+            >
+              {TH_TEXT.transfer.cancelEdit}
+            </Button>
+          )}
+          <Button type="submit" disabled={submitDisabled}>
+            <svg className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor" aria-hidden>
+              <path d="M3 10a1 1 0 0 1 1-1h9.59l-3.3-3.29a1 1 0 1 1 1.42-1.42l5 5a1 1 0 0 1 0 1.42l-5 5a1 1 0 0 1-1.42-1.42l3.3-3.29H4a1 1 0 0 1-1-1Z" />
+            </svg>
+            {submitLabel}
+          </Button>
+        </div>
       </div>
     </form>
   );

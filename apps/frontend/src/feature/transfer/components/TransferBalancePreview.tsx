@@ -2,11 +2,13 @@
 
 import { TH_TEXT } from "@/constants/th";
 import type { Wallet } from "@/feature/wallet/hooks/useWallet";
+import type { Transfer } from "../hooks/useTransfer";
 
 interface TransferBalancePreviewProps {
   sourceWallet: Wallet | null;
   destinationWallet: Wallet | null;
   amount: string;
+  editingTransfer?: Transfer | null;
 }
 
 function toMoneyNumber(value: string | number | null | undefined) {
@@ -25,6 +27,25 @@ function formatMoney(amount: number, currency = "THB") {
     currency,
     maximumFractionDigits: 0,
   }).format(amount);
+}
+
+function getEditableBaseBalance(wallet: Wallet | null, editingTransfer?: Transfer | null) {
+  const currentBalance = toMoneyNumber(wallet?.balance);
+  const existingAmount = toMoneyNumber(editingTransfer?.amount);
+
+  if (!wallet || !editingTransfer || !Number.isFinite(existingAmount)) {
+    return currentBalance;
+  }
+
+  if (wallet.id === editingTransfer.from_wallet_id) {
+    return currentBalance + existingAmount;
+  }
+
+  if (wallet.id === editingTransfer.to_wallet_id) {
+    return currentBalance - existingAmount;
+  }
+
+  return currentBalance;
 }
 
 function BalancePanel({
@@ -89,10 +110,14 @@ export default function TransferBalancePreview({
   sourceWallet,
   destinationWallet,
   amount,
+  editingTransfer,
 }: TransferBalancePreviewProps) {
   const transferAmount = toMoneyNumber(amount);
-  const sourceBalance = toMoneyNumber(sourceWallet?.balance);
-  const destinationBalance = toMoneyNumber(destinationWallet?.balance);
+  const sourceBalance = getEditableBaseBalance(sourceWallet, editingTransfer);
+  const destinationBalance = getEditableBaseBalance(
+    destinationWallet,
+    editingTransfer
+  );
 
   return (
     <section className="rounded-2xl border border-slate-200 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-950/30">
