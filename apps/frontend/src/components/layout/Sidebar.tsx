@@ -35,10 +35,19 @@ function TransactionsIcon() {
   );
 }
 
+function TransferIcon() {
+  return (
+    <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} aria-hidden>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M7 7h11m0 0-3-3m3 3-3 3M17 17H6m0 0 3 3m-3-3 3-3" />
+    </svg>
+  );
+}
+
 const navItems = [
   { href: "/dashboard", label: TH_TEXT.navigation.dashboard, icon: <DashboardIcon /> },
   { href: "/wallet", label: TH_TEXT.navigation.wallet, icon: <WalletIcon /> },
   { href: "/transactions", label: TH_TEXT.navigation.transactions, icon: <TransactionsIcon /> },
+  { href: "/transfer", label: TH_TEXT.navigation.transfer, icon: <TransferIcon /> },
   { href: "/profile", label: TH_TEXT.navigation.profile, icon: <ProfileIcon /> },
 ];
 
