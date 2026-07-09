@@ -156,26 +156,56 @@ export class WalletService {
       },
     });
 
-    if (childWallets.length > 0) {
-      await this.prisma.wallets.updateMany({
+    const deletedAt = new Date();
+
+    await this.prisma.$transaction(async (tx) => {
+      if (childWallets.length > 0) {
+        await tx.wallets.updateMany({
+          where: {
+            parent_wallet_id: walletId,
+            deleted_at: null,
+          },
+          data: {
+            parent_wallet_id: wallet.parent_wallet_id,
+            updated_at: deletedAt,
+          },
+        });
+      }
+
+      await tx.transfers.updateMany({
         where: {
-          parent_wallet_id: walletId,
+          deleted_at: null,
+          OR: [
+            { from_wallet_id: walletId },
+            { to_wallet_id: walletId },
+          ],
+        },
+        data: {
+          deleted_at: deletedAt,
+          updated_at: deletedAt,
+        },
+      });
+
+      await tx.transactions.updateMany({
+        where: {
+          wallet_id: walletId,
           deleted_at: null,
         },
         data: {
-          parent_wallet_id: wallet.parent_wallet_id,
-          updated_at: new Date(),
+          deleted_at: deletedAt,
+          updated_at: deletedAt,
         },
       });
-    }
 
-    await this.prisma.wallets.update({
-      where: {
-        id: walletId,
-      },
-      data: {
-        deleted_at: new Date(),
-      },
+      await tx.wallets.update({
+        where: {
+          id: walletId,
+        },
+        data: {
+          deleted_at: deletedAt,
+          updated_at: deletedAt,
+        },
+      });
     });
 
     return { message: 'ลบกระเป๋าเงินสำเร็จ' };
