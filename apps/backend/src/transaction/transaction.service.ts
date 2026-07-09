@@ -145,20 +145,22 @@ export class TransactionService {
       const newAmount = dto.amount !== undefined ? dto.amount : Number(existing.amount);
       const newType = dto.type ?? existing.type;
 
-      // Reverse old
-      const oldChange = existing.type === 'income'
-        ? -Number(existing.amount)
-        : Number(existing.amount);
+      const oldBalanceEffect = existing.type === 'income'
+        ? Number(existing.amount)
+        : -Number(existing.amount);
 
-      // Apply new
-      const newChange = newType === 'income'
+      const newBalanceEffect = newType === 'income'
         ? Number(newAmount)
         : -Number(newAmount);
+
+      const balanceDelta = newBalanceEffect - oldBalanceEffect;
       
-      await this.prisma.wallets.update({
-        where: { id: existing.wallet_id },
-        data: { balance: { increment: newChange - oldChange } },
-      });
+      if (balanceDelta !== 0) {
+        await this.prisma.wallets.update({
+          where: { id: existing.wallet_id },
+          data: { balance: { increment: balanceDelta } },
+        });
+      }
     }
     
     return transaction;
