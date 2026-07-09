@@ -50,7 +50,7 @@ export class TransactionService {
         type: dto.type,
         wallet_id: dto.wallet_id,
         category_id: dto.category_id || null,
-        transaction_date: dto.transaction_date,
+        transaction_date: this.toTransactionDate(dto.transaction_date),
         note: dto.note || null,
       },
     });
@@ -133,7 +133,9 @@ export class TransactionService {
         ...(dto.amount && { amount: dto.amount }),
         ...(dto.type && { type: dto.type }),
         ...(dto.note !== undefined && { note: dto.note }),
-        ...(dto.transaction_date && { transaction_date: dto.transaction_date }),
+        ...(dto.transaction_date && {
+          transaction_date: this.toTransactionDate(dto.transaction_date),
+        }),
         ...(dto.category_id !== undefined && { category_id: dto.category_id || null }),
       },
     });
@@ -207,5 +209,15 @@ export class TransactionService {
         'This transaction belongs to a transfer. Please edit or delete it through Transfer.',
       );
     }
+  }
+
+  private toTransactionDate(value: string) {
+    const date = new Date(value);
+
+    if (Number.isNaN(date.getTime())) {
+      throw new BadRequestException('Invalid transaction date');
+    }
+
+    return date;
   }
 }
