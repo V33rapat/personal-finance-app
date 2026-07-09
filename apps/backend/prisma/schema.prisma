@@ -63,6 +63,9 @@ model transaction_templates {
   users          users            @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
   wallets        wallets?         @relation(fields: [wallet_id], references: [id], onUpdate: NoAction)
   transactions   transactions[]
+
+  @@unique([user_id, name, type], map: "uq_transaction_templates_user_name_type")
+  @@index([user_id, is_active, type], map: "idx_transaction_templates_user_active_type")
 }
 
 /// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.

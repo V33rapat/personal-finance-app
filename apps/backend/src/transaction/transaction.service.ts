@@ -44,6 +44,20 @@ export class TransactionService {
       }
     }
 
+    if (dto.template_id) {
+      const template = await this.prisma.transaction_templates.findFirst({
+        where: {
+          id: dto.template_id,
+          user_id: userId,
+          is_active: true,
+        },
+      });
+
+      if (!template) {
+        throw new NotFoundException('Transaction template not found');
+      }
+    }
+
     const balanceChange = dto.type === 'income' ? dto.amount : -dto.amount;
 
     const transaction = await this.prisma.$transaction(async (tx) => {
@@ -54,6 +68,7 @@ export class TransactionService {
           type: dto.type,
           wallet_id: dto.wallet_id,
           category_id: dto.category_id || null,
+          template_id: dto.template_id || null,
           transaction_date: this.toTransactionDate(dto.transaction_date),
           note: dto.note || null,
         },

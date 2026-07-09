@@ -18,6 +18,10 @@ export class CreateTransactionDto {
   @IsOptional()
   category_id?: string;
 
+  @IsString()
+  @IsOptional()
+  template_id?: string | null;
+
   @IsDateString()
   transaction_date: string;
 
