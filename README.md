@@ -55,7 +55,7 @@ Walpaca helps you:
 |------|---------|
 | NestJS | 11 |
 | Prisma | 5.22 |
-| PostgreSQL | Supabase |
+| PostgreSQL | Docker (local) / Supabase (production) |
 
 ---
 
@@ -112,36 +112,73 @@ git clone https://github.com/your-username/walpaca.git
 cd walpaca
 ```
 
-### 2. Setup Frontend (npm)
+### 2. Start the local database
+
+The local environment uses PostgreSQL in Docker:
+
+```bash
+docker compose up -d
+docker ps
+```
+
+To stop the database:
+
+```bash
+docker compose down
+```
+
+### 3. Configure environment variables
+
+Copy the examples before starting the applications:
+
+```bash
+copy apps\frontend\.env.example apps\frontend\.env
+copy apps\backend\.env.example apps\backend\.env
+```
+
+On macOS/Linux, use `cp` instead of `copy`.
+
+For local Docker, the Backend database values are:
+
+```env
+DATABASE_URL=postgresql://postgres:postgres@localhost:5432/personal_finance?schema=public
+DIRECT_URL=postgresql://postgres:postgres@localhost:5432/personal_finance?schema=public
+PORT=3001
+JWT_SECRET=use-a-local-development-secret
+```
+
+The Frontend BFF uses:
+
+```env
+NEXT_PUBLIC_BACKEND_URL=http://localhost:3001
+```
+
+For production, replace the database values with the connection strings from `Supabase Dashboard > Project Settings > Database > Connect`. Set the production `JWT_SECRET` in Render and never commit real `.env` files.
+
+### 4. Setup Backend (pnpm)
+
+```bash
+cd apps/backend
+pnpm install
+npx prisma generate
+pnpm run start:dev
+```
+
+Backend runs on `http://localhost:3001`.
+
+### 5. Setup Frontend (npm)
+
+Open a second terminal:
+
 ```bash
 cd apps/frontend
 npm install
 npm run dev
 ```
-- Frontend runs on: `http://localhost:3000`
 
-### 3. Setup Backend (pnpm)
-```bash
-cd apps/backend
-pnpm install
-pnpm run start:dev
-```
-- Backend runs on: `http://localhost:3001`
+Frontend runs on `http://localhost:3000`.
 
-> **Note**: Run both apps simultaneously for full functionality.
-
-### 4. Environment Variables
-
-**Backend** (`apps/backend/.env`):
-```env
-DATABASE_URL="postgresql://<user>:<password>@<host>:<port>/<database>"
-DIRECT_URL="postgresql://<user>:<password>@<host>:<port>/<database>"
-```
-
-**Frontend** (`apps/frontend/.env`):
-```env
-NEXT_PUBLIC_BACKEND_URL=http://localhost:3001
-```
+Run both applications at the same time for the complete local flow.
 
 ---
 
@@ -165,10 +202,12 @@ pnpm run test:e2e       # Run e2e tests
 ### Prisma
 ```bash
 cd apps/backend
-npx prisma generate    # Generate Prisma Client (after schema changes)
-npx prisma migrate dev # Run migrations
-npx prisma studio      # Open database GUI
+npx prisma generate    # Generate Prisma Client after schema changes
+npx prisma db pull     # Read the current database schema into Prisma
+npx prisma studio      # Open the database GUI
 ```
+
+Use `prisma migrate dev` only when working with a tracked migration workflow. Do not use `prisma db push` as the normal production deployment strategy because it does not create a migration history.
 
 ---
 
@@ -181,6 +220,14 @@ npx prisma studio      # Open database GUI
 - **Transfers** - Wallet-to-wallet transfers
 - **Categories** - Transaction categories (per user)
 - **TransactionTemplates** - Quick input templates
+
+### Database environments
+
+```text
+Local development:  Docker PostgreSQL
+Production:         Supabase PostgreSQL
+Prisma Client:      NestJS Backend only
+```
 
 ---
 
@@ -197,8 +244,98 @@ npx prisma studio      # Open database GUI
 
 1. **Next.js 16** has breaking changes — check `node_modules/next/dist/docs/` before writing code
 2. **Theme Provider**: Add `suppressHydrationWarning` to `<html>` tag in `layout.tsx`
-3. **BFF Routes**: Always use `/api/auth/*` endpoints, never call backend directly from client
-4. **Prisma**: Run `npx prisma generate` after any schema changes
+3. **BFF Routes**: The browser calls `/api/*` routes. Do not call the NestJS Backend directly from client components.
+4. **Prisma**: Run `npx prisma generate` after schema changes.
+5. **Secrets**: Never commit `.env`, database passwords, JWT secrets, or Supabase connection strings.
+6. **Date rules**: Transaction and transfer dates cannot be in the future.
+7. **Wallet rules**: Transfers validate wallet ownership, prevent the same source and destination wallet, and require sufficient balance.
+
+---
+
+## 🚀 Deployment
+
+The production architecture is:
+
+```text
+Browser
+  ↓
+Next.js Frontend + BFF (Vercel)
+  ↓
+NestJS Backend (Render)
+  ↓
+Supabase PostgreSQL
+```
+
+### Supabase
+
+Supabase hosts the production PostgreSQL database. Restore or migrate the schema and data before deploying the Backend. Keep database connection strings only in Backend environment variables.
+
+### Render Backend
+
+Create a Render Web Service from the repository with:
+
+```text
+Root Directory: apps/backend
+Build Command:  pnpm install --frozen-lockfile && pnpm prisma generate && pnpm run build
+Start Command:  pnpm run start:prod
+```
+
+Set these Render environment variables:
+
+```env
+DATABASE_URL=<SUPABASE_DATABASE_URL>
+DIRECT_URL=<SUPABASE_DIRECT_URL>
+JWT_SECRET=<LONG_RANDOM_PRODUCTION_SECRET>
+PORT=3001
+```
+
+Copy the public Render Backend URL for the Frontend configuration.
+
+### Vercel Frontend
+
+Create a Vercel Project from the same repository with:
+
+```text
+Root Directory: apps/frontend
+Framework:      Next.js
+Production Branch: main
+```
+
+Set this Vercel environment variable for the Production environment:
+
+```env
+NEXT_PUBLIC_BACKEND_URL=https://your-backend.onrender.com
+```
+
+The URL must not end with `/`. Vercel uses `main` for Production and creates Preview Deployments for other branches.
+
+---
+
+## 🔀 Git Workflow
+
+Keep `main` deployable and use one branch for each feature or focused fix:
+
+```text
+main
+├── feature/transfer-history
+├── feature/transaction-template
+└── fix/login-url
+```
+
+Typical workflow:
+
+```bash
+git switch main
+git pull origin main
+git switch -c feature/my-feature
+
+# make changes and run checks
+git add .
+git commit -m "feat: describe the change"
+git push -u origin feature/my-feature
+```
+
+Open a Pull Request, test the Vercel Preview Deployment, then merge into `main` for Production.
 
 ---
 
@@ -206,13 +343,16 @@ npx prisma studio      # Open database GUI
 
 - [x] Authentication (Register / Login)
 - [x] BFF Layer for Auth
-- [ ] Dashboard UI
-- [ ] Wallet Management
-- [ ] Transaction System
+- [x] Dashboard UI
+- [x] Wallet Management
+- [x] Transaction System
+- [x] Transfer System
+- [x] Category Management and Combobox
+- [x] Transaction Templates
+- [x] Light/Dark Theme
+- [x] Responsive UI
 - [ ] Analytics & Charts
-- [ ] Investment Portfolio
-- [ ] Theme Customization
-- [ ] Mobile Responsive UI
+- [ ] Investment Portfolio Enhancements
 
 ---
 
