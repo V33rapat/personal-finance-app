@@ -1,5 +1,6 @@
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
+import { getBackendUrl } from "@/app/api/_lib/bff";
 
 function clearAuthCookies(response: NextResponse) {
   response.cookies.set("accessToken", "", {
@@ -24,10 +25,8 @@ export async function POST() {
   clearAuthCookies(response);
 
   const token = (await cookies()).get("accessToken")?.value;
-  const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL;
-
-  if (token && backendUrl) {
-    await fetch(`${backendUrl}/auth/logout`, {
+  if (token) {
+    await fetch(`${getBackendUrl()}/auth/logout`, {
       method: "POST",
       headers: {
         Authorization: `Bearer ${token}`,

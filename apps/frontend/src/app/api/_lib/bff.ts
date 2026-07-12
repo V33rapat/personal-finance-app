@@ -2,7 +2,9 @@ import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 
 export function getBackendUrl() {
-  const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL;
+  const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL
+    ?.trim()
+    .replace(/\/+$/, "");
 
   if (!backendUrl) {
     throw new Error("NEXT_PUBLIC_BACKEND_URL is not configured");
