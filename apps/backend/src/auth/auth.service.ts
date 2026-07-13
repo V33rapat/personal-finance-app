@@ -4,6 +4,7 @@ import { JwtTokenService } from './jwt.service';
 import * as bcrypt from 'bcrypt';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
+import { UpdateProfileDto } from './dto/update-profile.dto';
 
 @Injectable()
 export class AuthService {
@@ -181,5 +182,25 @@ export class AuthService {
       avatarUrl: user.avatar_url,
       createdAt: user.created_at,
     };
+  }
+
+  async updateProfile(userId: string, dto: UpdateProfileDto) {
+    const user = await this.prisma.users.findUnique({
+      where: { id: userId },
+    });
+
+    if (!user) {
+      throw new UnauthorizedException('User not found. Please login again.');
+    }
+
+    await this.prisma.users.update({
+      where: { id: userId },
+      data: {
+        full_name: dto.full_name.trim(),
+        updated_at: new Date(),
+      },
+    });
+
+    return this.getProfile(userId);
   }
 }

@@ -1,6 +1,7 @@
 import { 
   Controller, 
   Post, 
+  Patch,
   Body, 
   HttpCode, 
   HttpStatus, 
@@ -10,6 +11,7 @@ import {
 import { AuthService } from './auth.service';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
+import { UpdateProfileDto } from './dto/update-profile.dto';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
 
 @Controller('auth')
@@ -48,5 +50,13 @@ export class AuthController {
   getProfile(@Req() req: any) {
     const user = req.user as { sub: string };
     return this.authService.getProfile(user.sub);
+  }
+
+  @Patch('profile')
+  @HttpCode(HttpStatus.OK)
+  @UseGuards(JwtAuthGuard)
+  updateProfile(@Req() req: any, @Body() dto: UpdateProfileDto) {
+    const user = req.user as { sub: string };
+    return this.authService.updateProfile(user.sub, dto);
   }
 }
