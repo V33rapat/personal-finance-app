@@ -1,7 +1,9 @@
 "use client";
 
+import { useState } from "react";
 import Card from "@/components/ui/Card";
 import Button from "@/components/ui/Button";
+import FormField from "@/components/ui/FormField";
 import { TH_TEXT } from "@/constants/th";
 import LogoutButton from "@/feature/auth/components/LogoutButton";
 import { useProfile } from "@/feature/auth/hooks/useProfile";
@@ -20,7 +22,43 @@ function getInitials(fullName: string) {
 }
 
 export default function ProfilePageContent() {
-  const { profile, isLoading, error, loadProfile } = useProfile();
+  const {
+    profile,
+    isLoading,
+    isSaving,
+    error,
+    saveError,
+    clearSaveError,
+    loadProfile,
+    updateProfile,
+  } = useProfile();
+  const [isEditing, setIsEditing] = useState(false);
+  const [fullNameInput, setFullNameInput] = useState("");
+
+  const handleEdit = () => {
+    if (!profile) return;
+
+    setFullNameInput(profile.fullName);
+    clearSaveError();
+    setIsEditing(true);
+  };
+
+  const handleCancel = () => {
+    setFullNameInput(profile?.fullName ?? "");
+    clearSaveError();
+    setIsEditing(false);
+  };
+
+  const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+
+    const updatedProfile = await updateProfile(fullNameInput);
+
+    if (updatedProfile) {
+      setFullNameInput(updatedProfile.fullName);
+      setIsEditing(false);
+    }
+  };
 
   return (
     <div className="flex flex-col gap-6">
@@ -54,9 +92,49 @@ export default function ProfilePageContent() {
               {error}
             </p>
             <Button variant="secondary" onClick={() => void loadProfile()}>
-              ลองใหม่
+              {TH_TEXT.profile.retry}
             </Button>
           </div>
+        ) : profile && isEditing ? (
+          <form onSubmit={handleSubmit} className="flex flex-col gap-5">
+            <div className="flex items-center gap-4">
+              <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-violet-50 text-lg font-bold text-violet-700 ring-1 ring-violet-100 dark:bg-violet-950/40 dark:text-violet-200 dark:ring-violet-900/60">
+                {getInitials(profile.fullName)}
+              </div>
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-widest text-slate-400">
+                  {TH_TEXT.profile.email}
+                </p>
+                <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+                  {profile.email}
+                </p>
+              </div>
+            </div>
+
+            <FormField
+              label={TH_TEXT.profile.fullName}
+              id="profile-full-name"
+              value={fullNameInput}
+              onChange={(event) => setFullNameInput(event.target.value)}
+              error={saveError ?? undefined}
+              disabled={isSaving}
+              autoFocus
+            />
+
+            <div className="flex gap-2">
+              <Button type="submit" disabled={isSaving}>
+                {isSaving ? TH_TEXT.profile.saving : TH_TEXT.profile.save}
+              </Button>
+              <Button
+                type="button"
+                variant="secondary"
+                onClick={handleCancel}
+                disabled={isSaving}
+              >
+                {TH_TEXT.profile.cancel}
+              </Button>
+            </div>
+          </form>
         ) : profile ? (
           <div className="flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex items-center gap-4">
@@ -78,8 +156,11 @@ export default function ProfilePageContent() {
                 </p>
               </div>
             </div>
+
             <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-              <Button variant="secondary">{TH_TEXT.profile.editProfile}</Button>
+              <Button variant="secondary" onClick={handleEdit}>
+                {TH_TEXT.profile.editProfile}
+              </Button>
               <LogoutButton />
             </div>
           </div>

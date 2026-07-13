@@ -83,7 +83,16 @@ export const TH_TEXT = {
     deleteConfirmTitle: "ลบกระเป๋า?",
     deleteConfirmMessage: "คุณต้องการลบ \"%s\" หรือไม่? การดำเนินการนี้ไม่สามารถย้อนกลับได้",
   },
-  profile: {
+    profile: {
+      nameRequired: "กรุณากรอกชื่อ-นามสกุล",
+      nameMinLength: "ชื่อ-นามสกุลต้องมีอย่างน้อย 3 ตัวอักษร",
+      nameMaxLength: "ชื่อ-นามสกุลต้องมีความยาวไม่เกิน 50 ตัวอักษร",
+      updateSuccess: "อัปเดตโปรไฟล์สำเร็จ",
+      updateFailed: "อัปเดตโปรไฟล์ไม่สำเร็จ",
+      retry: "ลองใหม่",
+      save: "บันทึก",
+      saving: "กำลังบันทึก...",
+      cancel: "ยกเลิก",
     metadataTitle: "โปรไฟล์ | Walpaca",
     metadataDescription: "จัดการโปรไฟล์ Walpaca ของคุณ",
     eyebrow: "บัญชี",
