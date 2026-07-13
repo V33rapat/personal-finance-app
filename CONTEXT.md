@@ -10,6 +10,14 @@ Walpaca is a personal finance context for recording money events, organizing mon
 A personal identity used to access Walpaca and own private financial data.
 _Avoid_: Account, member, profile
 
+**Full Name**:
+The display name shown for a User Account in the Profile and application UI. It is editable without changing the User's login identity.
+_Avoid_: Username, login name
+
+**Login Email**:
+The unique email address used to identify a User Account and sign in to Walpaca. It is separate from the editable Full Name.
+_Avoid_: Display name, username
+
 **Admin**:
 A role responsible for governing user accounts across the system.
 _Avoid_: Superuser, moderator
