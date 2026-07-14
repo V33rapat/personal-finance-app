@@ -6,6 +6,7 @@ import {
   serverNotReadyResponse,
   unauthorizedResponse,
 } from "@/app/api/_lib/bff";
+import { toProfileResponse } from "./profile-bff";
 
 export async function GET() {
   try {
@@ -29,13 +30,7 @@ export async function GET() {
       );
     }
 
-    return NextResponse.json(
-      {
-        fullName: data?.fullName,
-        email: data?.email,
-      },
-      { status: response.status },
-    );
+    return NextResponse.json(toProfileResponse(data), { status: response.status });
   } catch {
     return serverNotReadyResponse();
   }
@@ -76,13 +71,7 @@ export async function PATCH(request: NextRequest) {
       );
     }
 
-    return NextResponse.json(
-      {
-        fullName: data?.fullName,
-        email: data?.email,
-      },
-      { status: response.status },
-    );
+    return NextResponse.json(toProfileResponse(data), { status: response.status });
   } catch {
     return serverNotReadyResponse();
   }
