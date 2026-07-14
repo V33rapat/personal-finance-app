@@ -1,5 +1,6 @@
 import { 
   Controller, 
+  Delete,
   Post, 
   Patch,
   Body, 
@@ -7,7 +8,10 @@ import {
   HttpStatus, 
   UseGuards,
   Req,
+  UploadedFile,
+  UseInterceptors,
 } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
 import { AuthService } from './auth.service';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
@@ -58,5 +62,22 @@ export class AuthController {
   updateProfile(@Req() req: any, @Body() dto: UpdateProfileDto) {
     const user = req.user as { sub: string };
     return this.authService.updateProfile(user.sub, dto);
+  }
+
+  @Post('profile/avatar')
+  @HttpCode(HttpStatus.OK)
+  @UseGuards(JwtAuthGuard)
+  @UseInterceptors(FileInterceptor('file', { limits: { fileSize: 5 * 1024 * 1024 } }))
+  uploadAvatar(@Req() req: any, @UploadedFile() file?: Express.Multer.File) {
+    const user = req.user as { sub: string };
+    return this.authService.uploadAvatar(user.sub, file);
+  }
+
+  @Delete('profile/avatar')
+  @HttpCode(HttpStatus.OK)
+  @UseGuards(JwtAuthGuard)
+  deleteAvatar(@Req() req: any) {
+    const user = req.user as { sub: string };
+    return this.authService.deleteAvatar(user.sub);
   }
 }

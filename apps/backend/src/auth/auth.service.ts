@@ -1,10 +1,22 @@
-import { Injectable, ConflictException, UnauthorizedException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  Injectable,
+  InternalServerErrorException,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { JwtTokenService } from './jwt.service';
 import * as bcrypt from 'bcrypt';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
 import { UpdateProfileDto } from './dto/update-profile.dto';
+import { SupabaseStorageService } from '../storage/supabase-storage.service';
+import { fromBuffer } from 'file-type';
+import { randomUUID } from 'node:crypto';
+
+const MAX_AVATAR_SIZE = 5 * 1024 * 1024;
+const ALLOWED_AVATAR_MIMES = new Set(['image/jpeg', 'image/png', 'image/webp']);
 
 @Injectable()
 export class AuthService {
@@ -13,6 +25,7 @@ export class AuthService {
   constructor(
     private prisma: PrismaService,
     private jwtTokenService: JwtTokenService,
+    private storage: SupabaseStorageService,
   ) {}
 
   private checkRateLimit(email: string): boolean {
@@ -174,12 +187,16 @@ export class AuthService {
       throw new UnauthorizedException('User not found. Please login again.');
     }
 
+    const avatarUrl = user.avatar_path
+      ? await this.storage.createSignedUrl(user.avatar_path)
+      : null;
+
     return {
       id: user.id,
       email: user.email,
       fullName: user.full_name,
       role: user.role,
-      avatarUrl: user.avatar_url,
+      avatarUrl,
       createdAt: user.created_at,
     };
   }
@@ -201,6 +218,67 @@ export class AuthService {
       },
     });
 
+    return this.getProfile(userId);
+  }
+
+  async uploadAvatar(userId: string, file?: Express.Multer.File) {
+    const user = await this.prisma.users.findUnique({
+      where: { id: userId },
+      select: { id: true, avatar_path: true },
+    });
+
+    if (!user) {
+      throw new UnauthorizedException('User not found. Please login again.');
+    }
+
+    if (!file?.buffer || file.size > MAX_AVATAR_SIZE) {
+      throw new BadRequestException('Avatar must be an image up to 5 MB.');
+    }
+
+    const detected = await fromBuffer(file.buffer);
+
+    if (!detected || !ALLOWED_AVATAR_MIMES.has(detected.mime) || file.mimetype !== detected.mime) {
+      throw new BadRequestException('Avatar must be a valid JPG, PNG, or WebP image.');
+    }
+
+    const newPath = `users/${userId}/${randomUUID()}.${detected.ext}`;
+
+    try {
+      await this.storage.upload(newPath, file.buffer, detected.mime);
+    } catch {
+      throw new InternalServerErrorException('Could not upload avatar.');
+    }
+
+    try {
+      await this.prisma.users.update({
+        where: { id: userId },
+        data: { avatar_path: newPath, updated_at: new Date() },
+      });
+    } catch {
+      await this.storage.remove(newPath);
+      throw new InternalServerErrorException('Could not save avatar.');
+    }
+
+    await this.storage.remove(user.avatar_path);
+    return this.getProfile(userId);
+  }
+
+  async deleteAvatar(userId: string) {
+    const user = await this.prisma.users.findUnique({
+      where: { id: userId },
+      select: { id: true, avatar_path: true },
+    });
+
+    if (!user) {
+      throw new UnauthorizedException('User not found. Please login again.');
+    }
+
+    await this.prisma.users.update({
+      where: { id: userId },
+      data: { avatar_path: null, updated_at: new Date() },
+    });
+
+    await this.storage.remove(user.avatar_path);
     return this.getProfile(userId);
   }
 }

@@ -7,6 +7,7 @@ import { TransactionModule } from './transaction/transaction.module';
 import { CategoryModule } from './category/category.module';
 import { TransferModule } from './transfer/transfer.module';
 import { TransactionTemplateModule } from './transaction-template/transaction-template.module';
+import { StorageModule } from './storage/storage.module';
 
 @Module({
   controllers: [AppController],
@@ -18,6 +19,7 @@ import { TransactionTemplateModule } from './transaction-template/transaction-te
     CategoryModule,
     TransferModule,
     TransactionTemplateModule,
+    StorageModule,
   ],
 })
 export class AppModule {}

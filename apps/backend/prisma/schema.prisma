@@ -128,6 +128,7 @@ model users {
   password_hash         String                  @db.VarChar(255)
   full_name             String                  @db.VarChar(150)
   avatar_url            String?                 @db.VarChar(500)
+  avatar_path           String?                 @db.VarChar(500)
   role                  user_role               @default(user)
   is_active             Boolean                 @default(true)
   email_verified_at     DateTime?               @db.Timestamptz(6)
