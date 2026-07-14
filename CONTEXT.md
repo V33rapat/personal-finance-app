@@ -18,6 +18,10 @@ _Avoid_: Username, login name
 The unique email address used to identify a User Account and sign in to Walpaca. It is separate from the editable Full Name.
 _Avoid_: Display name, username
 
+**Profile Avatar**:
+An optional image shown as the visual representation of a User Account in the Profile. If absent, the interface shows the user's initials. It is not an identity credential.
+_Avoid_: Profile identity, cover photo
+
 **Admin**:
 A role responsible for governing user accounts across the system.
 _Avoid_: Superuser, moderator
