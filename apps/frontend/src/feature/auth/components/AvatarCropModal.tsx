@@ -13,18 +13,26 @@ interface AvatarCropModalProps {
   onConfirm: (area: Area) => void;
 }
 
-export default function AvatarCropModal({
+interface AvatarCropEditorProps extends Omit<AvatarCropModalProps, "imageSrc"> {
+  imageSrc: string;
+}
+
+export default function AvatarCropModal({ imageSrc, ...props }: AvatarCropModalProps) {
+  if (!imageSrc) return null;
+
+  return <AvatarCropEditor key={imageSrc} imageSrc={imageSrc} {...props} />;
+}
+
+function AvatarCropEditor({
   imageSrc,
   isSaving,
   error,
   onCancel,
   onConfirm,
-}: AvatarCropModalProps) {
+}: AvatarCropEditorProps) {
   const [crop, setCrop] = useState({ x: 0, y: 0 });
   const [zoom, setZoom] = useState(1);
   const [area, setArea] = useState<Area | null>(null);
-
-  if (!imageSrc) return null;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm">
@@ -70,7 +78,7 @@ export default function AvatarCropModal({
             type="range"
             min={1}
             max={3}
-            step={0.1}
+            step={0.01}
             value={zoom}
             onChange={(event) => setZoom(Number(event.target.value))}
             disabled={isSaving}
