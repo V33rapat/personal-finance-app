@@ -50,7 +50,10 @@ export function validateRegisterForm(data: RegisterFormData): RegisterFormErrors
   }
 
   // password
-  errors.password = validatePassword(data.password);
+  const passwordError = validatePassword(data.password);
+  if (passwordError) {
+    errors.password = passwordError;
+  }
 
   // confirmPassword
   if (!data.confirmPassword) {
@@ -71,7 +74,13 @@ export function validateChangePasswordForm(
     errors.currentPassword = TH_TEXT.profile.currentPasswordRequired;
   }
 
-  errors.newPassword = validatePassword(data.newPassword, TH_TEXT.profile.newPasswordRequired);
+  const newPasswordError = validatePassword(
+    data.newPassword,
+    TH_TEXT.profile.newPasswordRequired,
+  );
+  if (newPasswordError) {
+    errors.newPassword = newPasswordError;
+  }
 
   if (!data.confirmPassword) {
     errors.confirmPassword = TH_TEXT.profile.confirmNewPasswordRequired;
