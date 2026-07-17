@@ -23,10 +23,7 @@ export class TransactionTemplateService {
         ...(query.type ? { type: query.type } : {}),
       },
       include: { categories: true },
-      orderBy: [
-        { type: 'asc' },
-        { name: 'asc' },
-      ],
+      orderBy: [{ type: 'asc' }, { name: 'asc' }],
     });
   }
 
@@ -107,11 +104,7 @@ export class TransactionTemplateService {
     }
   }
 
-  async update(
-    userId: string,
-    id: string,
-    dto: UpdateTransactionTemplateDto,
-  ) {
+  async update(userId: string, id: string, dto: UpdateTransactionTemplateDto) {
     const template = await this.findOne(userId, id);
     const nextName =
       dto.name !== undefined ? this.normalizeName(dto.name) : template.name;
@@ -184,10 +177,7 @@ export class TransactionTemplateService {
       where: {
         id: categoryId,
         type,
-        OR: [
-          { user_id: userId },
-          { user_id: null, is_system: true },
-        ],
+        OR: [{ user_id: userId }, { user_id: null, is_system: true }],
       },
     });
 

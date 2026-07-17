@@ -15,42 +15,34 @@ export class CategoryService {
 
   async findAll(userId: string, query: FindCategoryDto) {
     return this.prisma.categories.findMany({
-      where:{
+      where: {
         AND: [
           {
-            OR: [
-              { user_id: userId },
-              { user_id: null, is_system: true }
-            ],
+            OR: [{ user_id: userId }, { user_id: null, is_system: true }],
           },
           query.type ? { type: query.type } : {},
-          query.search?.trim() ? { 
-            name: { 
-              contains: query.search.trim(),
-              mode: 'insensitive',
-            }, 
-          } 
-        : {},
+          query.search?.trim()
+            ? {
+                name: {
+                  contains: query.search.trim(),
+                  mode: 'insensitive',
+                },
+              }
+            : {},
         ],
       },
-      orderBy: [
-        { is_system: 'desc' },
-        { name: 'asc' },
-      ],
+      orderBy: [{ is_system: 'desc' }, { name: 'asc' }],
     });
   }
-  
+
   async create(userId: string, dto: CreateCategoryDto) {
     const name = dto.name.trim();
 
     const existingCategory = await this.prisma.categories.findFirst({
-      where: { 
+      where: {
         name: { equals: name, mode: 'insensitive' },
         type: dto.type,
-        OR: [
-          { user_id: userId },
-          { user_id: null, is_system: true }
-        ],
+        OR: [{ user_id: userId }, { user_id: null, is_system: true }],
       },
     });
 

@@ -10,6 +10,30 @@ Walpaca is a personal finance context for recording money events, organizing mon
 A personal identity used to access Walpaca and own private financial data.
 _Avoid_: Account, member, profile
 
+**Full Name**:
+The display name shown for a User Account in the Profile and application UI. It is editable without changing the User's login identity.
+_Avoid_: Username, login name
+
+**Login Email**:
+The unique email address used to identify a User Account and sign in to Walpaca. It is separate from the editable Full Name.
+_Avoid_: Display name, username
+
+**Password**:
+A secret used with the Login Email to sign in to a User Account. It must contain at least eight characters, including lowercase and uppercase letters.
+_Avoid_: PIN, passcode
+
+**Session**:
+An authenticated sign-in state represented by an Access Token and Refresh Token. A Session may exist on more than one device.
+_Avoid_: User Account, device
+
+**Session Version**:
+A server-side version assigned to a User Account's Sessions. Increasing it invalidates every previously issued Access Token and Refresh Token for that User Account.
+_Avoid_: Password version, refresh token counter
+
+**Profile Avatar**:
+An optional image shown as the visual representation of a User Account in the Profile. If absent, the interface shows the user's initials. It is not an identity credential.
+_Avoid_: Profile identity, cover photo
+
 **Admin**:
 A role responsible for governing user accounts across the system.
 _Avoid_: Superuser, moderator

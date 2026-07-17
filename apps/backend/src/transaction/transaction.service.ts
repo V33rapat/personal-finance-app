@@ -27,15 +27,12 @@ export class TransactionService {
       throw new NotFoundException('ไม่พบกระเป๋าเงิน');
     }
 
-    if(dto.category_id){
+    if (dto.category_id) {
       const category = await this.prisma.categories.findFirst({
         where: {
           id: dto.category_id,
           type: dto.type,
-          OR: [
-            {user_id: userId},
-            {user_id: null, is_system: true}
-          ],
+          OR: [{ user_id: userId }, { user_id: null, is_system: true }],
         },
       });
 
@@ -83,7 +80,7 @@ export class TransactionService {
   }
 
   async findAll(userId: string, walletId?: string) {
-    const where = walletId 
+    const where = walletId
       ? { wallets: { user_id: userId, id: walletId }, deleted_at: null }
       : { wallets: { user_id: userId }, deleted_at: null };
 
@@ -128,14 +125,11 @@ export class TransactionService {
       throw new ForbiddenException('ไม่มีสิทธิ์แก้ไขรายการนี้');
     }
 
-    if(dto.category_id){
+    if (dto.category_id) {
       const category = await this.prisma.categories.findFirst({
         where: {
           id: dto.category_id,
-          OR: [
-            {user_id: userId},
-            {user_id: null, is_system: true}
-          ],
+          OR: [{ user_id: userId }, { user_id: null, is_system: true }],
         },
       });
 
@@ -144,16 +138,17 @@ export class TransactionService {
       }
     }
 
-    const newAmount = dto.amount !== undefined ? dto.amount : Number(existing.amount);
+    const newAmount =
+      dto.amount !== undefined ? dto.amount : Number(existing.amount);
     const newType = dto.type ?? existing.type;
 
-    const oldBalanceEffect = existing.type === 'income'
-      ? Number(existing.amount)
-      : -Number(existing.amount);
+    const oldBalanceEffect =
+      existing.type === 'income'
+        ? Number(existing.amount)
+        : -Number(existing.amount);
 
-    const newBalanceEffect = newType === 'income'
-      ? Number(newAmount)
-      : -Number(newAmount);
+    const newBalanceEffect =
+      newType === 'income' ? Number(newAmount) : -Number(newAmount);
 
     const balanceDelta = newBalanceEffect - oldBalanceEffect;
 
@@ -168,7 +163,9 @@ export class TransactionService {
           ...(dto.transaction_date && {
             transaction_date: this.toTransactionDate(dto.transaction_date),
           }),
-          ...(dto.category_id !== undefined && { category_id: dto.category_id || null }),
+          ...(dto.category_id !== undefined && {
+            category_id: dto.category_id || null,
+          }),
         },
       });
 
@@ -178,7 +175,7 @@ export class TransactionService {
 
       return updatedTransaction;
     });
-    
+
     return transaction;
   }
 
@@ -194,9 +191,10 @@ export class TransactionService {
       throw new ForbiddenException('ไม่มีสิทธิ์ลบรายการนี้');
     }
 
-    const balanceChange = transaction.type === 'income'
-     ? -Number(transaction.amount)
-      : Number(transaction.amount);
+    const balanceChange =
+      transaction.type === 'income'
+        ? -Number(transaction.amount)
+        : Number(transaction.amount);
 
     return this.prisma.$transaction(async (tx) => {
       await applyWalletBalanceDelta(tx, transaction.wallet_id, balanceChange);
@@ -213,10 +211,7 @@ export class TransactionService {
     const transfer = await this.prisma.transfers.findFirst({
       where: {
         deleted_at: null,
-        OR: [
-          { from_transaction_id: id },
-          { to_transaction_id: id },
-        ],
+        OR: [{ from_transaction_id: id }, { to_transaction_id: id }],
       },
       select: { id: true },
     });

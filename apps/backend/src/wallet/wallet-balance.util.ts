@@ -69,7 +69,10 @@ export async function applyParentWalletBalanceDelta(
   });
 }
 
-export async function syncWalletBalances(prisma: PrismaService, userId: string) {
+export async function syncWalletBalances(
+  prisma: PrismaService,
+  userId: string,
+) {
   const wallets = await prisma.wallets.findMany({
     where: {
       user_id: userId,
@@ -159,7 +162,9 @@ export async function syncWalletBalances(prisma: PrismaService, userId: string) 
       currentBalance: new Prisma.Decimal(wallet.balance),
       nextBalance: calculateAggregateBalance(wallet.id),
     }))
-    .filter(({ currentBalance, nextBalance }) => !currentBalance.equals(nextBalance))
+    .filter(
+      ({ currentBalance, nextBalance }) => !currentBalance.equals(nextBalance),
+    )
     .map(({ id, nextBalance }) =>
       prisma.wallets.update({
         where: { id },

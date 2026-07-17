@@ -229,6 +229,22 @@ Production:         Supabase PostgreSQL
 Prisma Client:      NestJS Backend only
 ```
 
+### Private profile avatars
+
+Profile avatars use a private Supabase Storage bucket named `avatars`. Create
+the bucket with Public access disabled, then configure these Backend variables:
+
+```env
+SUPABASE_URL=https://<project-ref>.supabase.co
+SUPABASE_SERVICE_ROLE_KEY=<backend-only-service-role-key>
+SUPABASE_STORAGE_BUCKET=avatars
+SUPABASE_SIGNED_URL_EXPIRES_IN=3600
+```
+
+The Backend stores a Storage path in `users.avatar_path` and returns a
+one-hour Signed URL to the Frontend. Never expose the service-role key through
+`NEXT_PUBLIC_*` variables or commit it to the repository.
+
 ---
 
 ## 🎨 Design System
@@ -287,6 +303,10 @@ DATABASE_URL=<SUPABASE_DATABASE_URL>
 DIRECT_URL=<SUPABASE_DIRECT_URL>
 JWT_SECRET=<LONG_RANDOM_PRODUCTION_SECRET>
 PORT=3001
+SUPABASE_URL=<SUPABASE_PROJECT_URL>
+SUPABASE_SERVICE_ROLE_KEY=<SUPABASE_SERVICE_ROLE_KEY>
+SUPABASE_STORAGE_BUCKET=avatars
+SUPABASE_SIGNED_URL_EXPIRES_IN=3600
 ```
 
 Copy the public Render Backend URL for the Frontend configuration.

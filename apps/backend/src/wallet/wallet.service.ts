@@ -1,9 +1,17 @@
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
-import { Prisma } from '@prisma/client';
+import {
+  Injectable,
+  NotFoundException,
+  BadRequestException,
+} from '@nestjs/common';
+import { Prisma, type wallets } from '@prisma/client';
 import { CreateWalletDto } from './dto/create-wallet.dto';
 import { UpdateWalletDto } from './dto/update-wallet.dto';
 import { PrismaService } from '../prisma/prisma.service';
 import { syncWalletBalances } from './wallet-balance.util';
+
+type WalletTreeNode = wallets & {
+  children: WalletTreeNode[];
+};
 
 @Injectable()
 export class WalletService {
@@ -23,7 +31,9 @@ export class WalletService {
       }
 
       if (parentWallet.parent_wallet_id) {
-        throw new BadRequestException('ไม่สามารถสร้างกระเป๋าย่อยภายใต้กระเป๋าย่อยได้ (รองรับแค่ 1 ระดับ)');
+        throw new BadRequestException(
+          'ไม่สามารถสร้างกระเป๋าย่อยภายใต้กระเป๋าย่อยได้ (รองรับแค่ 1 ระดับ)',
+        );
       }
     }
 
@@ -107,7 +117,9 @@ export class WalletService {
       }
 
       if (parentWallet.parent_wallet_id) {
-        throw new BadRequestException('ไม่สามารถย้ายไปอยู่ภายใต้กระเป๋าย่อยได้ (รองรับแค่ 1 ระดับ)');
+        throw new BadRequestException(
+          'ไม่สามารถย้ายไปอยู่ภายใต้กระเป๋าย่อยได้ (รองรับแค่ 1 ระดับ)',
+        );
       }
 
       const hasChildren = await this.prisma.wallets.findFirst({
@@ -118,7 +130,9 @@ export class WalletService {
       });
 
       if (hasChildren) {
-        throw new BadRequestException('ไม่สามารถเปลี่ยนกระเป๋าหลักที่มีกระเป๋าย่อยอยู่แล้วไปเป็นกระเป๋าย่อยได้');
+        throw new BadRequestException(
+          'ไม่สามารถเปลี่ยนกระเป๋าหลักที่มีกระเป๋าย่อยอยู่แล้วไปเป็นกระเป๋าย่อยได้',
+        );
       }
     }
 
@@ -222,10 +236,7 @@ export class WalletService {
       await tx.transfers.updateMany({
         where: {
           deleted_at: null,
-          OR: [
-            { from_wallet_id: walletId },
-            { to_wallet_id: walletId },
-          ],
+          OR: [{ from_wallet_id: walletId }, { to_wallet_id: walletId }],
         },
         data: {
           deleted_at: deletedAt,
@@ -258,9 +269,9 @@ export class WalletService {
     return { message: 'ลบกระเป๋าเงินสำเร็จ' };
   }
 
-  buildTree(wallets: any[]) {
-    const walletMap = new Map();
-    const roots: any[] = [];
+  buildTree(wallets: wallets[]): WalletTreeNode[] {
+    const walletMap = new Map<string, WalletTreeNode>();
+    const roots: WalletTreeNode[] = [];
 
     wallets.forEach((wallet) => {
       walletMap.set(wallet.id, { ...wallet, children: [] });
@@ -270,10 +281,16 @@ export class WalletService {
       if (wallet.parent_wallet_id) {
         const parent = walletMap.get(wallet.parent_wallet_id);
         if (parent) {
-          parent.children.push(walletMap.get(wallet.id));
+          const child = walletMap.get(wallet.id);
+          if (child) {
+            parent.children.push(child);
+          }
         }
       } else {
-        roots.push(walletMap.get(wallet.id));
+        const root = walletMap.get(wallet.id);
+        if (root) {
+          roots.push(root);
+        }
       }
     });
 

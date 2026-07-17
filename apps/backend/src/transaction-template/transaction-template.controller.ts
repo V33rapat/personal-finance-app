@@ -11,6 +11,7 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import type { AuthenticatedRequest } from '../auth/types/authenticated-request';
 import { CreateTransactionTemplateDto } from './dto/create-transaction-template.dto';
 import { FindTransactionTemplateDto } from './dto/find-transaction-template.dto';
 import { UpdateTransactionTemplateDto } from './dto/update-transaction-template.dto';
@@ -22,23 +23,29 @@ export class TransactionTemplateController {
   constructor(private transactionTemplateService: TransactionTemplateService) {}
 
   @Get()
-  findAll(@Req() req: any, @Query() query: FindTransactionTemplateDto) {
+  findAll(
+    @Req() req: AuthenticatedRequest,
+    @Query() query: FindTransactionTemplateDto,
+  ) {
     return this.transactionTemplateService.findAll(req.user.sub, query);
   }
 
   @Post()
-  create(@Req() req: any, @Body() dto: CreateTransactionTemplateDto) {
+  create(
+    @Req() req: AuthenticatedRequest,
+    @Body() dto: CreateTransactionTemplateDto,
+  ) {
     return this.transactionTemplateService.create(req.user.sub, dto);
   }
 
   @Get(':id')
-  findOne(@Req() req: any, @Param('id') id: string) {
+  findOne(@Req() req: AuthenticatedRequest, @Param('id') id: string) {
     return this.transactionTemplateService.findOne(req.user.sub, id);
   }
 
   @Patch(':id')
   update(
-    @Req() req: any,
+    @Req() req: AuthenticatedRequest,
     @Param('id') id: string,
     @Body() dto: UpdateTransactionTemplateDto,
   ) {
@@ -46,7 +53,7 @@ export class TransactionTemplateController {
   }
 
   @Delete(':id')
-  delete(@Req() req: any, @Param('id') id: string) {
+  delete(@Req() req: AuthenticatedRequest, @Param('id') id: string) {
     return this.transactionTemplateService.delete(req.user.sub, id);
   }
 }

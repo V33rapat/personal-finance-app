@@ -1,24 +1,7 @@
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 import { getBackendUrl } from "@/app/api/_lib/bff";
-
-function clearAuthCookies(response: NextResponse) {
-  response.cookies.set("accessToken", "", {
-    httpOnly: true,
-    sameSite: "lax",
-    secure: process.env.NODE_ENV === "production",
-    path: "/",
-    maxAge: 0,
-  });
-
-  response.cookies.set("refreshToken", "", {
-    httpOnly: true,
-    sameSite: "lax",
-    secure: process.env.NODE_ENV === "production",
-    path: "/",
-    maxAge: 0,
-  });
-}
+import { clearAuthCookies } from "../_lib/auth-cookies";
 
 export async function POST() {
   const response = NextResponse.json({ message: "Logout successful" });
