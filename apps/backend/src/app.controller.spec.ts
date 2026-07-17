@@ -15,8 +15,10 @@ describe('AppController', () => {
   });
 
   describe('root', () => {
-    it('should return "Hello World!"', () => {
-      expect(appController.getHello()).toBe('Hello World!');
+    it('should return the API welcome message', () => {
+      expect(appController.getHello()).toBe(
+        'Hello World! Is this the backend of the Personal Finance App? Yes, it is! Welcome to the API server. 🚀',
+      );
     });
   });
 });
