@@ -9,20 +9,22 @@ import { JwtService } from '@nestjs/jwt';
 export interface TokenPayload {
   sub: string;
   email: string;
+  sessionVersion: number;
+  type?: 'refresh';
 }
 
 @Injectable()
 export class JwtTokenService {
   constructor(private jwtService: JwtService) {}
 
-  async generateTokens(userId: string, email: string) {
+  async generateTokens(userId: string, email: string, sessionVersion: number) {
     const [accessToken, refreshToken] = await Promise.all([
       this.jwtService.signAsync(
-        { sub: userId, email },
+        { sub: userId, email, sessionVersion },
         { expiresIn: '8h' }
       ),
       this.jwtService.signAsync(
-        { sub: userId, email, type: 'refresh' },
+        { sub: userId, email, sessionVersion, type: 'refresh' },
         { expiresIn: '7d' }
       ),
     ]);

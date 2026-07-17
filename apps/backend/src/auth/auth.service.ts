@@ -1,6 +1,8 @@
 import {
   BadRequestException,
   ConflictException,
+  HttpException,
+  HttpStatus,
   Injectable,
   InternalServerErrorException,
   UnauthorizedException,
@@ -11,16 +13,20 @@ import * as bcrypt from 'bcrypt';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
 import { UpdateProfileDto } from './dto/update-profile.dto';
+import { ChangePasswordDto } from './dto/change-password.dto';
 import { SupabaseStorageService } from '../storage/supabase-storage.service';
 import { fromBuffer } from 'file-type';
 import { randomUUID } from 'node:crypto';
 
 const MAX_AVATAR_SIZE = 5 * 1024 * 1024;
 const ALLOWED_AVATAR_MIMES = new Set(['image/jpeg', 'image/png', 'image/webp']);
+const MAX_PASSWORD_CHANGE_ATTEMPTS = 5;
+const PASSWORD_CHANGE_LOCK_DURATION_MS = 15 * 60 * 1000;
 
 @Injectable()
 export class AuthService {
   private failedAttempts = new Map<string, { count: number; lockedUntil: number }>();
+  private failedPasswordChangeAttempts = new Map<string, { count: number; lockedUntil: number }>();
 
   constructor(
     private prisma: PrismaService,
@@ -36,7 +42,10 @@ export class AuthService {
       return false;
     }
 
-    this.failedAttempts.delete(email);
+    if (attempt.lockedUntil > 0) {
+      this.failedAttempts.delete(email);
+    }
+
     return true;
   }
 
@@ -49,6 +58,32 @@ export class AuthService {
     }
 
     this.failedAttempts.set(email, attempt);
+  }
+
+  private checkPasswordChangeRateLimit(userId: string): boolean {
+    const attempt = this.failedPasswordChangeAttempts.get(userId);
+    if (!attempt) return true;
+
+    if (attempt.lockedUntil > Date.now()) {
+      return false;
+    }
+
+    if (attempt.lockedUntil > 0) {
+      this.failedPasswordChangeAttempts.delete(userId);
+    }
+
+    return true;
+  }
+
+  private recordFailedPasswordChangeAttempt(userId: string): void {
+    const attempt = this.failedPasswordChangeAttempts.get(userId) || { count: 0, lockedUntil: 0 };
+    attempt.count++;
+
+    if (attempt.count >= MAX_PASSWORD_CHANGE_ATTEMPTS) {
+      attempt.lockedUntil = Date.now() + PASSWORD_CHANGE_LOCK_DURATION_MS;
+    }
+
+    this.failedPasswordChangeAttempts.set(userId, attempt);
   }
 
   async register(dto: RegisterDto) {
@@ -94,7 +129,11 @@ export class AuthService {
 
     this.failedAttempts.delete(normalizedEmail);
 
-    const tokens = await this.jwtTokenService.generateTokens(user.id, user.email);
+    const tokens = await this.jwtTokenService.generateTokens(
+      user.id,
+      user.email,
+      user.session_version,
+    );
 
     const tokenHash = await bcrypt.hash(tokens.refreshToken, 10);
     const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
@@ -127,6 +166,19 @@ export class AuthService {
       throw new UnauthorizedException('Refresh token is incorrect');
     }
 
+    if (payload.type !== 'refresh' || typeof payload.sessionVersion !== 'number') {
+      throw new UnauthorizedException('Refresh token is incorrect');
+    }
+
+    const user = await this.prisma.users.findUnique({
+      where: { id: payload.sub },
+      select: { session_version: true },
+    });
+
+    if (!user || user.session_version !== payload.sessionVersion) {
+      throw new UnauthorizedException('Refresh token is incorrect or expired');
+    }
+
     const storedTokens = await this.prisma.refresh_tokens.findMany({
       where: {
         user_id: payload.sub,
@@ -153,7 +205,11 @@ export class AuthService {
       data: { is_revoked: true },
     });
 
-    const tokens = await this.jwtTokenService.generateTokens(payload.sub, payload.email);
+    const tokens = await this.jwtTokenService.generateTokens(
+      payload.sub,
+      payload.email,
+      user.session_version,
+    );
 
     const tokenHash = await bcrypt.hash(tokens.refreshToken, 10);
     const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
@@ -219,6 +275,60 @@ export class AuthService {
     });
 
     return this.getProfile(userId);
+  }
+
+  async changePassword(userId: string, dto: ChangePasswordDto) {
+    if (!this.checkPasswordChangeRateLimit(userId)) {
+      throw new HttpException(
+        'Too many attempts. Please try again in 15 minutes.',
+        HttpStatus.TOO_MANY_REQUESTS,
+      );
+    }
+
+    const user = await this.prisma.users.findUnique({
+      where: { id: userId },
+      select: { id: true, password_hash: true, session_version: true },
+    });
+
+    if (!user) {
+      throw new UnauthorizedException('User not found. Please login again.');
+    }
+
+    const isCurrentPasswordCorrect = await bcrypt.compare(dto.current_password, user.password_hash);
+    if (!isCurrentPasswordCorrect) {
+      this.recordFailedPasswordChangeAttempt(userId);
+      throw new BadRequestException('Current password is incorrect.');
+    }
+
+    const isSamePassword = await bcrypt.compare(dto.new_password, user.password_hash);
+    if (isSamePassword) {
+      throw new BadRequestException('New password must be different from the current password.');
+    }
+
+    const passwordHash = await bcrypt.hash(dto.new_password, 10);
+
+    await this.prisma.$transaction(async (tx) => {
+      const updateResult = await tx.users.updateMany({
+        where: { id: user.id, session_version: user.session_version },
+        data: {
+          password_hash: passwordHash,
+          session_version: { increment: 1 },
+          updated_at: new Date(),
+        },
+      });
+
+      if (updateResult.count !== 1) {
+        throw new UnauthorizedException('Your session has expired. Please login again.');
+      }
+
+      await tx.refresh_tokens.updateMany({
+        where: { user_id: user.id, is_revoked: false },
+        data: { is_revoked: true },
+      });
+    });
+
+    this.failedPasswordChangeAttempts.delete(userId);
+    return { message: 'Password changed successfully.' };
   }
 
   async uploadAvatar(userId: string, file?: Express.Multer.File) {

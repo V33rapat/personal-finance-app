@@ -16,6 +16,7 @@ import { AuthService } from './auth.service';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
 import { UpdateProfileDto } from './dto/update-profile.dto';
+import { ChangePasswordDto } from './dto/change-password.dto';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
 
 @Controller('auth')
@@ -62,6 +63,14 @@ export class AuthController {
   updateProfile(@Req() req: any, @Body() dto: UpdateProfileDto) {
     const user = req.user as { sub: string };
     return this.authService.updateProfile(user.sub, dto);
+  }
+
+  @Patch('profile/password')
+  @HttpCode(HttpStatus.OK)
+  @UseGuards(JwtAuthGuard)
+  changePassword(@Req() req: any, @Body() dto: ChangePasswordDto) {
+    const user = req.user as { sub: string };
+    return this.authService.changePassword(user.sub, dto);
   }
 
   @Post('profile/avatar')

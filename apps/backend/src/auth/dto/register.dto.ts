@@ -1,4 +1,5 @@
-import { IsEmail, IsString, MinLength, MaxLength, IsNotEmpty, IsOptional } from 'class-validator';
+import { IsEmail, IsString, MinLength, MaxLength, IsNotEmpty, Matches } from 'class-validator';
+import { PASSWORD_CASE_PATTERN, PASSWORD_MIN_LENGTH } from '../password-policy';
 
 export class RegisterDto {
   @IsString()
@@ -13,6 +14,7 @@ export class RegisterDto {
 
   @IsString()
   @IsNotEmpty({ message: 'กรุณากรอกรหัสผ่าน' })
-  @MinLength(8, { message: 'รหัสผ่านต้องมีอย่างน้อย 8 ตัวอักษร' })
+  @MinLength(PASSWORD_MIN_LENGTH, { message: 'รหัสผ่านต้องมีอย่างน้อย 8 ตัวอักษร' })
+  @Matches(PASSWORD_CASE_PATTERN, { message: 'รหัสผ่านต้องมีตัวพิมพ์เล็กและตัวพิมพ์ใหญ่อย่างน้อยอย่างละ 1 ตัว' })
   password: string;
 }

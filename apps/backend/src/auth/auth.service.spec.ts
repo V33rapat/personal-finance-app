@@ -1,11 +1,12 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { UnauthorizedException } from '@nestjs/common';
+import { BadRequestException, HttpException, UnauthorizedException } from '@nestjs/common';
+import * as bcrypt from 'bcrypt';
 import { AuthService } from './auth.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { JwtTokenService } from './jwt.service';
 import { UpdateProfileDto } from './dto/update-profile.dto';
+import { ChangePasswordDto } from './dto/change-password.dto';
 import { SupabaseStorageService } from '../storage/supabase-storage.service';
-import { BadRequestException } from '@nestjs/common';
 
 jest.mock('file-type', () => ({ fromBuffer: jest.fn() }));
 import { fromBuffer } from 'file-type';
@@ -17,7 +18,12 @@ describe('AuthService', () => {
     users: {
       findUnique: jest.Mock;
       update: jest.Mock;
+      updateMany: jest.Mock;
     };
+    refresh_tokens: {
+      updateMany: jest.Mock;
+    };
+    $transaction: jest.Mock;
   };
 
   const user = {
@@ -29,6 +35,7 @@ describe('AuthService', () => {
     avatar_path: null,
     created_at: new Date('2026-01-01T00:00:00.000Z'),
     password_hash: 'should-not-be-returned',
+    session_version: 0,
   };
   let storage: {
     createSignedUrl: jest.Mock;
@@ -41,8 +48,17 @@ describe('AuthService', () => {
       users: {
         findUnique: jest.fn(),
         update: jest.fn(),
+        updateMany: jest.fn(),
       },
+      refresh_tokens: {
+        updateMany: jest.fn(),
+      },
+      $transaction: jest.fn(),
     };
+    prisma.$transaction.mockImplementation((callback) => callback({
+      users: prisma.users,
+      refresh_tokens: prisma.refresh_tokens,
+    }));
     storage = {
       createSignedUrl: jest.fn(),
       upload: jest.fn(),
@@ -171,5 +187,95 @@ describe('AuthService', () => {
     ).rejects.toBeInstanceOf(UnauthorizedException);
 
     expect(prisma.users.update).not.toHaveBeenCalled();
+  });
+
+  it('changes the password, invalidates every session, and returns no sensitive data', async () => {
+    const currentPassword = 'CurrentPassword1';
+    const passwordHash = await bcrypt.hash(currentPassword, 4);
+    prisma.users.findUnique.mockResolvedValue({
+      id: user.id,
+      password_hash: passwordHash,
+      session_version: 3,
+    });
+    prisma.users.updateMany.mockResolvedValue({ count: 1 });
+    prisma.refresh_tokens.updateMany.mockResolvedValue({ count: 2 });
+
+    const result = await service.changePassword(user.id, {
+      current_password: currentPassword,
+      new_password: 'NewPassword2',
+    } as ChangePasswordDto);
+
+    expect(prisma.users.updateMany).toHaveBeenCalledWith({
+      where: { id: user.id, session_version: 3 },
+      data: {
+        password_hash: expect.any(String),
+        session_version: { increment: 1 },
+        updated_at: expect.any(Date),
+      },
+    });
+    expect(prisma.refresh_tokens.updateMany).toHaveBeenCalledWith({
+      where: { user_id: user.id, is_revoked: false },
+      data: { is_revoked: true },
+    });
+    expect(result).toEqual({ message: 'Password changed successfully.' });
+    expect(result).not.toHaveProperty('password_hash');
+  });
+
+  it('rejects an incorrect current password without changing sessions', async () => {
+    prisma.users.findUnique.mockResolvedValue({
+      id: user.id,
+      password_hash: await bcrypt.hash('CurrentPassword1', 4),
+      session_version: 0,
+    });
+
+    await expect(
+      service.changePassword(user.id, {
+        current_password: 'WrongPassword1',
+        new_password: 'NewPassword2',
+      } as ChangePasswordDto),
+    ).rejects.toBeInstanceOf(BadRequestException);
+
+    expect(prisma.$transaction).not.toHaveBeenCalled();
+  });
+
+  it('rejects a new password that matches the current password', async () => {
+    const currentPassword = 'CurrentPassword1';
+    prisma.users.findUnique.mockResolvedValue({
+      id: user.id,
+      password_hash: await bcrypt.hash(currentPassword, 4),
+      session_version: 0,
+    });
+
+    await expect(
+      service.changePassword(user.id, {
+        current_password: currentPassword,
+        new_password: currentPassword,
+      } as ChangePasswordDto),
+    ).rejects.toBeInstanceOf(BadRequestException);
+
+    expect(prisma.$transaction).not.toHaveBeenCalled();
+  });
+
+  it('locks password changes after five incorrect current passwords', async () => {
+    prisma.users.findUnique.mockResolvedValue({
+      id: user.id,
+      password_hash: await bcrypt.hash('CurrentPassword1', 4),
+      session_version: 0,
+    });
+    const dto = {
+      current_password: 'WrongPassword1',
+      new_password: 'NewPassword2',
+    } as ChangePasswordDto;
+
+    for (let attempt = 0; attempt < 5; attempt++) {
+      await expect(service.changePassword(user.id, dto)).rejects.toBeInstanceOf(BadRequestException);
+    }
+
+    try {
+      await service.changePassword(user.id, dto);
+    } catch (error) {
+      expect(error).toBeInstanceOf(HttpException);
+      expect((error as HttpException).getStatus()).toBe(429);
+    }
   });
 });
