@@ -19,7 +19,10 @@ describe('AuthController', () => {
       providers: [
         { provide: AuthService, useValue: authService },
         { provide: JwtService, useValue: {} },
-        { provide: PrismaService, useValue: { users: { findUnique: jest.fn() } } },
+        {
+          provide: PrismaService,
+          useValue: { users: { findUnique: jest.fn() } },
+        },
       ],
     }).compile();
 
@@ -45,7 +48,9 @@ describe('AuthController', () => {
       current_password: 'CurrentPassword1',
       new_password: 'NewPassword2',
     } as ChangePasswordDto;
-    authService.changePassword.mockResolvedValue({ message: 'Password changed successfully.' });
+    authService.changePassword.mockResolvedValue({
+      message: 'Password changed successfully.',
+    });
 
     await controller.changePassword({ user: { sub: 'user-1' } }, dto);
 

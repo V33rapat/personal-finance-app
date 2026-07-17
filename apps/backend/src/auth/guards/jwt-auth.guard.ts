@@ -3,10 +3,10 @@
 // JWT authentication guard
 // ---------------------------------------------------------------------------
 
-import { 
-  Injectable, 
-  CanActivate, 
-  ExecutionContext, 
+import {
+  Injectable,
+  CanActivate,
+  ExecutionContext,
   UnauthorizedException,
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
@@ -36,7 +36,10 @@ export class JwtAuthGuard implements CanActivate {
       throw new UnauthorizedException('Token หมดอายุ กรุณาเข้าสู่ระบบใหม่');
     }
 
-    if (payload.type === 'refresh' || typeof payload.sessionVersion !== 'number') {
+    if (
+      payload.type === 'refresh' ||
+      typeof payload.sessionVersion !== 'number'
+    ) {
       throw new UnauthorizedException('Please login again.');
     }
 
@@ -46,7 +49,9 @@ export class JwtAuthGuard implements CanActivate {
     });
 
     if (!user || user.session_version !== payload.sessionVersion) {
-      throw new UnauthorizedException('Your session has expired. Please login again.');
+      throw new UnauthorizedException(
+        'Your session has expired. Please login again.',
+      );
     }
 
     request['user'] = payload;

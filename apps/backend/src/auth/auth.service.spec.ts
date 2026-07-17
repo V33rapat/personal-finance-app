@@ -1,5 +1,9 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { BadRequestException, HttpException, UnauthorizedException } from '@nestjs/common';
+import {
+  BadRequestException,
+  HttpException,
+  UnauthorizedException,
+} from '@nestjs/common';
 import * as bcrypt from 'bcrypt';
 import { AuthService } from './auth.service';
 import { PrismaService } from '../prisma/prisma.service';
@@ -55,10 +59,12 @@ describe('AuthService', () => {
       },
       $transaction: jest.fn(),
     };
-    prisma.$transaction.mockImplementation((callback) => callback({
-      users: prisma.users,
-      refresh_tokens: prisma.refresh_tokens,
-    }));
+    prisma.$transaction.mockImplementation((callback) =>
+      callback({
+        users: prisma.users,
+        refresh_tokens: prisma.refresh_tokens,
+      }),
+    );
     storage = {
       createSignedUrl: jest.fn(),
       upload: jest.fn(),
@@ -85,7 +91,10 @@ describe('AuthService', () => {
     prisma.users.findUnique
       .mockResolvedValueOnce(user)
       .mockResolvedValueOnce({ ...user, full_name: 'Updated Name' });
-    prisma.users.update.mockResolvedValue({ ...user, full_name: 'Updated Name' });
+    prisma.users.update.mockResolvedValue({
+      ...user,
+      full_name: 'Updated Name',
+    });
 
     const dto = { full_name: '  Updated Name  ' } as UpdateProfileDto;
     const result = await service.updateProfile(user.id, dto);
@@ -116,7 +125,9 @@ describe('AuthService', () => {
     await expect(service.getProfile(user.id)).resolves.toMatchObject({
       avatarUrl: 'https://signed.example/avatar',
     });
-    expect(storage.createSignedUrl).toHaveBeenCalledWith(userWithAvatar.avatar_path);
+    expect(storage.createSignedUrl).toHaveBeenCalledWith(
+      userWithAvatar.avatar_path,
+    );
   });
 
   it('uploads a validated avatar, replaces the path, and removes the old file', async () => {
@@ -125,8 +136,13 @@ describe('AuthService', () => {
     const uploadUser = { ...user, avatar_path: oldPath };
     prisma.users.findUnique
       .mockResolvedValueOnce(uploadUser)
-      .mockResolvedValueOnce({ ...uploadUser, avatar_path: expect.any(String) });
-    storage.createSignedUrl.mockResolvedValue('https://signed.example/new-avatar');
+      .mockResolvedValueOnce({
+        ...uploadUser,
+        avatar_path: expect.any(String),
+      });
+    storage.createSignedUrl.mockResolvedValue(
+      'https://signed.example/new-avatar',
+    );
 
     const result = await service.uploadAvatar(user.id, {
       buffer: Buffer.from('image-data'),
@@ -154,11 +170,13 @@ describe('AuthService', () => {
     prisma.users.findUnique.mockResolvedValue(user);
     mockedFromBuffer.mockResolvedValue(undefined);
 
-    await expect(service.uploadAvatar(user.id, {
-      buffer: Buffer.from('not-an-image'),
-      size: 12,
-      mimetype: 'image/webp',
-    } as Express.Multer.File)).rejects.toBeInstanceOf(BadRequestException);
+    await expect(
+      service.uploadAvatar(user.id, {
+        buffer: Buffer.from('not-an-image'),
+        size: 12,
+        mimetype: 'image/webp',
+      } as Express.Multer.File),
+    ).rejects.toBeInstanceOf(BadRequestException);
 
     expect(storage.upload).not.toHaveBeenCalled();
   });
@@ -183,7 +201,9 @@ describe('AuthService', () => {
     prisma.users.findUnique.mockResolvedValue(null);
 
     await expect(
-      service.updateProfile('missing-user', { full_name: 'New Name' } as UpdateProfileDto),
+      service.updateProfile('missing-user', {
+        full_name: 'New Name',
+      } as UpdateProfileDto),
     ).rejects.toBeInstanceOf(UnauthorizedException);
 
     expect(prisma.users.update).not.toHaveBeenCalled();
@@ -268,7 +288,9 @@ describe('AuthService', () => {
     } as ChangePasswordDto;
 
     for (let attempt = 0; attempt < 5; attempt++) {
-      await expect(service.changePassword(user.id, dto)).rejects.toBeInstanceOf(BadRequestException);
+      await expect(service.changePassword(user.id, dto)).rejects.toBeInstanceOf(
+        BadRequestException,
+      );
     }
 
     try {

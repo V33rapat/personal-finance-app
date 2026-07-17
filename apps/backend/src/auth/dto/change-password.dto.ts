@@ -8,7 +8,9 @@ export class ChangePasswordDto {
 
   @IsString()
   @IsNotEmpty({ message: 'New password is required' })
-  @MinLength(PASSWORD_MIN_LENGTH, { message: 'Password must be at least 8 characters' })
+  @MinLength(PASSWORD_MIN_LENGTH, {
+    message: 'Password must be at least 8 characters',
+  })
   @Matches(PASSWORD_CASE_PATTERN, {
     message: 'Password must include lowercase and uppercase letters',
   })

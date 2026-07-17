@@ -13,7 +13,10 @@ describe('WalletController', () => {
       providers: [
         { provide: WalletService, useValue: {} },
         { provide: JwtService, useValue: {} },
-        { provide: PrismaService, useValue: { users: { findUnique: jest.fn() } } },
+        {
+          provide: PrismaService,
+          useValue: { users: { findUnique: jest.fn() } },
+        },
       ],
     }).compile();
 

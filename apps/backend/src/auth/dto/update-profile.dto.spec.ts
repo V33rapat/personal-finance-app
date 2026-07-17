@@ -4,7 +4,9 @@ import { UpdateProfileDto } from './update-profile.dto';
 
 describe('UpdateProfileDto', () => {
   it('trims and accepts a valid full name', async () => {
-    const dto = plainToInstance(UpdateProfileDto, { full_name: '  New Name  ' });
+    const dto = plainToInstance(UpdateProfileDto, {
+      full_name: '  New Name  ',
+    });
     const errors = await validate(dto);
 
     expect(errors).toHaveLength(0);

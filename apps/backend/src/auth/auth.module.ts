@@ -12,7 +12,8 @@ import { JwtAuthGuard } from './guards/jwt-auth.guard';
     StorageModule,
     JwtModule.register({
       global: true,
-      secret: process.env.JWT_SECRET || 'your-super-secret-key-change-in-production',
+      secret:
+        process.env.JWT_SECRET || 'your-super-secret-key-change-in-production',
       signOptions: { expiresIn: '8h' },
     }),
   ],

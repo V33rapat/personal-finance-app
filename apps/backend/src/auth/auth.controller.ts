@@ -1,11 +1,11 @@
-import { 
-  Controller, 
+import {
+  Controller,
   Delete,
-  Post, 
+  Post,
   Patch,
-  Body, 
-  HttpCode, 
-  HttpStatus, 
+  Body,
+  HttpCode,
+  HttpStatus,
   UseGuards,
   Req,
   UploadedFile,
@@ -76,7 +76,9 @@ export class AuthController {
   @Post('profile/avatar')
   @HttpCode(HttpStatus.OK)
   @UseGuards(JwtAuthGuard)
-  @UseInterceptors(FileInterceptor('file', { limits: { fileSize: 5 * 1024 * 1024 } }))
+  @UseInterceptors(
+    FileInterceptor('file', { limits: { fileSize: 5 * 1024 * 1024 } }),
+  )
   uploadAvatar(@Req() req: any, @UploadedFile() file?: Express.Multer.File) {
     const user = req.user as { sub: string };
     return this.authService.uploadAvatar(user.sub, file);

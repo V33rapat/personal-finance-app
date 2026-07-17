@@ -1,4 +1,8 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateTransferDto } from './dto/create-transfer.dto';
@@ -117,7 +121,9 @@ export class TransferService {
       const affectsBalance = this.hasBalanceAffectingChanges(existing, values);
 
       if (!existing.from_transaction_id || !existing.to_transaction_id) {
-        throw new BadRequestException('Transfer is missing paired transactions');
+        throw new BadRequestException(
+          'Transfer is missing paired transactions',
+        );
       }
 
       if (affectsBalance) {
@@ -259,7 +265,11 @@ export class TransferService {
   }
 
   private toUpdateValues(
-    existing: { amount: Prisma.Decimal; note: string | null; transfer_date: Date } & {
+    existing: {
+      amount: Prisma.Decimal;
+      note: string | null;
+      transfer_date: Date;
+    } & {
       from_wallet_id: string;
       to_wallet_id: string;
     },
@@ -280,7 +290,9 @@ export class TransferService {
 
   private validateTransferValues(values: TransferValues): TransferValues {
     if (values.from_wallet_id === values.to_wallet_id) {
-      throw new BadRequestException('Source and destination wallets must be different');
+      throw new BadRequestException(
+        'Source and destination wallets must be different',
+      );
     }
 
     if (values.amount.lessThanOrEqualTo(0)) {
@@ -321,7 +333,11 @@ export class TransferService {
   }
 
   private hasBalanceAffectingChanges(
-    existing: { from_wallet_id: string; to_wallet_id: string; amount: Prisma.Decimal },
+    existing: {
+      from_wallet_id: string;
+      to_wallet_id: string;
+      amount: Prisma.Decimal;
+    },
     values: Pick<TransferValues, 'from_wallet_id' | 'to_wallet_id' | 'amount'>,
   ) {
     return (

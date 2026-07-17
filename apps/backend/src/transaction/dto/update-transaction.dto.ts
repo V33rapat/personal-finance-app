@@ -13,7 +13,9 @@ export class UpdateTransactionDto {
   name?: string;
 
   @IsNumber()
-  @Min(0.01, { message: 'à¸ˆà¸³à¸™à¸§à¸™à¹€à¸‡à¸´à¸™à¸•à¹‰à¸­à¸‡à¸¡à¸²à¸à¸à¸§à¹ˆà¸² 0' })
+  @Min(0.01, {
+    message: 'à¸ˆà¸³à¸™à¸§à¸™à¹€à¸‡à¸´à¸™à¸•à¹‰à¸­à¸‡à¸¡à¸²à¸à¸à¸§à¹ˆà¸² 0',
+  })
   @IsOptional()
   amount?: number;
 

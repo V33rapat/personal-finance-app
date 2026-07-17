@@ -1,5 +1,11 @@
 // src/wallet/dto/create-wallet.dto.ts
-import { IsNotEmpty, IsString, IsOptional, MaxLength, IsEnum } from 'class-validator';
+import {
+  IsNotEmpty,
+  IsString,
+  IsOptional,
+  MaxLength,
+  IsEnum,
+} from 'class-validator';
 
 export class CreateWalletDto {
   @IsString()

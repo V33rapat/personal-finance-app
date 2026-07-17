@@ -21,11 +21,11 @@ export class JwtTokenService {
     const [accessToken, refreshToken] = await Promise.all([
       this.jwtService.signAsync(
         { sub: userId, email, sessionVersion },
-        { expiresIn: '8h' }
+        { expiresIn: '8h' },
       ),
       this.jwtService.signAsync(
         { sub: userId, email, sessionVersion, type: 'refresh' },
-        { expiresIn: '7d' }
+        { expiresIn: '7d' },
       ),
     ]);
 

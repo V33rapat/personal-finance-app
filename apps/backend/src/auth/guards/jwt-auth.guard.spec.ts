@@ -12,7 +12,10 @@ function createContext(request: Record<string, unknown>): ExecutionContext {
 describe('JwtAuthGuard', () => {
   const jwtService = { verifyAsync: jest.fn() };
   const prisma = { users: { findUnique: jest.fn() } };
-  const guard = new JwtAuthGuard(jwtService as unknown as JwtService, prisma as unknown as PrismaService);
+  const guard = new JwtAuthGuard(
+    jwtService as unknown as JwtService,
+    prisma as unknown as PrismaService,
+  );
 
   beforeEach(() => {
     jest.clearAllMocks();
@@ -28,7 +31,9 @@ describe('JwtAuthGuard', () => {
     prisma.users.findUnique.mockResolvedValue({ session_version: 2 });
 
     await expect(guard.canActivate(createContext(request))).resolves.toBe(true);
-    expect(request).toMatchObject({ user: { sub: 'user-1', sessionVersion: 2 } });
+    expect(request).toMatchObject({
+      user: { sub: 'user-1', sessionVersion: 2 },
+    });
   });
 
   it('rejects a token whose session version has been invalidated', async () => {
@@ -40,7 +45,9 @@ describe('JwtAuthGuard', () => {
     prisma.users.findUnique.mockResolvedValue({ session_version: 3 });
 
     await expect(
-      guard.canActivate(createContext({ headers: { authorization: 'Bearer old-token' } })),
+      guard.canActivate(
+        createContext({ headers: { authorization: 'Bearer old-token' } }),
+      ),
     ).rejects.toBeInstanceOf(UnauthorizedException);
   });
 
@@ -53,7 +60,9 @@ describe('JwtAuthGuard', () => {
     });
 
     await expect(
-      guard.canActivate(createContext({ headers: { authorization: 'Bearer refresh-token' } })),
+      guard.canActivate(
+        createContext({ headers: { authorization: 'Bearer refresh-token' } }),
+      ),
     ).rejects.toBeInstanceOf(UnauthorizedException);
   });
 });

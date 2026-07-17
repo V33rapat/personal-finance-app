@@ -25,8 +25,14 @@ const PASSWORD_CHANGE_LOCK_DURATION_MS = 15 * 60 * 1000;
 
 @Injectable()
 export class AuthService {
-  private failedAttempts = new Map<string, { count: number; lockedUntil: number }>();
-  private failedPasswordChangeAttempts = new Map<string, { count: number; lockedUntil: number }>();
+  private failedAttempts = new Map<
+    string,
+    { count: number; lockedUntil: number }
+  >();
+  private failedPasswordChangeAttempts = new Map<
+    string,
+    { count: number; lockedUntil: number }
+  >();
 
   constructor(
     private prisma: PrismaService,
@@ -50,7 +56,10 @@ export class AuthService {
   }
 
   private recordFailedAttempt(email: string): void {
-    const attempt = this.failedAttempts.get(email) || { count: 0, lockedUntil: 0 };
+    const attempt = this.failedAttempts.get(email) || {
+      count: 0,
+      lockedUntil: 0,
+    };
     attempt.count++;
 
     if (attempt.count >= 5) {
@@ -76,7 +85,10 @@ export class AuthService {
   }
 
   private recordFailedPasswordChangeAttempt(userId: string): void {
-    const attempt = this.failedPasswordChangeAttempts.get(userId) || { count: 0, lockedUntil: 0 };
+    const attempt = this.failedPasswordChangeAttempts.get(userId) || {
+      count: 0,
+      lockedUntil: 0,
+    };
     attempt.count++;
 
     if (attempt.count >= MAX_PASSWORD_CHANGE_ATTEMPTS) {
@@ -114,14 +126,17 @@ export class AuthService {
     const normalizedEmail = dto.email.toLowerCase().trim();
 
     if (!this.checkRateLimit(normalizedEmail)) {
-      throw new UnauthorizedException('Login temporarily locked. Please try again in 15 minutes.');
+      throw new UnauthorizedException(
+        'Login temporarily locked. Please try again in 15 minutes.',
+      );
     }
 
     const user = await this.prisma.users.findUnique({
       where: { email: normalizedEmail },
     });
 
-    const isMatch = user && await bcrypt.compare(dto.password, user.password_hash);
+    const isMatch =
+      user && (await bcrypt.compare(dto.password, user.password_hash));
     if (!user || !isMatch) {
       this.recordFailedAttempt(normalizedEmail);
       throw new UnauthorizedException('Email or password is incorrect');
@@ -166,7 +181,10 @@ export class AuthService {
       throw new UnauthorizedException('Refresh token is incorrect');
     }
 
-    if (payload.type !== 'refresh' || typeof payload.sessionVersion !== 'number') {
+    if (
+      payload.type !== 'refresh' ||
+      typeof payload.sessionVersion !== 'number'
+    ) {
       throw new UnauthorizedException('Refresh token is incorrect');
     }
 
@@ -294,15 +312,23 @@ export class AuthService {
       throw new UnauthorizedException('User not found. Please login again.');
     }
 
-    const isCurrentPasswordCorrect = await bcrypt.compare(dto.current_password, user.password_hash);
+    const isCurrentPasswordCorrect = await bcrypt.compare(
+      dto.current_password,
+      user.password_hash,
+    );
     if (!isCurrentPasswordCorrect) {
       this.recordFailedPasswordChangeAttempt(userId);
       throw new BadRequestException('Current password is incorrect.');
     }
 
-    const isSamePassword = await bcrypt.compare(dto.new_password, user.password_hash);
+    const isSamePassword = await bcrypt.compare(
+      dto.new_password,
+      user.password_hash,
+    );
     if (isSamePassword) {
-      throw new BadRequestException('New password must be different from the current password.');
+      throw new BadRequestException(
+        'New password must be different from the current password.',
+      );
     }
 
     const passwordHash = await bcrypt.hash(dto.new_password, 10);
@@ -318,7 +344,9 @@ export class AuthService {
       });
 
       if (updateResult.count !== 1) {
-        throw new UnauthorizedException('Your session has expired. Please login again.');
+        throw new UnauthorizedException(
+          'Your session has expired. Please login again.',
+        );
       }
 
       await tx.refresh_tokens.updateMany({
@@ -347,8 +375,14 @@ export class AuthService {
 
     const detected = await fromBuffer(file.buffer);
 
-    if (!detected || !ALLOWED_AVATAR_MIMES.has(detected.mime) || file.mimetype !== detected.mime) {
-      throw new BadRequestException('Avatar must be a valid JPG, PNG, or WebP image.');
+    if (
+      !detected ||
+      !ALLOWED_AVATAR_MIMES.has(detected.mime) ||
+      file.mimetype !== detected.mime
+    ) {
+      throw new BadRequestException(
+        'Avatar must be a valid JPG, PNG, or WebP image.',
+      );
     }
 
     const newPath = `users/${userId}/${randomUUID()}.${detected.ext}`;
