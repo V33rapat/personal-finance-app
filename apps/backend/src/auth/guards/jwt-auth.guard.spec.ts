@@ -1,7 +1,7 @@
 import { ExecutionContext, UnauthorizedException } from '@nestjs/common';
-import { JwtService } from '@nestjs/jwt';
 import { PrismaService } from '../../prisma/prisma.service';
 import { JwtAuthGuard } from './jwt-auth.guard';
+import { JwtTokenService } from '../jwt.service';
 
 function createContext(request: Record<string, unknown>): ExecutionContext {
   return {
@@ -10,10 +10,10 @@ function createContext(request: Record<string, unknown>): ExecutionContext {
 }
 
 describe('JwtAuthGuard', () => {
-  const jwtService = { verifyAsync: jest.fn() };
+  const jwtTokenService = { verifyAccessToken: jest.fn() };
   const prisma = { users: { findUnique: jest.fn() } };
   const guard = new JwtAuthGuard(
-    jwtService as unknown as JwtService,
+    jwtTokenService as unknown as JwtTokenService,
     prisma as unknown as PrismaService,
   );
 
@@ -23,7 +23,7 @@ describe('JwtAuthGuard', () => {
 
   it('accepts an access token with the current session version', async () => {
     const request = { headers: { authorization: 'Bearer access-token' } };
-    jwtService.verifyAsync.mockResolvedValue({
+    jwtTokenService.verifyAccessToken.mockResolvedValue({
       sub: 'user-1',
       email: 'user@example.com',
       sessionVersion: 2,
@@ -37,7 +37,7 @@ describe('JwtAuthGuard', () => {
   });
 
   it('rejects a token whose session version has been invalidated', async () => {
-    jwtService.verifyAsync.mockResolvedValue({
+    jwtTokenService.verifyAccessToken.mockResolvedValue({
       sub: 'user-1',
       email: 'user@example.com',
       sessionVersion: 2,
@@ -52,7 +52,7 @@ describe('JwtAuthGuard', () => {
   });
 
   it('rejects a refresh token at an access-token endpoint', async () => {
-    jwtService.verifyAsync.mockResolvedValue({
+    jwtTokenService.verifyAccessToken.mockResolvedValue({
       sub: 'user-1',
       email: 'user@example.com',
       sessionVersion: 2,
@@ -62,6 +62,19 @@ describe('JwtAuthGuard', () => {
     await expect(
       guard.canActivate(
         createContext({ headers: { authorization: 'Bearer refresh-token' } }),
+      ),
+    ).rejects.toBeInstanceOf(UnauthorizedException);
+  });
+
+  it('rejects a token with malformed claims', async () => {
+    jwtTokenService.verifyAccessToken.mockResolvedValue({
+      sub: 'user-1',
+      sessionVersion: 2,
+    });
+
+    await expect(
+      guard.canActivate(
+        createContext({ headers: { authorization: 'Bearer malformed-token' } }),
       ),
     ).rejects.toBeInstanceOf(UnauthorizedException);
   });

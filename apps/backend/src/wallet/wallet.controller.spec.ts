@@ -1,8 +1,8 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { WalletController } from './wallet.controller';
-import { JwtService } from '@nestjs/jwt';
 import { PrismaService } from '../prisma/prisma.service';
 import { WalletService } from './wallet.service';
+import { JwtTokenService } from '../auth/jwt.service';
 
 describe('WalletController', () => {
   let controller: WalletController;
@@ -12,7 +12,7 @@ describe('WalletController', () => {
       controllers: [WalletController],
       providers: [
         { provide: WalletService, useValue: {} },
-        { provide: JwtService, useValue: {} },
+        { provide: JwtTokenService, useValue: {} },
         {
           provide: PrismaService,
           useValue: { users: { findUnique: jest.fn() } },

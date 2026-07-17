@@ -3,11 +3,15 @@ import {
   NotFoundException,
   BadRequestException,
 } from '@nestjs/common';
-import { Prisma } from '@prisma/client';
+import { Prisma, type wallets } from '@prisma/client';
 import { CreateWalletDto } from './dto/create-wallet.dto';
 import { UpdateWalletDto } from './dto/update-wallet.dto';
 import { PrismaService } from '../prisma/prisma.service';
 import { syncWalletBalances } from './wallet-balance.util';
+
+type WalletTreeNode = wallets & {
+  children: WalletTreeNode[];
+};
 
 @Injectable()
 export class WalletService {
@@ -265,9 +269,9 @@ export class WalletService {
     return { message: 'ลบกระเป๋าเงินสำเร็จ' };
   }
 
-  buildTree(wallets: any[]) {
-    const walletMap = new Map();
-    const roots: any[] = [];
+  buildTree(wallets: wallets[]): WalletTreeNode[] {
+    const walletMap = new Map<string, WalletTreeNode>();
+    const roots: WalletTreeNode[] = [];
 
     wallets.forEach((wallet) => {
       walletMap.set(wallet.id, { ...wallet, children: [] });
@@ -277,10 +281,16 @@ export class WalletService {
       if (wallet.parent_wallet_id) {
         const parent = walletMap.get(wallet.parent_wallet_id);
         if (parent) {
-          parent.children.push(walletMap.get(wallet.id));
+          const child = walletMap.get(wallet.id);
+          if (child) {
+            parent.children.push(child);
+          }
         }
       } else {
-        roots.push(walletMap.get(wallet.id));
+        const root = walletMap.get(wallet.id);
+        if (root) {
+          roots.push(root);
+        }
       }
     });
 

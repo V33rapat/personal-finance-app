@@ -1,8 +1,11 @@
 import { IsNotEmpty, IsString, MaxLength, MinLength } from 'class-validator';
-import { Transform } from 'class-transformer';
+import { Transform, type TransformFnParams } from 'class-transformer';
 
 export class UpdateProfileDto {
-  @Transform(({ value }) => (typeof value === 'string' ? value.trim() : value))
+  @Transform(({ value }: TransformFnParams) => {
+    const fullName: unknown = value;
+    return typeof fullName === 'string' ? fullName.trim() : fullName;
+  })
   @IsString()
   @IsNotEmpty({ message: 'Full name is required' })
   @MinLength(3, { message: 'Full name must be at least 3 characters' })

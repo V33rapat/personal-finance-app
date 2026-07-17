@@ -1,10 +1,21 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { JwtService } from '@nestjs/jwt';
 import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
 import { PrismaService } from '../prisma/prisma.service';
+import { JwtTokenService } from './jwt.service';
 import { UpdateProfileDto } from './dto/update-profile.dto';
 import { ChangePasswordDto } from './dto/change-password.dto';
+import type { AuthenticatedRequest } from './types/authenticated-request';
+
+function createAuthenticatedRequest(userId = 'user-1'): AuthenticatedRequest {
+  return {
+    user: {
+      sub: userId,
+      email: 'user@example.com',
+      sessionVersion: 1,
+    },
+  } as AuthenticatedRequest;
+}
 
 describe('AuthController', () => {
   let controller: AuthController;
@@ -18,7 +29,7 @@ describe('AuthController', () => {
       controllers: [AuthController],
       providers: [
         { provide: AuthService, useValue: authService },
-        { provide: JwtService, useValue: {} },
+        { provide: JwtTokenService, useValue: {} },
         {
           provide: PrismaService,
           useValue: { users: { findUnique: jest.fn() } },
@@ -38,7 +49,7 @@ describe('AuthController', () => {
     const dto = { full_name: 'Updated Name' } as UpdateProfileDto;
     authService.updateProfile.mockResolvedValue({ fullName: 'Updated Name' });
 
-    await controller.updateProfile({ user: { sub: 'user-1' } }, dto);
+    await controller.updateProfile(createAuthenticatedRequest(), dto);
 
     expect(authService.updateProfile).toHaveBeenCalledWith('user-1', dto);
   });
@@ -52,7 +63,7 @@ describe('AuthController', () => {
       message: 'Password changed successfully.',
     });
 
-    await controller.changePassword({ user: { sub: 'user-1' } }, dto);
+    await controller.changePassword(createAuthenticatedRequest(), dto);
 
     expect(authService.changePassword).toHaveBeenCalledWith('user-1', dto);
   });

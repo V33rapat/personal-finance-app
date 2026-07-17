@@ -8,7 +8,7 @@ import {
   UnauthorizedException,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import { JwtTokenService } from './jwt.service';
+import { isRefreshTokenPayload, JwtTokenService } from './jwt.service';
 import * as bcrypt from 'bcrypt';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
@@ -174,17 +174,14 @@ export class AuthService {
   }
 
   async refresh(refreshToken: string) {
-    let payload;
+    let payload: unknown;
     try {
       payload = await this.jwtTokenService.verifyRefreshToken(refreshToken);
     } catch {
       throw new UnauthorizedException('Refresh token is incorrect');
     }
 
-    if (
-      payload.type !== 'refresh' ||
-      typeof payload.sessionVersion !== 'number'
-    ) {
+    if (!isRefreshTokenPayload(payload)) {
       throw new UnauthorizedException('Refresh token is incorrect');
     }
 

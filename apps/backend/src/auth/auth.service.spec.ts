@@ -16,19 +16,31 @@ jest.mock('file-type', () => ({ fromBuffer: jest.fn() }));
 import { fromBuffer } from 'file-type';
 const mockedFromBuffer = fromBuffer as jest.Mock;
 
+const anyDate = expect.any(Date) as unknown as Date;
+const anyString = expect.any(String) as unknown as string;
+const avatarPathPattern = expect.stringMatching(
+  /^users\/user-1\/.+\.webp$/,
+) as unknown as string;
+
+type AuthPrismaMock = {
+  users: {
+    findUnique: jest.Mock;
+    update: jest.Mock;
+    updateMany: jest.Mock;
+  };
+  refresh_tokens: {
+    updateMany: jest.Mock;
+  };
+  $transaction: jest.Mock;
+};
+
+type TransactionCallback = (
+  transaction: Pick<AuthPrismaMock, 'users' | 'refresh_tokens'>,
+) => unknown;
+
 describe('AuthService', () => {
   let service: AuthService;
-  let prisma: {
-    users: {
-      findUnique: jest.Mock;
-      update: jest.Mock;
-      updateMany: jest.Mock;
-    };
-    refresh_tokens: {
-      updateMany: jest.Mock;
-    };
-    $transaction: jest.Mock;
-  };
+  let prisma: AuthPrismaMock;
 
   const user = {
     id: 'user-1',
@@ -59,7 +71,7 @@ describe('AuthService', () => {
       },
       $transaction: jest.fn(),
     };
-    prisma.$transaction.mockImplementation((callback) =>
+    prisma.$transaction.mockImplementation((callback: TransactionCallback) =>
       callback({
         users: prisma.users,
         refresh_tokens: prisma.refresh_tokens,
@@ -103,7 +115,7 @@ describe('AuthService', () => {
       where: { id: user.id },
       data: {
         full_name: 'Updated Name',
-        updated_at: expect.any(Date),
+        updated_at: anyDate,
       },
     });
     expect(result).toEqual({
@@ -138,7 +150,7 @@ describe('AuthService', () => {
       .mockResolvedValueOnce(uploadUser)
       .mockResolvedValueOnce({
         ...uploadUser,
-        avatar_path: expect.any(String),
+        avatar_path: 'users/user-1/new-avatar.webp',
       });
     storage.createSignedUrl.mockResolvedValue(
       'https://signed.example/new-avatar',
@@ -151,15 +163,15 @@ describe('AuthService', () => {
     } as Express.Multer.File);
 
     expect(storage.upload).toHaveBeenCalledWith(
-      expect.stringMatching(/^users\/user-1\/.+\.webp$/),
+      avatarPathPattern,
       expect.any(Buffer),
       'image/webp',
     );
     expect(prisma.users.update).toHaveBeenCalledWith({
       where: { id: user.id },
       data: {
-        avatar_path: expect.stringMatching(/^users\/user-1\/.+\.webp$/),
-        updated_at: expect.any(Date),
+        avatar_path: avatarPathPattern,
+        updated_at: anyDate,
       },
     });
     expect(storage.remove).toHaveBeenCalledWith(oldPath);
@@ -191,7 +203,7 @@ describe('AuthService', () => {
 
     expect(prisma.users.update).toHaveBeenCalledWith({
       where: { id: user.id },
-      data: { avatar_path: null, updated_at: expect.any(Date) },
+      data: { avatar_path: null, updated_at: anyDate },
     });
     expect(storage.remove).toHaveBeenCalledWith(avatarPath);
     expect(result.avatarUrl).toBeNull();
@@ -228,9 +240,9 @@ describe('AuthService', () => {
     expect(prisma.users.updateMany).toHaveBeenCalledWith({
       where: { id: user.id, session_version: 3 },
       data: {
-        password_hash: expect.any(String),
+        password_hash: anyString,
         session_version: { increment: 1 },
-        updated_at: expect.any(Date),
+        updated_at: anyDate,
       },
     });
     expect(prisma.refresh_tokens.updateMany).toHaveBeenCalledWith({
