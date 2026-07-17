@@ -292,7 +292,7 @@ Create a Render Web Service from the repository with:
 
 ```text
 Root Directory: apps/backend
-Build Command:  pnpm install --frozen-lockfile && pnpm prisma generate && pnpm run build
+Build Command:  pnpm install --frozen-lockfile && pnpm prisma generate && pnpm run build && pnpm run migrate:deploy
 Start Command:  pnpm run start:prod
 ```
 
@@ -310,6 +310,23 @@ SUPABASE_SIGNED_URL_EXPIRES_IN=3600
 ```
 
 Copy the public Render Backend URL for the Frontend configuration.
+
+### One-time Prisma baseline
+
+The production database was restored before Prisma Migrate was adopted. Before enabling automatic
+production migrations, configure a GitHub Environment named `production` with these environment
+secrets:
+
+```env
+PRODUCTION_DATABASE_URL=<SUPABASE_SESSION_POOLER_URL>
+PRODUCTION_DIRECT_URL=<SUPABASE_DIRECT_CONNECTION_URL>
+```
+
+Then run **Actions > Bootstrap Production Database** from `main` and enter
+`BASELINE_PRODUCTION_DATABASE` as the confirmation. The workflow records the existing schema as
+`0_init`, applies pending migrations, and verifies the result. It is intentionally manual and must
+only be run once. After it succeeds, every Render deployment applies future pending migrations with
+`pnpm run migrate:deploy`.
 
 ### Vercel Frontend
 
