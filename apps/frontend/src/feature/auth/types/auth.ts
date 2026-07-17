@@ -11,3 +11,15 @@ export interface RegisterFormErrors {
   password?: string;
   confirmPassword?: string;
 }
+
+export interface ChangePasswordFormData {
+  currentPassword: string;
+  newPassword: string;
+  confirmPassword: string;
+}
+
+export interface ChangePasswordFormErrors {
+  currentPassword?: string;
+  newPassword?: string;
+  confirmPassword?: string;
+}

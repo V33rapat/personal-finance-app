@@ -4,7 +4,31 @@
 // ---------------------------------------------------------------------------
 
 import { TH_TEXT } from "@/constants/th";
-import type { RegisterFormData, RegisterFormErrors } from "../types/auth";
+import type {
+  ChangePasswordFormData,
+  ChangePasswordFormErrors,
+  RegisterFormData,
+  RegisterFormErrors,
+} from "../types/auth";
+
+export const PASSWORD_MIN_LENGTH = 8;
+export const PASSWORD_CASE_PATTERN = /(?=.*[a-z])(?=.*[A-Z])/;
+
+export function validatePassword(password: string, requiredMessage: string = TH_TEXT.auth.passwordRequired) {
+  if (!password) {
+    return requiredMessage;
+  }
+
+  if (password.length < PASSWORD_MIN_LENGTH) {
+    return TH_TEXT.auth.passwordMinLength;
+  }
+
+  if (!PASSWORD_CASE_PATTERN.test(password)) {
+    return TH_TEXT.auth.passwordPattern;
+  }
+
+  return undefined;
+}
 
 export function validateRegisterForm(data: RegisterFormData): RegisterFormErrors {
   const errors: RegisterFormErrors = {};
@@ -26,19 +50,37 @@ export function validateRegisterForm(data: RegisterFormData): RegisterFormErrors
   }
 
   // password
-  if (!data.password) {
-    errors.password = TH_TEXT.auth.passwordRequired;
-  } else if (data.password.length < 8) {
-    errors.password = TH_TEXT.auth.passwordMinLength;
-  } else if (!/(?=.*[a-z])(?=.*[A-Z])/.test(data.password)) {
-    errors.password = TH_TEXT.auth.passwordPattern;
-  }
+  errors.password = validatePassword(data.password);
 
   // confirmPassword
   if (!data.confirmPassword) {
     errors.confirmPassword = TH_TEXT.auth.confirmPasswordRequired;
   } else if (data.password !== data.confirmPassword) {
     errors.confirmPassword = TH_TEXT.auth.passwordMismatch;
+  }
+
+  return errors;
+}
+
+export function validateChangePasswordForm(
+  data: ChangePasswordFormData,
+): ChangePasswordFormErrors {
+  const errors: ChangePasswordFormErrors = {};
+
+  if (!data.currentPassword) {
+    errors.currentPassword = TH_TEXT.profile.currentPasswordRequired;
+  }
+
+  errors.newPassword = validatePassword(data.newPassword, TH_TEXT.profile.newPasswordRequired);
+
+  if (!data.confirmPassword) {
+    errors.confirmPassword = TH_TEXT.profile.confirmNewPasswordRequired;
+  } else if (data.newPassword !== data.confirmPassword) {
+    errors.confirmPassword = TH_TEXT.auth.passwordMismatch;
+  }
+
+  if (data.currentPassword && data.newPassword === data.currentPassword) {
+    errors.newPassword = TH_TEXT.profile.newPasswordMustDiffer;
   }
 
   return errors;

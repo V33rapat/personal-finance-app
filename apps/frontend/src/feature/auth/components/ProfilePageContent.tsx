@@ -10,6 +10,7 @@ import { TH_TEXT } from "@/constants/th";
 import LogoutButton from "@/feature/auth/components/LogoutButton";
 import AvatarCropModal from "@/feature/auth/components/AvatarCropModal";
 import ProfileAvatar from "@/feature/auth/components/ProfileAvatar";
+import ChangePasswordModal from "@/feature/auth/components/ChangePasswordModal";
 import { createAvatarFile } from "@/feature/auth/lib/cropImage";
 import { useProfile } from "@/feature/auth/hooks/useProfile";
 
@@ -34,6 +35,7 @@ export default function ProfilePageContent() {
   const [cropSource, setCropSource] = useState<string | null>(null);
   const [cropError, setCropError] = useState<string | null>(null);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [isChangePasswordOpen, setIsChangePasswordOpen] = useState(false);
 
   const closeCrop = () => {
     if (cropSource) URL.revokeObjectURL(cropSource);
@@ -170,6 +172,9 @@ export default function ProfilePageContent() {
                   <Button variant="secondary" onClick={handleEdit}>
                     {TH_TEXT.profile.editProfile}
                   </Button>
+                  <Button variant="secondary" onClick={() => setIsChangePasswordOpen(true)}>
+                    {TH_TEXT.profile.changePassword}
+                  </Button>
                   <LogoutButton />
                 </div>
               )}
@@ -222,6 +227,11 @@ export default function ProfilePageContent() {
         confirmText={isAvatarSaving ? TH_TEXT.profile.avatarUploading : TH_TEXT.common.delete}
         onConfirm={() => void handleDeleteAvatar()}
         onCancel={() => setIsDeleteDialogOpen(false)}
+      />
+
+      <ChangePasswordModal
+        isOpen={isChangePasswordOpen}
+        onClose={() => setIsChangePasswordOpen(false)}
       />
     </div>
   );
