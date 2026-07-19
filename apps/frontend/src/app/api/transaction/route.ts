@@ -4,8 +4,10 @@ import {
   getBackendUrl,
   readJson,
   serverNotReadyResponse,
+  toBackendTransactionCreateBody,
+  type TransactionRequestBody,
   unauthorizedResponse,
-} from "../_lib/bff";
+} from "./transaction-bff";
 
 export async function GET(request: NextRequest) {
   try {
@@ -52,7 +54,7 @@ export async function POST(request: NextRequest) {
       return unauthorizedResponse();
     }
 
-    const body = await request.json();
+    const body = (await request.json()) as TransactionRequestBody;
 
     const res = await fetch(`${getBackendUrl()}/transaction`, {
       method: "POST",
@@ -60,7 +62,7 @@ export async function POST(request: NextRequest) {
         "Content-Type": "application/json",
         ...authHeader,
       },
-      body: JSON.stringify(body),
+      body: JSON.stringify(toBackendTransactionCreateBody(body)),
       cache: "no-store",
     });
 
