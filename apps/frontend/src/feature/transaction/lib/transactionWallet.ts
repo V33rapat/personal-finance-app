@@ -29,7 +29,7 @@ export function getTransactionWalletOptions(
 
       return {
         id: wallet.id,
-        label: parentWallet ? `${parentWallet.name} > ${wallet.name}` : wallet.name,
+        label: parentWallet ? `${parentWallet.name}: ${wallet.name}` : wallet.name,
       };
     });
 }
