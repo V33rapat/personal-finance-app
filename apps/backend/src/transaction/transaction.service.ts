@@ -14,18 +14,7 @@ export class TransactionService {
   constructor(private prisma: PrismaService) {}
 
   async create(dto: CreateTransactionDto, userId: string) {
-    // Verify Wallet belongs to user
-    const wallet = await this.prisma.wallets.findFirst({
-      where: {
-        id: dto.wallet_id,
-        user_id: userId,
-        deleted_at: null,
-      },
-    });
-
-    if (!wallet) {
-      throw new NotFoundException('ไม่พบกระเป๋าเงิน');
-    }
+    await this.findEligibleTransactionWallet(userId, dto.wallet_id);
 
     if (dto.category_id) {
       const category = await this.prisma.categories.findFirst({
@@ -111,19 +100,10 @@ export class TransactionService {
   async update(userId: string, dto: UpdateTransactionDto, id: string) {
     const existing = await this.findOne(userId, id);
     await this.assertNotTransferManagedTransaction(id);
+    const targetWalletId = dto.wallet_id ?? existing.wallet_id;
 
-    // Verify wallet belongs to user
-    const wallet = await this.prisma.wallets.findFirst({
-      where: {
-        id: existing.wallet_id,
-        user_id: userId,
-        deleted_at: null,
-      },
-    });
-
-    if (!wallet) {
-      throw new ForbiddenException('ไม่มีสิทธิ์แก้ไขรายการนี้');
-    }
+    // Legacy transactions in a parent wallet must be moved to an eligible wallet before they can change.
+    await this.findEligibleTransactionWallet(userId, targetWalletId);
 
     if (dto.category_id) {
       const category = await this.prisma.categories.findFirst({
@@ -151,25 +131,35 @@ export class TransactionService {
       newType === 'income' ? Number(newAmount) : -Number(newAmount);
 
     const balanceDelta = newBalanceEffect - oldBalanceEffect;
+    const walletChanged = targetWalletId !== existing.wallet_id;
 
     const transaction = await this.prisma.$transaction(async (tx) => {
       const updatedTransaction = await tx.transactions.update({
         where: { id },
         data: {
-          ...(dto.name && { name: dto.name }),
-          ...(dto.amount && { amount: dto.amount }),
-          ...(dto.type && { type: dto.type }),
+          ...(dto.wallet_id !== undefined && { wallet_id: targetWalletId }),
+          ...(dto.name !== undefined && { name: dto.name }),
+          ...(dto.amount !== undefined && { amount: dto.amount }),
+          ...(dto.type !== undefined && { type: dto.type }),
           ...(dto.note !== undefined && { note: dto.note }),
-          ...(dto.transaction_date && {
+          ...(dto.transaction_date !== undefined && {
             transaction_date: this.toTransactionDate(dto.transaction_date),
           }),
           ...(dto.category_id !== undefined && {
             category_id: dto.category_id || null,
           }),
         },
+        include: { categories: true, wallets: true },
       });
 
-      if (balanceDelta !== 0) {
+      if (walletChanged) {
+        await applyWalletBalanceDelta(
+          tx,
+          existing.wallet_id,
+          -oldBalanceEffect,
+        );
+        await applyWalletBalanceDelta(tx, targetWalletId, newBalanceEffect);
+      } else if (balanceDelta !== 0) {
         await applyWalletBalanceDelta(tx, existing.wallet_id, balanceDelta);
       }
 
@@ -221,6 +211,41 @@ export class TransactionService {
         'This transaction belongs to a transfer. Please edit or delete it through Transfer.',
       );
     }
+  }
+
+  private async findEligibleTransactionWallet(
+    userId: string,
+    walletId: string,
+  ) {
+    const wallet = await this.prisma.wallets.findFirst({
+      where: {
+        id: walletId,
+        user_id: userId,
+        deleted_at: null,
+        is_active: true,
+      },
+    });
+
+    if (!wallet) {
+      throw new NotFoundException('ไม่พบกระเป๋าเงิน');
+    }
+
+    const activeSubWallet = await this.prisma.wallets.findFirst({
+      where: {
+        parent_wallet_id: wallet.id,
+        deleted_at: null,
+        is_active: true,
+      },
+      select: { id: true },
+    });
+
+    if (activeSubWallet) {
+      throw new BadRequestException(
+        'Please record transactions in an active sub-wallet.',
+      );
+    }
+
+    return wallet;
   }
 
   private toTransactionDate(value: string) {
