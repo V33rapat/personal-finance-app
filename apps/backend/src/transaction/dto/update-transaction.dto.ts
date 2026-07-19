@@ -10,6 +10,10 @@ import {
 export class UpdateTransactionDto {
   @IsString()
   @IsOptional()
+  wallet_id?: string;
+
+  @IsString()
+  @IsOptional()
   name?: string;
 
   @IsNumber()

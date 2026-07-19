@@ -17,6 +17,7 @@ type TabType = "overview" | "transactions";
 
 interface WalletDetailProps {
   wallet: Wallet | null;
+  wallets: Wallet[];
   childCount: number;
   onEditWallet: (wallet: Wallet) => void;
   onDeleteWallet: (walletId: string) => void | Promise<unknown>;
@@ -156,6 +157,7 @@ function OverviewTab({
 
 export default function WalletDetail({
   wallet,
+  wallets,
   childCount,
   onEditWallet,
   onDeleteWallet,
@@ -166,7 +168,26 @@ export default function WalletDetail({
   const [activeTab, setActiveTab] = useState<TabType>("overview");
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
-  const { displayedTransactions, categories, modalOpen, editingTransaction, openModal, openEditModal, closeModal, addTransaction, updateTransaction, deleteTransactions, loadMore, hasMore, isLoading, isSaving, error, filters, updateFilter } = useTransaction({ walletId: wallet?.id });
+  const {
+    displayedTransactions,
+    categories,
+    modalOpen,
+    editingTransaction,
+    currentWalletId,
+    openModal,
+    openEditModal,
+    closeModal,
+    addTransaction,
+    updateTransaction,
+    deleteTransactions,
+    loadMore,
+    hasMore,
+    isLoading,
+    isSaving,
+    error,
+    filters,
+    updateFilter,
+  } = useTransaction({ walletId: wallet?.id });
   const { selectedIds, selectedCount, toggleSelection, clearSelection, selectAll } = useTransactionSelection();
   const {
     createTemplate,
@@ -315,7 +336,8 @@ export default function WalletDetail({
       <TransactionModal
         isOpen={modalOpen}
         transaction={editingTransaction}
-        walletName={wallet.name}
+        wallets={wallets}
+        defaultWalletId={currentWalletId}
         isSaving={isSaving}
         error={error}
         onClose={closeModal}

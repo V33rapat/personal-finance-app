@@ -11,6 +11,7 @@ import { useTransaction } from "@/feature/transaction/hooks/useTransaction";
 import { useTransactionSelection } from "@/feature/transaction/hooks/useTransactionSelection";
 import { useTransactionTemplate } from "@/feature/transaction/hooks/useTransactionTemplate";
 import { toTemplateValuesFromTransaction } from "@/feature/transaction/lib/transactionTemplate";
+import { getTransactionWalletOptions } from "@/feature/transaction/lib/transactionWallet";
 import { useWallet } from "@/feature/wallet/hooks/useWallet";
 
 export default function TransactionsPageContent() {
@@ -30,6 +31,7 @@ export default function TransactionsPageContent() {
     error,
     modalOpen,
     editingTransaction,
+    currentWalletId,
     updateFilter,
     loadMore,
     openModal,
@@ -50,12 +52,16 @@ export default function TransactionsPageContent() {
     setShowDeleteConfirm(true);
   };
 
-  const createWalletId = filters.walletId || wallets[0]?.id || "";
-  const createWalletName = wallets.find((wallet) => wallet.id === createWalletId)?.name;
+  const transactionWalletOptions = getTransactionWalletOptions(wallets);
+  const defaultWalletId = transactionWalletOptions.some(
+    (wallet) => wallet.id === filters.walletId
+  )
+    ? filters.walletId
+    : undefined;
 
   const handleCreateTransaction = () => {
-    if (!createWalletId) return;
-    openModal(createWalletId);
+    if (transactionWalletOptions.length === 0) return;
+    openModal(defaultWalletId);
   };
 
   const confirmDeleteSelected = async () => {
@@ -81,7 +87,10 @@ export default function TransactionsPageContent() {
           </p>
         </div>
 
-        <Button onClick={handleCreateTransaction} disabled={!createWalletId || isSaving || isWalletLoading}>
+        <Button
+          onClick={handleCreateTransaction}
+          disabled={transactionWalletOptions.length === 0 || isSaving || isWalletLoading}
+        >
           <svg className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor" aria-hidden>
             <path d="M10 4a1 1 0 0 1 1 1v4h4a1 1 0 1 1 0 2h-4v4a1 1 0 1 1-2 0v-4H5a1 1 0 1 1 0-2h4V5a1 1 0 0 1 1-1Z" />
           </svg>
@@ -128,7 +137,8 @@ export default function TransactionsPageContent() {
       <TransactionModal
         isOpen={modalOpen}
         transaction={editingTransaction}
-        walletName={editingTransaction?.wallet_name ?? createWalletName}
+        wallets={wallets}
+        defaultWalletId={currentWalletId}
         isSaving={isSaving}
         error={error}
         onClose={closeModal}
