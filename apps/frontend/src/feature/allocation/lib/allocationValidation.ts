@@ -3,6 +3,15 @@ import type { Wallet } from "@/feature/wallet/hooks/useWallet";
 import type { MoneyAllocation, AllocationFormValues } from "../hooks/useAllocation";
 import { getEligibleAllocationWallets } from "./allocationWallet";
 
+export interface AllocationValidationErrors {
+  sourceWallet?: string;
+  amount?: string;
+  date?: string;
+  destinationWallet?: string;
+  destinationAmount?: string;
+  remaining?: string;
+}
+
 export function getTodayDateString() {
   const now = new Date();
   const timezoneOffsetMs = now.getTimezoneOffset() * 60_000;
@@ -44,6 +53,24 @@ export function getAllocationRemainingCents(values: AllocationFormValues) {
   return (Number.isFinite(amountCents) ? amountCents : 0) - destinationCents;
 }
 
+function getMoneyInputError(value: string | number, requiredMessage: string) {
+  const text = String(value ?? "").trim();
+
+  if (!text || !/^\d+(?:\.\d+)?$/.test(text)) {
+    return requiredMessage;
+  }
+
+  const fraction = text.split(".")[1];
+
+  if (fraction && fraction.length > 2) {
+    return TH_TEXT.allocation.amountPrecisionInvalid;
+  }
+
+  const amountCents = toMoneyCents(text);
+
+  return !Number.isFinite(amountCents) || amountCents <= 0 ? requiredMessage : undefined;
+}
+
 function getAvailableSourceCents(
   sourceWallet: Wallet | undefined,
   sourceWalletId: string,
@@ -74,11 +101,12 @@ function getAvailableSourceCents(
   return availableCents;
 }
 
-export function getAllocationValidationError(
+export function getAllocationValidationErrors(
   values: AllocationFormValues,
   wallets: Wallet[],
   existing?: MoneyAllocation | null
-) {
+): AllocationValidationErrors {
+  const errors: AllocationValidationErrors = {};
   const eligibleWallets = getEligibleAllocationWallets(wallets);
   const eligibleWalletIds = new Set(eligibleWallets.map((wallet) => wallet.id));
   const sourceWallet = eligibleWallets.find(
@@ -87,31 +115,23 @@ export function getAllocationValidationError(
   const amountCents = toMoneyCents(values.amount);
 
   if (!values.source_wallet_id) {
-    return TH_TEXT.allocation.sourceWalletRequired;
+    errors.sourceWallet = TH_TEXT.allocation.sourceWalletRequired;
+  } else if (!eligibleWalletIds.has(values.source_wallet_id)) {
+    errors.sourceWallet = TH_TEXT.allocation.walletUnavailable;
   }
 
-  if (!eligibleWalletIds.has(values.source_wallet_id)) {
-    return TH_TEXT.allocation.walletUnavailable;
-  }
-
-  if (!Number.isFinite(amountCents) || amountCents <= 0) {
-    return TH_TEXT.allocation.amountInvalid;
-  }
+  errors.amount = getMoneyInputError(values.amount, TH_TEXT.allocation.amountInvalid);
 
   if (!values.allocation_date) {
-    return TH_TEXT.allocation.dateRequired;
-  }
-
-  if (values.allocation_date > getTodayDateString()) {
-    return TH_TEXT.allocation.futureDate;
+    errors.date = TH_TEXT.allocation.dateRequired;
+  } else if (values.allocation_date > getTodayDateString()) {
+    errors.date = TH_TEXT.allocation.futureDate;
   }
 
   if (values.destinations.length < 1) {
-    return TH_TEXT.allocation.destinationRequired;
-  }
-
-  if (values.destinations.length > 10) {
-    return TH_TEXT.allocation.destinationLimit;
+    errors.destinationWallet = TH_TEXT.allocation.destinationRequired;
+  } else if (values.destinations.length > 10) {
+    errors.destinationWallet = TH_TEXT.allocation.destinationLimit;
   }
 
   const destinationIds = new Set<string>();
@@ -121,42 +141,65 @@ export function getAllocationValidationError(
     const destinationAmountCents = toMoneyCents(destination.amount);
 
     if (!destination.wallet_id) {
-      return TH_TEXT.allocation.destinationRequired;
+      errors.destinationWallet ??= TH_TEXT.allocation.destinationRequired;
+    } else if (!eligibleWalletIds.has(destination.wallet_id)) {
+      errors.destinationWallet ??= TH_TEXT.allocation.walletUnavailable;
+    } else if (destination.wallet_id === values.source_wallet_id) {
+      errors.destinationWallet ??= TH_TEXT.allocation.sameWallet;
+    } else if (destinationIds.has(destination.wallet_id)) {
+      errors.destinationWallet ??= TH_TEXT.allocation.destinationDuplicate;
     }
 
-    if (!eligibleWalletIds.has(destination.wallet_id)) {
-      return TH_TEXT.allocation.walletUnavailable;
+    errors.destinationAmount ??= getMoneyInputError(
+      destination.amount,
+      TH_TEXT.allocation.destinationAmountInvalid
+    );
+
+    if (destination.wallet_id) {
+      destinationIds.add(destination.wallet_id);
     }
 
-    if (destination.wallet_id === values.source_wallet_id) {
-      return TH_TEXT.allocation.sameWallet;
-    }
-
-    if (destinationIds.has(destination.wallet_id)) {
-      return TH_TEXT.allocation.destinationDuplicate;
-    }
-
-    if (!Number.isFinite(destinationAmountCents) || destinationAmountCents <= 0) {
-      return TH_TEXT.allocation.destinationAmountInvalid;
-    }
-
-    destinationIds.add(destination.wallet_id);
-    destinationCents += destinationAmountCents;
+    destinationCents += Number.isFinite(destinationAmountCents) ? destinationAmountCents : 0;
   }
 
-  if (destinationCents !== amountCents) {
-    return TH_TEXT.allocation.remainingMustBeZero;
+  if (
+    !errors.amount &&
+    !errors.destinationWallet &&
+    !errors.destinationAmount &&
+    destinationCents !== amountCents
+  ) {
+    errors.remaining = TH_TEXT.allocation.remainingMustBeZero;
   }
 
-  const availableSourceCents = getAvailableSourceCents(
-    sourceWallet,
-    values.source_wallet_id,
-    existing
+  if (!errors.sourceWallet && !errors.amount) {
+    const availableSourceCents = getAvailableSourceCents(
+      sourceWallet,
+      values.source_wallet_id,
+      existing
+    );
+
+    if (availableSourceCents < amountCents) {
+      errors.amount = TH_TEXT.allocation.balanceNotEnough;
+    }
+  }
+
+  return errors;
+}
+
+export function getAllocationValidationError(
+  values: AllocationFormValues,
+  wallets: Wallet[],
+  existing?: MoneyAllocation | null
+) {
+  const errors = getAllocationValidationErrors(values, wallets, existing);
+
+  return (
+    errors.sourceWallet ??
+    errors.amount ??
+    errors.date ??
+    errors.destinationWallet ??
+    errors.destinationAmount ??
+    errors.remaining ??
+    null
   );
-
-  if (availableSourceCents < amountCents) {
-    return TH_TEXT.allocation.balanceNotEnough;
-  }
-
-  return null;
 }

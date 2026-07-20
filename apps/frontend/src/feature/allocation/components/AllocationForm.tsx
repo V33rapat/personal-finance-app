@@ -9,7 +9,7 @@ import type { AllocationFormValues, MoneyAllocation } from "../hooks/useAllocati
 import {
   formatMoneyCents,
   getAllocationRemainingCents,
-  getAllocationValidationError,
+  getAllocationValidationErrors,
   getTodayDateString,
   toMoneyCents,
 } from "../lib/allocationValidation";
@@ -65,10 +65,17 @@ export default function AllocationForm({
   const [submitted, setSubmitted] = useState(false);
   const [hasInteracted, setHasInteracted] = useState(false);
   const eligibleWallets = useMemo(() => getEligibleAllocationWallets(wallets), [wallets]);
-  const fieldError = useMemo(
-    () => getAllocationValidationError(values, wallets, editingAllocation),
+  const fieldErrors = useMemo(
+    () => getAllocationValidationErrors(values, wallets, editingAllocation),
     [editingAllocation, values, wallets]
   );
+  const hasFieldErrors = Object.values(fieldErrors).some(Boolean);
+  const showValidationErrors = submitted || hasInteracted;
+  const destinationErrors = [
+    fieldErrors.destinationWallet,
+    fieldErrors.destinationAmount,
+    fieldErrors.remaining,
+  ].filter((message): message is string => Boolean(message));
   const remainingCents = getAllocationRemainingCents(values);
   const allocatedCents = values.destinations.reduce(
     (total, destination) => total + (toMoneyCents(destination.amount) || 0),
@@ -134,7 +141,7 @@ export default function AllocationForm({
     event.preventDefault();
     setSubmitted(true);
 
-    if (fieldError || isSaving) {
+    if (hasFieldErrors || isSaving) {
       return;
     }
 
@@ -181,7 +188,18 @@ export default function AllocationForm({
                 value={values.source_wallet_id}
                 onChange={(event) => updateValue("source_wallet_id", event.target.value)}
                 disabled={isSaving}
-                className={selectClassName}
+                aria-invalid={showValidationErrors && !!fieldErrors.sourceWallet}
+                aria-describedby={
+                  showValidationErrors && fieldErrors.sourceWallet
+                    ? "allocation-source-wallet-error"
+                    : undefined
+                }
+                className={[
+                  selectClassName,
+                  showValidationErrors && fieldErrors.sourceWallet
+                    ? "border-red-400 ring-2 ring-red-400/20 dark:border-red-500 dark:ring-red-500/20"
+                    : "",
+                ].join(" ")}
               >
                 <option value="">{TH_TEXT.allocation.selectSourceWallet}</option>
                 {eligibleWallets.map((wallet) => (
@@ -190,6 +208,15 @@ export default function AllocationForm({
                   </option>
                 ))}
               </select>
+              {showValidationErrors && fieldErrors.sourceWallet && (
+                <p
+                  id="allocation-source-wallet-error"
+                  role="alert"
+                  className="text-xs text-red-500 dark:text-red-400"
+                >
+                  {fieldErrors.sourceWallet}
+                </p>
+              )}
             </div>
 
             <FormField
@@ -203,6 +230,7 @@ export default function AllocationForm({
               placeholder={TH_TEXT.transaction.amountPlaceholder}
               disabled={isSaving}
               onChange={(event) => updateValue("amount", event.target.value)}
+              error={showValidationErrors ? fieldErrors.amount : undefined}
             />
 
             <FormField
@@ -213,6 +241,7 @@ export default function AllocationForm({
               value={values.allocation_date}
               disabled={isSaving}
               onChange={(event) => updateValue("allocation_date", event.target.value)}
+              error={showValidationErrors ? fieldErrors.date : undefined}
             />
 
             <div className="flex flex-col gap-1.5">
@@ -323,15 +352,22 @@ export default function AllocationForm({
               </p>
             </div>
           </div>
+
+          {showValidationErrors && destinationErrors.length > 0 && (
+            <div
+              role="alert"
+              className="mt-3 space-y-1 text-sm text-red-600 dark:text-red-400"
+            >
+              {destinationErrors.map((message) => (
+                <p key={message}>{message}</p>
+              ))}
+            </div>
+          )}
         </section>
       </div>
 
-      {(submitted || hasInteracted) && fieldError && (
-        <p className="mt-5 text-sm text-red-600 dark:text-red-400">{fieldError}</p>
-      )}
-
       <div className="mt-7 flex justify-end">
-        <Button type="submit" disabled={isSaving || !!fieldError}>
+        <Button type="submit" disabled={isSaving || hasFieldErrors}>
           {isSaving
             ? TH_TEXT.allocation.saving
             : isEditMode
