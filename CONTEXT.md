@@ -132,6 +132,10 @@ _Avoid_: To account, receiver
 An additional cost associated with a Transfer.
 _Avoid_: Expense category, service charge transaction
 
+**Money Allocation**:
+A grouped movement of an existing Amount from one Source Wallet to one or more Destination Wallets. Its related Transfers are managed together as one financial action.
+_Avoid_: Income, recurring transfer, individual transfer
+
 ### Reporting And Analysis
 
 **Dashboard**:

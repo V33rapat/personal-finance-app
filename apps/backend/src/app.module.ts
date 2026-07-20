@@ -8,6 +8,7 @@ import { CategoryModule } from './category/category.module';
 import { TransferModule } from './transfer/transfer.module';
 import { TransactionTemplateModule } from './transaction-template/transaction-template.module';
 import { StorageModule } from './storage/storage.module';
+import { AllocationModule } from './allocation/allocation.module';
 
 @Module({
   controllers: [AppController],
@@ -20,6 +21,7 @@ import { StorageModule } from './storage/storage.module';
     TransferModule,
     TransactionTemplateModule,
     StorageModule,
+    AllocationModule,
   ],
 })
 export class AppModule {}
