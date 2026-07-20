@@ -98,6 +98,7 @@ model transactions {
 /// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
 model transfers {
   id                                                       String        @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  allocation_id                                            String?       @db.Uuid
   from_wallet_id                                           String        @db.Uuid
   to_wallet_id                                             String        @db.Uuid
   from_transaction_id                                      String?       @unique @db.Uuid
@@ -109,6 +110,7 @@ model transfers {
   created_at                                               DateTime      @default(now()) @db.Timestamptz(6)
   updated_at                                               DateTime      @default(now()) @db.Timestamptz(6)
   deleted_at                                               DateTime?     @db.Timestamptz(6)
+  money_allocations                                        money_allocations? @relation(fields: [allocation_id], references: [id], onUpdate: NoAction)
   transactions_transfers_from_transaction_idTotransactions transactions? @relation("transfers_from_transaction_idTotransactions", fields: [from_transaction_id], references: [id], onUpdate: NoAction)
   wallets_transfers_from_wallet_idTowallets                wallets       @relation("transfers_from_wallet_idTowallets", fields: [from_wallet_id], references: [id], onUpdate: NoAction)
   transactions_transfers_to_transaction_idTotransactions   transactions? @relation("transfers_to_transaction_idTotransactions", fields: [to_transaction_id], references: [id], onUpdate: NoAction)
@@ -118,6 +120,25 @@ model transfers {
   @@index([deleted_at], map: "idx_transfers_deleted_at")
   @@index([from_wallet_id, transfer_date(sort: Desc)], map: "idx_transfers_from_wallet")
   @@index([to_wallet_id, transfer_date(sort: Desc)], map: "idx_transfers_to_wallet")
+  @@index([allocation_id], map: "idx_transfers_allocation")
+}
+
+model money_allocations {
+  id                                                   String        @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  user_id                                              String        @db.Uuid
+  source_wallet_id                                     String        @db.Uuid
+  amount                                               Decimal       @db.Decimal(20, 2)
+  allocation_date                                      DateTime      @db.Date
+  note                                                 String?
+  created_at                                           DateTime      @default(now()) @db.Timestamptz(6)
+  updated_at                                           DateTime      @default(now()) @db.Timestamptz(6)
+  deleted_at                                           DateTime?     @db.Timestamptz(6)
+  users                                                users         @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  wallets_money_allocations_source_wallet_idTowallets wallets       @relation("money_allocations_source_wallet_idTowallets", fields: [source_wallet_id], references: [id], onUpdate: NoAction)
+  transfers                                            transfers[]
+
+  @@index([user_id, deleted_at, allocation_date(sort: Desc)], map: "idx_money_allocations_user_date")
+  @@index([source_wallet_id], map: "idx_money_allocations_source_wallet")
 }
 
 /// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
@@ -139,6 +160,7 @@ model users {
   categories            categories[]
   refresh_tokens        refresh_tokens[]
   transaction_templates transaction_templates[]
+  money_allocations     money_allocations[]
   wallets               wallets[]
 }
 
@@ -165,6 +187,7 @@ model wallets {
   transactions                                transactions[]
   transfers_transfers_from_wallet_idTowallets transfers[]             @relation("transfers_from_wallet_idTowallets")
   transfers_transfers_to_wallet_idTowallets   transfers[]             @relation("transfers_to_wallet_idTowallets")
+  money_allocations_money_allocations_source_wallet_idTowallets money_allocations[] @relation("money_allocations_source_wallet_idTowallets")
   wallets                                     wallets?                @relation("walletsTowallets", fields: [parent_wallet_id], references: [id], onUpdate: NoAction)
   other_wallets                               wallets[]               @relation("walletsTowallets")
   users                                       users                   @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)

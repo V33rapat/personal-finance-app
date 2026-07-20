@@ -14,6 +14,7 @@ interface TransferWallet {
 
 interface ApiTransfer {
   id: string;
+  allocation_id: string | null;
   from_wallet_id: string;
   to_wallet_id: string;
   from_transaction_id: string | null;
@@ -30,6 +31,7 @@ interface ApiTransfer {
 
 export interface Transfer {
   id: string;
+  allocation_id: string | null;
   from_wallet_id: string;
   to_wallet_id: string;
   sourceWalletName: string;
@@ -80,6 +82,7 @@ function toMoneyNumber(value: string | number | null | undefined) {
 function mapApiTransfer(transfer: ApiTransfer): Transfer {
   return {
     id: transfer.id,
+    allocation_id: transfer.allocation_id ?? null,
     from_wallet_id: transfer.from_wallet_id,
     to_wallet_id: transfer.to_wallet_id,
     sourceWalletName:

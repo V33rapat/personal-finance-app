@@ -52,12 +52,22 @@ function TransferIcon() {
   );
 }
 
+function AllocationIcon() {
+  return (
+    <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} aria-hidden>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M5 5v14m0-7h5m4-5h5m-5 10h5" />
+      <path strokeLinecap="round" strokeLinejoin="round" d="m16 5 3 2-3 2m0 6 3 2-3 2" />
+    </svg>
+  );
+}
+
 const navItems = [
   { href: "/dashboard", label: TH_TEXT.navigation.dashboard, icon: <DashboardIcon /> },
   { href: "/wallet", label: TH_TEXT.navigation.wallet, icon: <WalletIcon /> },
   { href: "/transactions", label: TH_TEXT.navigation.transactions, icon: <TransactionsIcon /> },
   { href: "/transaction-templates", label: TH_TEXT.navigation.transactionTemplates, icon: <TemplateIcon /> },
   { href: "/transfer", label: TH_TEXT.navigation.transfer, icon: <TransferIcon /> },
+  { href: "/allocation", label: TH_TEXT.navigation.allocation, icon: <AllocationIcon /> },
   { href: "/profile", label: TH_TEXT.navigation.profile, icon: <ProfileIcon /> },
 ];
 

@@ -233,6 +233,35 @@ export class WalletService {
         });
       }
 
+      const affectedAllocations = await tx.money_allocations.findMany({
+        where: {
+          user_id: userId,
+          deleted_at: null,
+          OR: [
+            { source_wallet_id: walletId },
+            {
+              transfers: {
+                some: {
+                  deleted_at: null,
+                  OR: [
+                    { from_wallet_id: walletId },
+                    { to_wallet_id: walletId },
+                  ],
+                },
+              },
+            },
+          ],
+        },
+        select: { id: true },
+      });
+
+      if (affectedAllocations.length > 0) {
+        await tx.money_allocations.updateMany({
+          where: { id: { in: affectedAllocations.map((item) => item.id) } },
+          data: { deleted_at: deletedAt, updated_at: deletedAt },
+        });
+      }
+
       await tx.transfers.updateMany({
         where: {
           deleted_at: null,
