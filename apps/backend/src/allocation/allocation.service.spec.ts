@@ -2,9 +2,27 @@ import { BadRequestException } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { AllocationService } from './allocation.service';
 import { PrismaService } from '../prisma/prisma.service';
-import { TransferService } from '../transfer/transfer.service';
+import {
+  PrismaTransaction,
+  TransferService,
+} from '../transfer/transfer.service';
 
 const createdAt = new Date('2026-07-20T00:00:00.000Z');
+
+type TransactionCallback = (tx: PrismaTransaction) => Promise<unknown>;
+
+type PrismaMock = {
+  $transaction: jest.MockedFunction<
+    (callback: TransactionCallback) => Promise<unknown>
+  >;
+  money_allocations: {
+    create: jest.Mock;
+    findFirst: jest.Mock;
+    findMany: jest.Mock;
+    update: jest.Mock;
+  };
+  wallets: { findMany: jest.Mock; findFirst: jest.Mock };
+};
 
 function createAllocationRecord() {
   return {
@@ -54,16 +72,7 @@ function createAllocationRecord() {
 
 describe('AllocationService', () => {
   let service: AllocationService;
-  let prisma: {
-    $transaction: jest.Mock;
-    money_allocations: {
-      create: jest.Mock;
-      findFirst: jest.Mock;
-      findMany: jest.Mock;
-      update: jest.Mock;
-    };
-    wallets: { findMany: jest.Mock; findFirst: jest.Mock };
-  };
+  let prisma: PrismaMock;
   let transferService: {
     createInTransaction: jest.Mock;
     reverseAndSoftDeleteInTransaction: jest.Mock;
@@ -72,7 +81,7 @@ describe('AllocationService', () => {
 
   beforeEach(() => {
     prisma = {
-      $transaction: jest.fn(),
+      $transaction: jest.fn() as PrismaMock['$transaction'],
       money_allocations: {
         create: jest.fn(),
         findFirst: jest.fn(),
@@ -84,7 +93,9 @@ describe('AllocationService', () => {
         findFirst: jest.fn(),
       },
     };
-    prisma.$transaction.mockImplementation((callback) => callback(prisma));
+    prisma.$transaction.mockImplementation(async (callback) =>
+      callback(prisma as unknown as PrismaTransaction),
+    );
     transferService = {
       createInTransaction: jest.fn(),
       reverseAndSoftDeleteInTransaction: jest.fn(),
@@ -184,16 +195,22 @@ describe('AllocationService', () => {
       note: 'ปรับวันที่',
     });
 
-    expect(transferService.reverseAndSoftDeleteInTransaction).not.toHaveBeenCalled();
+    expect(
+      transferService.reverseAndSoftDeleteInTransaction,
+    ).not.toHaveBeenCalled();
     expect(transferService.createInTransaction).not.toHaveBeenCalled();
-    expect(transferService.updateMetadataInTransaction).toHaveBeenCalledTimes(2);
+    expect(transferService.updateMetadataInTransaction).toHaveBeenCalledTimes(
+      2,
+    );
+    const expectedUpdateData: unknown = expect.objectContaining({
+      allocation_date: new Date('2026-07-19T00:00:00.000Z'),
+      note: 'ปรับวันที่',
+    });
+
     expect(prisma.money_allocations.update).toHaveBeenCalledWith(
       expect.objectContaining({
         where: { id: record.id },
-        data: expect.objectContaining({
-          allocation_date: new Date('2026-07-19T00:00:00.000Z'),
-          note: 'ปรับวันที่',
-        }),
+        data: expectedUpdateData,
       }),
     );
   });

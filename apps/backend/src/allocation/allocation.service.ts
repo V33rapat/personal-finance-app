@@ -91,7 +91,9 @@ export class AllocationService {
   }
 
   async findOne(userId: string, id: string) {
-    return this.toResponse(await this.findAllocationRecord(this.prisma, userId, id));
+    return this.toResponse(
+      await this.findAllocationRecord(this.prisma, userId, id),
+    );
   }
 
   async update(userId: string, id: string, dto: UpdateAllocationDto) {
