@@ -59,7 +59,7 @@ export function buildDashboardChartData(
     const row: DashboardChartDatum = {
       date: day.date,
       income_total: Number(day.income_total),
-      expense_total: -Number(day.expense_total),
+      expense_total: Number(day.expense_total),
     };
 
     for (const type of ["income", "expense"] as const) {
@@ -68,8 +68,7 @@ export function buildDashboardChartData(
       for (const category of categories) {
         const group = getCategoryGroup(category, type, hiddenCategoryIdSet);
         const amount = Number(category.amount);
-        const signedAmount = type === "income" ? amount : -amount;
-        row[group.key] = Number(row[group.key] ?? 0) + signedAmount;
+        row[group.key] = Number(row[group.key] ?? 0) + amount;
         const existing = segmentTotals.get(group.key);
 
         segmentTotals.set(group.key, {

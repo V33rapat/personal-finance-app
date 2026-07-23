@@ -127,7 +127,7 @@ export default function DashboardBarChart({
                   name={segment.label}
                   fill={segment.color}
                   stackId="expense"
-                  radius={[0, 0, 3, 3]}
+                  radius={[3, 3, 0, 0]}
                 />
               ))}
             </>
@@ -146,7 +146,7 @@ export default function DashboardBarChart({
                   dataKey="expense_total"
                   name={TH_TEXT.dashboard.expense}
                   fill="#DC2626"
-                  radius={[0, 0, 3, 3]}
+                  radius={[3, 3, 0, 0]}
                 />
               )}
             </>
