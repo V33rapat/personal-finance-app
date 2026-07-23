@@ -230,4 +230,132 @@ describe('DashboardService', () => {
       }),
     ).rejects.toBeInstanceOf(BadRequestException);
   });
+
+  it('returns a zero-filled, user-scoped category overview without transfer transactions', async () => {
+    prisma.transactions.groupBy.mockResolvedValue([
+      {
+        transaction_date: new Date('2026-07-20T00:00:00.000Z'),
+        type: 'income',
+        category_id: 'a9f51261-03ee-44cf-a5fd-730af76a4178',
+        _sum: { amount: new Prisma.Decimal(1200) },
+      },
+      {
+        transaction_date: new Date('2026-07-20T00:00:00.000Z'),
+        type: 'expense',
+        category_id: 'a2107982-4d60-4680-9332-0f051d0150e4',
+        _sum: { amount: new Prisma.Decimal(300) },
+      },
+      {
+        transaction_date: new Date('2026-07-22T00:00:00.000Z'),
+        type: 'expense',
+        category_id: null,
+        _sum: { amount: new Prisma.Decimal(50) },
+      },
+    ]);
+    prisma.categories.findMany.mockResolvedValue([
+      {
+        id: 'a9f51261-03ee-44cf-a5fd-730af76a4178',
+        name: 'Salary',
+        color: '#16A34A',
+      },
+      {
+        id: 'a2107982-4d60-4680-9332-0f051d0150e4',
+        name: 'Food',
+        color: '#DC2626',
+      },
+    ]);
+
+    await expect(
+      service.getOverview('user-1', '2026-07-20', '2026-07-22'),
+    ).resolves.toEqual({
+      period_start: '2026-07-20',
+      period_end: '2026-07-22',
+      totals: { income: '1200.00', expense: '350.00', net: '850.00' },
+      days: [
+        {
+          date: '2026-07-20',
+          income_total: '1200.00',
+          expense_total: '300.00',
+          income_categories: [
+            {
+              category_id: 'a9f51261-03ee-44cf-a5fd-730af76a4178',
+              category_name: 'Salary',
+              category_color: '#16A34A',
+              amount: '1200.00',
+            },
+          ],
+          expense_categories: [
+            {
+              category_id: 'a2107982-4d60-4680-9332-0f051d0150e4',
+              category_name: 'Food',
+              category_color: '#DC2626',
+              amount: '300.00',
+            },
+          ],
+        },
+        {
+          date: '2026-07-21',
+          income_total: '0.00',
+          expense_total: '0.00',
+          income_categories: [],
+          expense_categories: [],
+        },
+        {
+          date: '2026-07-22',
+          income_total: '0.00',
+          expense_total: '50.00',
+          income_categories: [],
+          expense_categories: [
+            {
+              category_id: null,
+              category_name: 'Uncategorized',
+              category_color: null,
+              amount: '50.00',
+            },
+          ],
+        },
+      ],
+      expense_categories: [
+        {
+          category_id: 'a2107982-4d60-4680-9332-0f051d0150e4',
+          category_name: 'Food',
+          category_color: '#DC2626',
+          amount: '300.00',
+        },
+        {
+          category_id: null,
+          category_name: 'Uncategorized',
+          category_color: null,
+          amount: '50.00',
+        },
+      ],
+    });
+
+    expect(prisma.transactions.groupBy).toHaveBeenCalledWith({
+      by: ['transaction_date', 'type', 'category_id'],
+      where: {
+        deleted_at: null,
+        transaction_date: {
+          gte: new Date('2026-07-20T00:00:00.000Z'),
+          lt: new Date('2026-07-23T00:00:00.000Z'),
+        },
+        wallets: {
+          user_id: 'user-1',
+          is_active: true,
+          deleted_at: null,
+          created_at: { lt: new Date('2026-07-23T00:00:00.000Z') },
+        },
+        transfers_transfers_from_transaction_idTotransactions: { is: null },
+        transfers_transfers_to_transaction_idTotransactions: { is: null },
+      },
+      _sum: { amount: true },
+      orderBy: [{ transaction_date: 'asc' }, { type: 'asc' }],
+    });
+  });
+
+  it('rejects future overview dates', async () => {
+    await expect(
+      service.getOverview('user-1', '2099-01-01', '2099-01-01'),
+    ).rejects.toBeInstanceOf(BadRequestException);
+  });
 });

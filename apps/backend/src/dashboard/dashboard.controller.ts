@@ -10,6 +10,7 @@ import {
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import type { AuthenticatedRequest } from '../auth/types/authenticated-request';
 import { DashboardService } from './dashboard.service';
+import { FindDashboardOverviewDto } from './dto/find-dashboard-overview.dto';
 import { UpdateDashboardPreferencesDto } from './dto/update-dashboard-preferences.dto';
 
 @Controller('dashboard')
@@ -20,6 +21,18 @@ export class DashboardController {
   @Get('summary')
   getSummary(@Req() req: AuthenticatedRequest, @Query('month') month?: string) {
     return this.dashboardService.getSummary(req.user.sub, month);
+  }
+
+  @Get('overview')
+  getOverview(
+    @Req() req: AuthenticatedRequest,
+    @Query() query: FindDashboardOverviewDto,
+  ) {
+    return this.dashboardService.getOverview(
+      req.user.sub,
+      query.start,
+      query.end,
+    );
   }
 
   @Get('preferences')

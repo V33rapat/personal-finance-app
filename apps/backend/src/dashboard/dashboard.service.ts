@@ -18,6 +18,21 @@ interface DateRange {
   end: Date;
 }
 
+export interface DashboardOverviewCategory {
+  category_id: string | null;
+  category_name: string;
+  category_color: string | null;
+  amount: string;
+}
+
+interface DashboardOverviewDay {
+  date: string;
+  income_total: Prisma.Decimal;
+  expense_total: Prisma.Decimal;
+  income_categories: DashboardOverviewCategory[];
+  expense_categories: DashboardOverviewCategory[];
+}
+
 interface DashboardPreferencesRecord {
   period_start: Date;
   period_end: Date;
@@ -31,12 +46,7 @@ export class DashboardService {
 
   async getSummary(userId: string, monthValue?: string) {
     const period = this.getReportingPeriod(monthValue);
-    const activeWalletWhere: Prisma.walletsWhereInput = {
-      user_id: userId,
-      is_active: true,
-      deleted_at: null,
-      created_at: { lt: period.end },
-    };
+    const activeWalletWhere = this.getActiveWalletWhere(userId, period.end);
 
     const [balanceByType, monthlyExpenses, activeWalletCount] =
       await this.prisma.$transaction([
@@ -81,6 +91,105 @@ export class DashboardService {
         monthlyExpenses._sum.amount ?? 0,
       ).toFixed(2),
       active_wallet_count: activeWalletCount,
+    };
+  }
+
+  async getOverview(userId: string, startValue: string, endValue: string) {
+    const period = this.getDateRange(startValue, endValue);
+    const endExclusive = new Date(period.end);
+    endExclusive.setUTCDate(endExclusive.getUTCDate() + 1);
+    const activeWalletWhere = this.getActiveWalletWhere(userId, endExclusive);
+    const groupedTransactions = await this.prisma.transactions.groupBy({
+      by: ['transaction_date', 'type', 'category_id'],
+      where: {
+        deleted_at: null,
+        transaction_date: { gte: period.start, lt: endExclusive },
+        wallets: activeWalletWhere,
+        transfers_transfers_from_transaction_idTotransactions: { is: null },
+        transfers_transfers_to_transaction_idTotransactions: { is: null },
+      },
+      _sum: { amount: true },
+      orderBy: [{ transaction_date: 'asc' }, { type: 'asc' }],
+    });
+    const categoryIds = groupedTransactions.flatMap((transaction) =>
+      transaction.category_id ? [transaction.category_id] : [],
+    );
+    const categories =
+      categoryIds.length === 0
+        ? []
+        : await this.prisma.categories.findMany({
+            where: { id: { in: categoryIds } },
+            select: { id: true, name: true, color: true },
+          });
+    const categoryById = new Map(
+      categories.map((category) => [category.id, category]),
+    );
+    const dayByDate = new Map<string, DashboardOverviewDay>(
+      this.getDatesInRange(period).map((date) => [
+        this.toDateString(date),
+        {
+          date: this.toDateString(date),
+          income_total: new Prisma.Decimal(0),
+          expense_total: new Prisma.Decimal(0),
+          income_categories: [] as DashboardOverviewCategory[],
+          expense_categories: [] as DashboardOverviewCategory[],
+        },
+      ]),
+    );
+
+    for (const transaction of groupedTransactions) {
+      const date = this.toDateString(transaction.transaction_date);
+      const day = dayByDate.get(date);
+
+      if (!day) {
+        continue;
+      }
+
+      const amount = new Prisma.Decimal(transaction._sum.amount ?? 0);
+      const category = transaction.category_id
+        ? categoryById.get(transaction.category_id)
+        : null;
+      const categorySummary: DashboardOverviewCategory = {
+        category_id: transaction.category_id,
+        category_name: category?.name ?? 'Uncategorized',
+        category_color: category?.color ?? null,
+        amount: amount.toFixed(2),
+      };
+
+      if (transaction.type === 'income') {
+        day.income_total = day.income_total.plus(amount);
+        day.income_categories.push(categorySummary);
+      } else {
+        day.expense_total = day.expense_total.plus(amount);
+        day.expense_categories.push(categorySummary);
+      }
+    }
+
+    const days = [...dayByDate.values()];
+    const totals = days.reduce(
+      (summary, day) => ({
+        income: summary.income.plus(day.income_total),
+        expense: summary.expense.plus(day.expense_total),
+      }),
+      { income: new Prisma.Decimal(0), expense: new Prisma.Decimal(0) },
+    );
+
+    return {
+      period_start: this.toDateString(period.start),
+      period_end: this.toDateString(period.end),
+      totals: {
+        income: totals.income.toFixed(2),
+        expense: totals.expense.toFixed(2),
+        net: totals.income.minus(totals.expense).toFixed(2),
+      },
+      days: days.map((day) => ({
+        date: day.date,
+        income_total: day.income_total.toFixed(2),
+        expense_total: day.expense_total.toFixed(2),
+        income_categories: day.income_categories,
+        expense_categories: day.expense_categories,
+      })),
+      expense_categories: this.getCategoryTotals(days, 'expense_categories'),
     };
   }
 
@@ -198,6 +307,53 @@ export class DashboardService {
     }
 
     return { start, end };
+  }
+
+  private getActiveWalletWhere(userId: string, periodEnd: Date) {
+    return {
+      user_id: userId,
+      is_active: true,
+      deleted_at: null,
+      created_at: { lt: periodEnd },
+    } satisfies Prisma.walletsWhereInput;
+  }
+
+  private getDatesInRange(period: DateRange) {
+    const dates: Date[] = [];
+    const current = new Date(period.start);
+
+    while (current <= period.end) {
+      dates.push(new Date(current));
+      current.setUTCDate(current.getUTCDate() + 1);
+    }
+
+    return dates;
+  }
+
+  private getCategoryTotals(
+    days: DashboardOverviewDay[],
+    categoryKey: 'income_categories' | 'expense_categories',
+  ) {
+    const categories = new Map<string, DashboardOverviewCategory>();
+
+    for (const day of days) {
+      for (const category of day[categoryKey]) {
+        const key = category.category_id ?? 'uncategorized';
+        const existing = categories.get(key);
+        const amount = new Prisma.Decimal(category.amount);
+
+        categories.set(key, {
+          ...category,
+          amount: new Prisma.Decimal(existing?.amount ?? 0)
+            .plus(amount)
+            .toFixed(2),
+        });
+      }
+    }
+
+    return [...categories.values()].sort((first, second) =>
+      new Prisma.Decimal(second.amount).comparedTo(first.amount),
+    );
   }
 
   private toPreferencesResponse(
