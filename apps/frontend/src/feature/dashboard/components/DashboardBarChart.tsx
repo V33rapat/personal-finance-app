@@ -19,7 +19,10 @@ interface DashboardBarChartProps {
   overview: DashboardOverview;
   hiddenCategoryIds: string[];
   isCategoryBreakdownEnabled: boolean;
+  visibleTransactionType: DashboardChartTransactionType;
 }
+
+export type DashboardChartTransactionType = "all" | "income" | "expense";
 
 function formatCurrency(value: number) {
   return new Intl.NumberFormat("th-TH", {
@@ -52,14 +55,19 @@ export default function DashboardBarChart({
   overview,
   hiddenCategoryIds,
   isCategoryBreakdownEnabled,
+  visibleTransactionType,
 }: DashboardBarChartProps) {
   const { rows, incomeSegments, expenseSegments } = buildDashboardChartData(
     overview,
     hiddenCategoryIds
   );
   const hasTransactions = rows.some(
-    (row) => Number(row.income_total) !== 0 || Number(row.expense_total) !== 0
+    (row) =>
+      (visibleTransactionType !== "expense" && Number(row.income_total) !== 0) ||
+      (visibleTransactionType !== "income" && Number(row.expense_total) !== 0)
   );
+  const shouldShowIncome = visibleTransactionType !== "expense";
+  const shouldShowExpense = visibleTransactionType !== "income";
 
   if (!hasTransactions) {
     return (
@@ -102,7 +110,7 @@ export default function DashboardBarChart({
           />
           {isCategoryBreakdownEnabled ? (
             <>
-              {incomeSegments.map((segment) => (
+              {shouldShowIncome && incomeSegments.map((segment) => (
                 <Bar
                   key={segment.key}
                   dataKey={segment.key}
@@ -112,7 +120,7 @@ export default function DashboardBarChart({
                   radius={[3, 3, 0, 0]}
                 />
               ))}
-              {expenseSegments.map((segment) => (
+              {shouldShowExpense && expenseSegments.map((segment) => (
                 <Bar
                   key={segment.key}
                   dataKey={segment.key}
@@ -125,18 +133,22 @@ export default function DashboardBarChart({
             </>
           ) : (
             <>
-              <Bar
-                dataKey="income_total"
-                name={TH_TEXT.dashboard.income}
-                fill="#059669"
-                radius={[3, 3, 0, 0]}
-              />
-              <Bar
-                dataKey="expense_total"
-                name={TH_TEXT.dashboard.expense}
-                fill="#DC2626"
-                radius={[0, 0, 3, 3]}
-              />
+              {shouldShowIncome && (
+                <Bar
+                  dataKey="income_total"
+                  name={TH_TEXT.dashboard.income}
+                  fill="#059669"
+                  radius={[3, 3, 0, 0]}
+                />
+              )}
+              {shouldShowExpense && (
+                <Bar
+                  dataKey="expense_total"
+                  name={TH_TEXT.dashboard.expense}
+                  fill="#DC2626"
+                  radius={[0, 0, 3, 3]}
+                />
+              )}
             </>
           )}
         </BarChart>
