@@ -1,14 +1,28 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
+import { UpdateDashboardPreferencesDto } from './dto/update-dashboard-preferences.dto';
 
 const BANGKOK_TIME_ZONE = 'Asia/Bangkok';
 const MONTH_PATTERN = /^\d{4}-(0[1-9]|1[0-2])$/;
+const DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
 
 interface ReportingPeriod {
   month: string;
   start: Date;
   end: Date;
+}
+
+interface DateRange {
+  start: Date;
+  end: Date;
+}
+
+interface DashboardPreferencesRecord {
+  period_start: Date;
+  period_end: Date;
+  is_category_breakdown_enabled: boolean;
+  dashboard_hidden_categories: Array<{ category_id: string }>;
 }
 
 @Injectable()
@@ -70,6 +84,73 @@ export class DashboardService {
     };
   }
 
+  async getPreferences(userId: string) {
+    const preferences = await this.prisma.dashboard_preferences.findUnique({
+      where: { user_id: userId },
+      include: { dashboard_hidden_categories: true },
+    });
+
+    return this.toPreferencesResponse(preferences);
+  }
+
+  async updatePreferences(userId: string, dto: UpdateDashboardPreferencesDto) {
+    const period = this.getDateRange(dto.period_start, dto.period_end);
+    const hiddenCategoryIds = dto.hidden_category_ids;
+
+    if (hiddenCategoryIds.length > 0) {
+      const categories = await this.prisma.categories.findMany({
+        where: {
+          id: { in: hiddenCategoryIds },
+          OR: [{ user_id: userId }, { user_id: null, is_system: true }],
+        },
+        select: { id: true },
+      });
+
+      if (categories.length !== hiddenCategoryIds.length) {
+        throw new BadRequestException(
+          'Hidden categories must be available to the user',
+        );
+      }
+    }
+
+    const preferences = await this.prisma.$transaction(async (tx) => {
+      await tx.dashboard_preferences.upsert({
+        where: { user_id: userId },
+        create: {
+          user_id: userId,
+          period_start: period.start,
+          period_end: period.end,
+          is_category_breakdown_enabled: dto.is_category_breakdown_enabled,
+        },
+        update: {
+          period_start: period.start,
+          period_end: period.end,
+          is_category_breakdown_enabled: dto.is_category_breakdown_enabled,
+          updated_at: new Date(),
+        },
+      });
+      await tx.dashboard_hidden_categories.deleteMany({
+        where: { user_id: userId },
+      });
+
+      if (hiddenCategoryIds.length > 0) {
+        await tx.dashboard_hidden_categories.createMany({
+          data: hiddenCategoryIds.map((categoryId) => ({
+            user_id: userId,
+            category_id: categoryId,
+          })),
+        });
+      }
+
+      return tx.dashboard_preferences.findUniqueOrThrow({
+        where: { user_id: userId },
+        include: { dashboard_hidden_categories: true },
+      });
+    });
+
+    return this.toPreferencesResponse(preferences);
+  }
+
   private getReportingPeriod(monthValue?: string): ReportingPeriod {
     const month = monthValue ?? this.getCurrentBangkokMonth();
 
@@ -86,6 +167,103 @@ export class DashboardService {
     const end = new Date(Date.UTC(year, monthNumber, 1));
 
     return { month, start, end };
+  }
+
+  private getDateRange(startValue: string, endValue: string): DateRange {
+    if (!DATE_PATTERN.test(startValue) || !DATE_PATTERN.test(endValue)) {
+      throw new BadRequestException('Dates must use the YYYY-MM-DD format');
+    }
+
+    const start = this.toUtcDate(startValue);
+    const end = this.toUtcDate(endValue);
+    const today = this.toUtcDate(this.getCurrentBangkokDate());
+
+    if (start > end) {
+      throw new BadRequestException(
+        'Period start must be on or before period end',
+      );
+    }
+
+    if (end > today) {
+      throw new BadRequestException(
+        'Reporting period cannot include future dates',
+      );
+    }
+
+    const dayCount =
+      Math.floor((end.getTime() - start.getTime()) / 86_400_000) + 1;
+
+    if (dayCount > 10) {
+      throw new BadRequestException('Reporting period cannot exceed 10 days');
+    }
+
+    return { start, end };
+  }
+
+  private toPreferencesResponse(
+    preferences: DashboardPreferencesRecord | null,
+  ) {
+    if (!preferences) {
+      const period = this.getCurrentWeekToDate();
+
+      return {
+        period_start: this.toDateString(period.start),
+        period_end: this.toDateString(period.end),
+        is_category_breakdown_enabled: false,
+        hidden_category_ids: [],
+      };
+    }
+
+    return {
+      period_start: this.toDateString(preferences.period_start),
+      period_end: this.toDateString(preferences.period_end),
+      is_category_breakdown_enabled: preferences.is_category_breakdown_enabled,
+      hidden_category_ids: preferences.dashboard_hidden_categories.map(
+        (category) => category.category_id,
+      ),
+    };
+  }
+
+  private getCurrentWeekToDate(): DateRange {
+    const end = this.toUtcDate(this.getCurrentBangkokDate());
+    const daysSinceMonday = (end.getUTCDay() + 6) % 7;
+    const start = new Date(end);
+    start.setUTCDate(end.getUTCDate() - daysSinceMonday);
+
+    return { start, end };
+  }
+
+  private getCurrentBangkokDate() {
+    const parts = new Intl.DateTimeFormat('en-US', {
+      timeZone: BANGKOK_TIME_ZONE,
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+    }).formatToParts();
+    const year = parts.find((part) => part.type === 'year')?.value;
+    const month = parts.find((part) => part.type === 'month')?.value;
+    const day = parts.find((part) => part.type === 'day')?.value;
+
+    if (!year || !month || !day) {
+      throw new BadRequestException('Could not determine the current date');
+    }
+
+    return `${year}-${month}-${day}`;
+  }
+
+  private toUtcDate(value: string) {
+    const [year, month, day] = value.split('-').map(Number);
+    const date = new Date(Date.UTC(year, month - 1, day));
+
+    if (this.toDateString(date) !== value) {
+      throw new BadRequestException('Date is invalid');
+    }
+
+    return date;
+  }
+
+  private toDateString(date: Date) {
+    return date.toISOString().slice(0, 10);
   }
 
   private getCurrentBangkokMonth() {
