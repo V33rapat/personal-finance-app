@@ -1,3 +1,4 @@
+@import "react-day-picker/style.css";
 @import "tailwindcss";
 
 @custom-variant dark (&:where(.dark, .dark *));
@@ -5,6 +6,9 @@
 :root {
   --background: #ffffff;
   --foreground: #171717;
+  --dashboard-tooltip-background: #ffffff;
+  --dashboard-tooltip-border: #cbd5e1;
+  --dashboard-tooltip-foreground: #0f172a;
 }
 
 @theme inline {
@@ -17,10 +21,29 @@
 .dark {
   --background: #0a0a0a;
   --foreground: #ededed;
+  --dashboard-tooltip-background: #0f172a;
+  --dashboard-tooltip-border: #334155;
+  --dashboard-tooltip-foreground: #f8fafc;
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
+}
+
+.dashboard-day-picker {
+  --rdp-accent-color: #7c3aed;
+  --rdp-accent-background-color: #ede9fe;
+  --rdp-day_button-border-radius: 0.5rem;
+  --rdp-selected-border: 0;
+  --rdp-range_middle-background-color: #f5f3ff;
+}
+
+.dark .dashboard-day-picker {
+  --rdp-accent-color: #c4b5fd;
+  --rdp-accent-background-color: #4c1d95;
+  --rdp-range_middle-background-color: #312e81;
+  --rdp-weekday-opacity: 0.7;
+  color: #e2e8f0;
 }

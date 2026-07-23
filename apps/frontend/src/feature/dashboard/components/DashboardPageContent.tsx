@@ -4,6 +4,7 @@ import Button from "@/components/ui/Button";
 import Card from "@/components/ui/Card";
 import { TH_TEXT } from "@/constants/th";
 import { useDashboardSummary } from "../hooks/useDashboardSummary";
+import DashboardWeeklyOverview from "./DashboardWeeklyOverview";
 
 function formatMonth(month: string) {
   const [year, monthNumber] = month.split("-").map(Number);
@@ -126,16 +127,7 @@ export default function DashboardPageContent() {
         />
       </div>
 
-      <Card className="flex min-h-[280px] items-center justify-center p-8 text-center">
-        <div>
-          <h2 className="text-lg font-bold text-slate-900 dark:text-slate-50">
-            {TH_TEXT.dashboard.comingTitle}
-          </h2>
-          <p className="mt-2 max-w-md text-sm leading-6 text-slate-500 dark:text-slate-400">
-            {TH_TEXT.dashboard.comingDescription}
-          </p>
-        </div>
-      </Card>
+      <DashboardWeeklyOverview />
     </div>
   );
 }
