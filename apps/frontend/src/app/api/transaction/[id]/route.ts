@@ -4,8 +4,10 @@ import {
   getBackendUrl,
   readJson,
   serverNotReadyResponse,
+  toBackendTransactionUpdateBody,
+  type TransactionRequestBody,
   unauthorizedResponse,
-} from "../../_lib/bff";
+} from "../transaction-bff";
 
 interface RouteContext {
   params: Promise<{ id: string }>;
@@ -50,7 +52,7 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
     }
 
     const { id } = await context.params;
-    const body = await request.json();
+    const body = (await request.json()) as TransactionRequestBody;
 
     const res = await fetch(`${getBackendUrl()}/transaction/${id}`, {
       method: "PATCH",
@@ -58,7 +60,7 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
         "Content-Type": "application/json",
         ...authHeader,
       },
-      body: JSON.stringify(body),
+      body: JSON.stringify(toBackendTransactionUpdateBody(body)),
       cache: "no-store",
     });
 

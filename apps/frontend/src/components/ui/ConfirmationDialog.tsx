@@ -12,6 +12,7 @@ interface ConfirmationDialogProps {
   onConfirm: () => void;
   onCancel: () => void;
   variant?: "danger" | "warning";
+  isLoading?: boolean;
 }
 
 export default function ConfirmationDialog({
@@ -23,6 +24,7 @@ export default function ConfirmationDialog({
   onConfirm,
   onCancel,
   variant = "danger",
+  isLoading = false,
 }: ConfirmationDialogProps) {
   if (!isOpen) return null;
 
@@ -39,19 +41,20 @@ export default function ConfirmationDialog({
           </div>
           <div>
             <h3 className="text-base font-semibold text-slate-800 dark:text-slate-100">{title}</h3>
-            <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">{message}</p>
+            <p className="mt-1 whitespace-pre-line text-sm text-slate-500 dark:text-slate-400">{message}</p>
           </div>
         </div>
 
         <div className="mt-6 flex gap-3">
           {/** Cancel button */}
-          <Button variant="secondary" className="flex-1" onClick={onCancel}>
+          <Button variant="secondary" className="flex-1" disabled={isLoading} onClick={onCancel}>
             {cancelText ?? TH_TEXT.common.cancel}
           </Button>
           {/** Confirm button */}
           <Button
             variant={variant === "danger" ? "danger" : "secondary"}
             className={variant === "danger" ? "flex-1 bg-red-600 text-white hover:bg-red-700" : "flex-1"}
+            disabled={isLoading}
             onClick={onConfirm}
           >
             {confirmText ?? TH_TEXT.common.delete}

@@ -9,6 +9,7 @@ import { TransferModule } from './transfer/transfer.module';
 import { TransactionTemplateModule } from './transaction-template/transaction-template.module';
 import { StorageModule } from './storage/storage.module';
 import { DashboardModule } from './dashboard/dashboard.module';
+import { AllocationModule } from './allocation/allocation.module';
 
 @Module({
   controllers: [AppController],
@@ -22,6 +23,7 @@ import { DashboardModule } from './dashboard/dashboard.module';
     TransactionTemplateModule,
     StorageModule,
     DashboardModule,
+    AllocationModule,
   ],
 })
 export class AppModule {}

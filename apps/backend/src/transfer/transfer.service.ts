@@ -19,7 +19,7 @@ const transferInclude = {
   transactions_transfers_to_transaction_idTotransactions: true,
 } satisfies Prisma.transfersInclude;
 
-interface TransferValues {
+export interface TransferValues {
   from_wallet_id: string;
   to_wallet_id: string;
   amount: Prisma.Decimal;
@@ -27,64 +27,82 @@ interface TransferValues {
   note: string | null;
 }
 
-type PrismaTransaction = Parameters<
+export interface ManagedTransfer {
+  id: string;
+  from_wallet_id: string;
+  to_wallet_id: string;
+  from_transaction_id: string | null;
+  to_transaction_id: string | null;
+  amount: Prisma.Decimal;
+}
+
+export type PrismaTransaction = Parameters<
   Parameters<PrismaService['$transaction']>[0]
 >[0];
 
 @Injectable()
 export class TransferService {
-  constructor(private prisma: PrismaService) {}
+  constructor(private readonly prisma: PrismaService) {}
 
   async create(userId: string, dto: CreateTransferDto) {
-    const values = this.toCreateValues(dto);
+    return this.prisma.$transaction((tx) =>
+      this.createInTransaction(tx, userId, this.toCreateValues(dto)),
+    );
+  }
 
-    return this.prisma.$transaction(async (tx) => {
-      const { fromWallet, toWallet } = await this.getTransferWallets(
-        tx,
-        userId,
-        values.from_wallet_id,
-        values.to_wallet_id,
-      );
-      const transferDate = this.toTransferDate(values.transfer_date);
+  async createInTransaction(
+    tx: PrismaTransaction,
+    userId: string,
+    values: TransferValues,
+    allocationId?: string,
+  ) {
+    const normalizedValues = this.validateTransferValues(values);
+    const { fromWallet, toWallet } = await this.getTransferWallets(
+      tx,
+      userId,
+      normalizedValues.from_wallet_id,
+      normalizedValues.to_wallet_id,
+    );
+    const transferDate = this.toTransferDate(normalizedValues.transfer_date);
 
-      await this.applyTransferBalance(tx, userId, values);
+    await this.applyTransferBalance(tx, userId, normalizedValues);
 
-      const fromTransaction = await tx.transactions.create({
-        data: {
-          wallet_id: values.from_wallet_id,
-          name: this.getFromTransactionName(toWallet.name),
-          type: 'expense',
-          amount: values.amount,
-          transaction_date: transferDate,
-          note: values.note,
-          category_id: null,
-        },
-      });
+    const fromTransaction = await tx.transactions.create({
+      data: {
+        wallet_id: normalizedValues.from_wallet_id,
+        name: this.getFromTransactionName(toWallet.name),
+        type: 'expense',
+        amount: normalizedValues.amount,
+        transaction_date: transferDate,
+        note: normalizedValues.note,
+        category_id: null,
+      },
+    });
 
-      const toTransaction = await tx.transactions.create({
-        data: {
-          wallet_id: values.to_wallet_id,
-          name: this.getToTransactionName(fromWallet.name),
-          type: 'income',
-          amount: values.amount,
-          transaction_date: transferDate,
-          note: values.note,
-          category_id: null,
-        },
-      });
+    const toTransaction = await tx.transactions.create({
+      data: {
+        wallet_id: normalizedValues.to_wallet_id,
+        name: this.getToTransactionName(fromWallet.name),
+        type: 'income',
+        amount: normalizedValues.amount,
+        transaction_date: transferDate,
+        note: normalizedValues.note,
+        category_id: null,
+      },
+    });
 
-      return tx.transfers.create({
-        data: {
-          from_wallet_id: values.from_wallet_id,
-          to_wallet_id: values.to_wallet_id,
-          from_transaction_id: fromTransaction.id,
-          to_transaction_id: toTransaction.id,
-          amount: values.amount,
-          note: values.note,
-          transfer_date: transferDate,
-        },
-        include: transferInclude,
-      });
+    return tx.transfers.create({
+      data: {
+        allocation_id: allocationId ?? null,
+        from_wallet_id: normalizedValues.from_wallet_id,
+        to_wallet_id: normalizedValues.to_wallet_id,
+        from_transaction_id: fromTransaction.id,
+        to_transaction_id: toTransaction.id,
+        amount: normalizedValues.amount,
+        note: normalizedValues.note,
+        transfer_date: transferDate,
+      },
+      include: transferInclude,
     });
   }
 
@@ -114,6 +132,7 @@ export class TransferService {
 
   async update(userId: string, id: string, dto: UpdateTransferDto) {
     const existing = await this.findOne(userId, id);
+    this.assertStandaloneTransfer(existing.allocation_id);
     const values = this.toUpdateValues(existing, dto);
 
     return this.prisma.$transaction(async (tx) => {
@@ -172,25 +191,12 @@ export class TransferService {
           },
         });
       } else {
-        await tx.transactions.update({
-          where: { id: existing.from_transaction_id },
-          data: {
-            transaction_date: transferDate,
-            note: values.note,
-            deleted_at: null,
-            updated_at: new Date(),
-          },
-        });
-
-        await tx.transactions.update({
-          where: { id: existing.to_transaction_id },
-          data: {
-            transaction_date: transferDate,
-            note: values.note,
-            deleted_at: null,
-            updated_at: new Date(),
-          },
-        });
+        await this.updateMetadataInTransaction(
+          tx,
+          existing,
+          values.transfer_date,
+          values.note,
+        );
       }
 
       return tx.transfers.update({
@@ -210,33 +216,87 @@ export class TransferService {
 
   async delete(userId: string, id: string) {
     const existing = await this.findOne(userId, id);
+    this.assertStandaloneTransfer(existing.allocation_id);
 
-    return this.prisma.$transaction(async (tx) => {
-      await this.reverseTransferBalance(tx, userId, {
-        from_wallet_id: existing.from_wallet_id,
-        to_wallet_id: existing.to_wallet_id,
-        amount: new Prisma.Decimal(existing.amount),
+    return this.prisma.$transaction((tx) =>
+      this.reverseAndSoftDeleteInTransaction(tx, userId, existing),
+    );
+  }
+
+  async updateMetadataInTransaction(
+    tx: PrismaTransaction,
+    transfer: ManagedTransfer,
+    transferDateValue: string,
+    note: string | null,
+    updatedAt = new Date(),
+  ) {
+    const transferDate = this.toTransferDate(transferDateValue);
+
+    if (transfer.from_transaction_id) {
+      await tx.transactions.update({
+        where: { id: transfer.from_transaction_id },
+        data: {
+          transaction_date: transferDate,
+          note,
+          deleted_at: null,
+          updated_at: updatedAt,
+        },
       });
+    }
 
-      if (existing.from_transaction_id) {
-        await tx.transactions.update({
-          where: { id: existing.from_transaction_id },
-          data: { deleted_at: new Date(), updated_at: new Date() },
-        });
-      }
-
-      if (existing.to_transaction_id) {
-        await tx.transactions.update({
-          where: { id: existing.to_transaction_id },
-          data: { deleted_at: new Date(), updated_at: new Date() },
-        });
-      }
-
-      return tx.transfers.update({
-        where: { id },
-        data: { deleted_at: new Date(), updated_at: new Date() },
-        include: transferInclude,
+    if (transfer.to_transaction_id) {
+      await tx.transactions.update({
+        where: { id: transfer.to_transaction_id },
+        data: {
+          transaction_date: transferDate,
+          note,
+          deleted_at: null,
+          updated_at: updatedAt,
+        },
       });
+    }
+
+    return tx.transfers.update({
+      where: { id: transfer.id },
+      data: {
+        transfer_date: transferDate,
+        note,
+        updated_at: updatedAt,
+      },
+      include: transferInclude,
+    });
+  }
+
+  async reverseAndSoftDeleteInTransaction(
+    tx: PrismaTransaction,
+    userId: string,
+    transfer: ManagedTransfer,
+    deletedAt = new Date(),
+  ) {
+    await this.reverseTransferBalance(tx, userId, {
+      from_wallet_id: transfer.from_wallet_id,
+      to_wallet_id: transfer.to_wallet_id,
+      amount: new Prisma.Decimal(transfer.amount),
+    });
+
+    if (transfer.from_transaction_id) {
+      await tx.transactions.update({
+        where: { id: transfer.from_transaction_id },
+        data: { deleted_at: deletedAt, updated_at: deletedAt },
+      });
+    }
+
+    if (transfer.to_transaction_id) {
+      await tx.transactions.update({
+        where: { id: transfer.to_transaction_id },
+        data: { deleted_at: deletedAt, updated_at: deletedAt },
+      });
+    }
+
+    return tx.transfers.update({
+      where: { id: transfer.id },
+      data: { deleted_at: deletedAt, updated_at: deletedAt },
+      include: transferInclude,
     });
   }
 
@@ -269,7 +329,6 @@ export class TransferService {
       amount: Prisma.Decimal;
       note: string | null;
       transfer_date: Date;
-    } & {
       from_wallet_id: string;
       to_wallet_id: string;
     },
@@ -302,6 +361,14 @@ export class TransferService {
     this.assertNotFutureDate(values.transfer_date);
 
     return values;
+  }
+
+  private assertStandaloneTransfer(allocationId: string | null) {
+    if (allocationId) {
+      throw new BadRequestException(
+        'This transfer belongs to a money allocation. Please manage it through Money Allocation.',
+      );
+    }
   }
 
   private async getTransferWallets(

@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import Button from "@/components/ui/Button";
 import { TH_TEXT } from "@/constants/th";
 import type { Transfer } from "../hooks/useTransfer";
@@ -86,6 +87,7 @@ export default function TransferHistory({
         <div className="mt-5 space-y-3">
           {transfers.map((transfer) => {
             const isEditing = editingTransferId === transfer.id;
+            const isAllocationTransfer = !!transfer.allocation_id;
 
             return (
               <article
@@ -134,34 +136,50 @@ export default function TransferHistory({
                     <p className="mt-2 truncate text-sm text-slate-500 dark:text-slate-400">
                       {transfer.note || TH_TEXT.common.none}
                     </p>
+                    {isAllocationTransfer && (
+                      <span className="mt-2 inline-flex rounded-md bg-violet-100 px-2 py-1 text-xs font-semibold text-violet-700 dark:bg-violet-950/50 dark:text-violet-300">
+                        {TH_TEXT.allocation.fromAllocation}
+                      </span>
+                    )}
                   </div>
 
                   <div className="flex gap-2 lg:justify-end">
-                    <Button
-                      type="button"
-                      variant={isEditing ? "primary" : "secondary"}
-                      size="sm"
-                      disabled={isSaving}
-                      onClick={() => onEdit(transfer)}
-                    >
-                      <svg className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor" aria-hidden>
-                        <path d="M13.586 3.586a2 2 0 0 1 2.828 2.828l-.793.793-2.828-2.828.793-.793ZM11.379 5.793 4 13.172V16h2.828l7.379-7.379-2.828-2.828Z" />
-                      </svg>
-                      {TH_TEXT.common.edit}
-                    </Button>
-                    <Button
-                      type="button"
-                      variant="danger"
-                      size="sm"
-                      disabled={isSaving}
-                      aria-label={`${TH_TEXT.common.delete} ${getTransferLabel(transfer)}`}
-                      onClick={() => onDelete(transfer)}
-                    >
-                      <svg className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor" aria-hidden>
-                        <path fillRule="evenodd" d="M8.75 1A2.75 2.75 0 0 0 6 3.75V4H3.75a.75.75 0 0 0 0 1.5h.3l.64 10.243A2.75 2.75 0 0 0 7.434 18h5.132a2.75 2.75 0 0 0 2.744-2.257L15.95 5.5h.3a.75.75 0 0 0 0-1.5H14v-.25A2.75 2.75 0 0 0 11.25 1h-2.5ZM7.5 4v-.25c0-.69.56-1.25 1.25-1.25h2.5c.69 0 1.25.56 1.25 1.25V4h-5Z" clipRule="evenodd" />
-                      </svg>
-                      {TH_TEXT.common.delete}
-                    </Button>
+                    {isAllocationTransfer ? (
+                      <Link
+                        href="/allocation"
+                        className="inline-flex items-center justify-center rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
+                      >
+                        {TH_TEXT.allocation.manageFromAllocation}
+                      </Link>
+                    ) : (
+                      <>
+                        <Button
+                          type="button"
+                          variant={isEditing ? "primary" : "secondary"}
+                          size="sm"
+                          disabled={isSaving}
+                          onClick={() => onEdit(transfer)}
+                        >
+                          <svg className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor" aria-hidden>
+                            <path d="M13.586 3.586a2 2 0 0 1 2.828 2.828l-.793.793-2.828-2.828.793-.793ZM11.379 5.793 4 13.172V16h2.828l7.379-7.379-2.828-2.828Z" />
+                          </svg>
+                          {TH_TEXT.common.edit}
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="danger"
+                          size="sm"
+                          disabled={isSaving}
+                          aria-label={`${TH_TEXT.common.delete} ${getTransferLabel(transfer)}`}
+                          onClick={() => onDelete(transfer)}
+                        >
+                          <svg className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor" aria-hidden>
+                            <path fillRule="evenodd" d="M8.75 1A2.75 2.75 0 0 0 6 3.75V4H3.75a.75.75 0 0 0 0 1.5h.3l.64 10.243A2.75 2.75 0 0 0 7.434 18h5.132a2.75 2.75 0 0 0 2.744-2.257L15.95 5.5h.3a.75.75 0 0 0 0-1.5H14v-.25A2.75 2.75 0 0 0 11.25 1h-2.5ZM7.5 4v-.25c0-.69.56-1.25 1.25-1.25h2.5c.69 0 1.25.56 1.25 1.25V4h-5Z" clipRule="evenodd" />
+                          </svg>
+                          {TH_TEXT.common.delete}
+                        </Button>
+                      </>
+                    )}
                   </div>
                 </div>
               </article>

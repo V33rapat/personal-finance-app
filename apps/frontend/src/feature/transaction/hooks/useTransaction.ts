@@ -9,7 +9,8 @@ interface UseTransactionOptions {
   autoLoad?: boolean;
 }
 
-interface TransactionFormValues {
+export interface TransactionFormValues {
+  wallet_id: string;
   name: string;
   amount: string;
   type: TransactionType;
@@ -232,7 +233,7 @@ export function useTransaction(options: UseTransactionOptions = {}) {
   };
 
   const addTransaction = async (values: TransactionFormValues) => {
-    const targetWalletId = walletId ?? currentWalletId ?? filters.walletId;
+    const targetWalletId = values.wallet_id;
 
     if (!targetWalletId) {
       setError("กรุณาเลือกกระเป๋าเงินก่อนเพิ่มรายการ");
@@ -259,7 +260,15 @@ export function useTransaction(options: UseTransactionOptions = {}) {
       });
       const data = await readApiResponse(response);
 
-      setTransactions((current) => [mapApiTransaction(data), ...current]);
+      const createdTransaction = mapApiTransaction(data);
+
+      setTransactions((current) => {
+        if (walletId && createdTransaction.wallet_id !== walletId) {
+          return current;
+        }
+
+        return [createdTransaction, ...current];
+      });
       closeModal();
       showToast({ title: "สร้างรายการสำเร็จ" });
       return true;
@@ -284,6 +293,7 @@ export function useTransaction(options: UseTransactionOptions = {}) {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          wallet_id: values.wallet_id,
           name: values.name.trim(),
           amount: Number(values.amount),
           type: values.type,
@@ -294,11 +304,19 @@ export function useTransaction(options: UseTransactionOptions = {}) {
       });
       const data = await readApiResponse(response);
 
-      setTransactions((current) =>
-        current.map((transaction) =>
-          transaction.id === editingTransaction.id ? mapApiTransaction(data) : transaction
-        )
-      );
+      const updatedTransaction = mapApiTransaction(data);
+
+      setTransactions((current) => {
+        if (walletId && updatedTransaction.wallet_id !== walletId) {
+          return current.filter(
+            (transaction) => transaction.id !== editingTransaction.id
+          );
+        }
+
+        return current.map((transaction) =>
+          transaction.id === editingTransaction.id ? updatedTransaction : transaction
+        );
+      });
 
       closeModal();
       showToast({ title: "แก้ไขรายการสำเร็จ" });

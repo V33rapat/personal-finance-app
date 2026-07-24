@@ -1,27 +1,23 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import Button from "@/components/ui/Button";
 import { TH_TEXT } from "@/constants/th";
 import CategoryCombobox, { type CategoryComboboxHandle } from "./CategoryCombobox";
 import type { Transaction, TransactionType } from "./TransactionItem";
+import type { TransactionFormValues } from "../hooks/useTransaction";
 import { useTransactionTemplate } from "../hooks/useTransactionTemplate";
-
-
-interface TransactionFormValues {
-  name: string;
-  amount: string;
-  type: TransactionType;
-  category_id: string | null;
-  template_id?: string | null;
-  transaction_date: string;
-  note: string;
-}
+import {
+  getTransactionWalletOptions,
+  type TransactionWalletOption,
+} from "../lib/transactionWallet";
+import type { Wallet } from "@/feature/wallet/hooks/useWallet";
 
 interface TransactionModalProps {
   isOpen: boolean;
   transaction?: Transaction | null;
-  walletName?: string;
+  wallets: Wallet[];
+  defaultWalletId?: string | null;
   isSaving?: boolean;
   error?: string | null;
   onClose: () => void;
@@ -29,13 +25,19 @@ interface TransactionModalProps {
   onUpdate?: (values: TransactionFormValues) => void | Promise<unknown>;
 }
 
-interface TransactionModalFormProps extends Omit<TransactionModalProps, "isOpen" | "transaction"> {
+interface TransactionModalFormProps
+  extends Omit<
+    TransactionModalProps,
+    "isOpen" | "transaction" | "wallets" | "defaultWalletId"
+  > {
   initialValues: TransactionFormValues;
   isEditMode: boolean;
+  walletOptions: TransactionWalletOption[];
 }
 
-function getDefaultValues(): TransactionFormValues {
+function getDefaultValues(defaultWalletId?: string | null): TransactionFormValues {
   return {
+    wallet_id: defaultWalletId ?? "",
     name: "",
     amount: "",
     type: "expense",
@@ -46,10 +48,23 @@ function getDefaultValues(): TransactionFormValues {
   };
 }
 
-function getInitialValues(transaction?: Transaction | null): TransactionFormValues {
-  if (!transaction) return getDefaultValues();
+function getInitialValues(
+  transaction: Transaction | null | undefined,
+  defaultWalletId: string | null | undefined,
+  eligibleWalletIds: Set<string>
+): TransactionFormValues {
+  if (!transaction) {
+    return getDefaultValues(
+      defaultWalletId && eligibleWalletIds.has(defaultWalletId)
+        ? defaultWalletId
+        : undefined
+    );
+  }
 
   return {
+    wallet_id: eligibleWalletIds.has(transaction.wallet_id)
+      ? transaction.wallet_id
+      : "",
     name: transaction.name,
     amount: transaction.amount,
     type: transaction.type,
@@ -90,7 +105,7 @@ function FormField({
 function TransactionModalForm({
   initialValues,
   isEditMode,
-  walletName,
+  walletOptions,
   isSaving = false,
   error,
   onClose,
@@ -118,6 +133,10 @@ function TransactionModalForm({
     const nextErrors: Partial<Record<keyof TransactionFormValues, string>> = {};
     
     const amount = Number(values.amount);
+
+    if (!values.wallet_id) {
+      nextErrors.wallet_id = TH_TEXT.transaction.walletRequired;
+    }
 
     if (!values.name.trim()) {
       nextErrors.name = TH_TEXT.transaction.nameRequired;
@@ -218,11 +237,29 @@ function TransactionModalForm({
             </div>
           )}
 
-          {walletName && (
-            <div className="rounded-lg bg-slate-50 px-4 py-2 text-sm text-slate-600 dark:bg-slate-800 dark:text-slate-300">
-              {TH_TEXT.transaction.wallet}: <span className="font-medium">{walletName}</span>
-            </div>
-          )}
+          <FormField
+            label={TH_TEXT.transaction.wallet}
+            error={errors.wallet_id}
+          >
+            <select
+              value={values.wallet_id}
+              disabled={isSaving || walletOptions.length === 0}
+              onChange={(event) => updateValue("wallet_id", event.target.value)}
+              className="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-800 focus:border-violet-500 focus:outline-none focus:ring-2 focus:ring-violet-500/20 disabled:cursor-not-allowed disabled:opacity-60 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
+            >
+              <option value="">{TH_TEXT.transaction.selectWallet}</option>
+              {walletOptions.map((wallet) => (
+                <option key={wallet.id} value={wallet.id}>
+                  {wallet.label}
+                </option>
+              ))}
+            </select>
+            {walletOptions.length === 0 && (
+              <p className="text-xs text-slate-500 dark:text-slate-400">
+                {TH_TEXT.transaction.noEligibleWallets}
+              </p>
+            )}
+          </FormField>
 
           {!isEditMode && (
             <FormField label={TH_TEXT.transactionTemplate.selectTemplate}>
@@ -330,7 +367,11 @@ function TransactionModalForm({
             <Button type="button" variant="secondary" className="flex-1" onClick={onClose}>
               {TH_TEXT.common.cancel}
             </Button>
-            <Button type="submit" className="flex-1" disabled={isSaving}>
+            <Button
+              type="submit"
+              className="flex-1"
+              disabled={isSaving || walletOptions.length === 0}
+            >
               {TH_TEXT.common.save}
             </Button>
           </div>
@@ -343,15 +384,31 @@ function TransactionModalForm({
 export default function TransactionModal({
   isOpen,
   transaction,
+  wallets,
+  defaultWalletId,
   ...props
 }: TransactionModalProps) {
+  const walletOptions = useMemo(
+    () => getTransactionWalletOptions(wallets),
+    [wallets]
+  );
+  const eligibleWalletIds = useMemo(
+    () => new Set(walletOptions.map((wallet) => wallet.id)),
+    [walletOptions]
+  );
+
   if (!isOpen) return null;
 
   return (
     <TransactionModalForm
       key={transaction?.id ?? "new"}
-      initialValues={getInitialValues(transaction)}
+      initialValues={getInitialValues(
+        transaction,
+        defaultWalletId,
+        eligibleWalletIds
+      )}
       isEditMode={!!transaction}
+      walletOptions={walletOptions}
       {...props}
     />
   );

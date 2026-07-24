@@ -94,6 +94,7 @@ export default function WalletPage() {
 
           <WalletDetail
             wallet={selectedWallet}
+            wallets={wallets}
             childCount={childCount}
             onEditWallet={openEditWallet}
             onDeleteWallet={deleteWallet}

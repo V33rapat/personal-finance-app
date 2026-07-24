@@ -80,6 +80,10 @@ _Avoid_: Sub-wallet when the parent is not investment-oriented
 The current amount of money held by a Wallet after recorded Transactions and Transfers.
 _Avoid_: Transaction amount, total spending
 
+**Transaction Wallet**:
+An active Wallet that can directly hold a Transaction. A Parent Wallet with active Sub-wallets summarizes their balances and cannot directly hold new or edited Transactions.
+_Avoid_: Parent Wallet transaction, summary transaction
+
 ### Money Events
 
 **Transaction**:
@@ -131,6 +135,10 @@ _Avoid_: To account, receiver
 **Transfer Fee**:
 An additional cost associated with a Transfer.
 _Avoid_: Expense category, service charge transaction
+
+**Money Allocation**:
+A grouped movement of an existing Amount from one Source Wallet to one or more Destination Wallets. Its related Transfers are managed together as one financial action.
+_Avoid_: Income, recurring transfer, individual transfer
 
 ### Reporting And Analysis
 
