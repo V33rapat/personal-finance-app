@@ -8,6 +8,7 @@ import { CategoryModule } from './category/category.module';
 import { TransferModule } from './transfer/transfer.module';
 import { TransactionTemplateModule } from './transaction-template/transaction-template.module';
 import { StorageModule } from './storage/storage.module';
+import { DashboardModule } from './dashboard/dashboard.module';
 import { AllocationModule } from './allocation/allocation.module';
 
 @Module({
@@ -21,6 +22,7 @@ import { AllocationModule } from './allocation/allocation.module';
     TransferModule,
     TransactionTemplateModule,
     StorageModule,
+    DashboardModule,
     AllocationModule,
   ],
 })
