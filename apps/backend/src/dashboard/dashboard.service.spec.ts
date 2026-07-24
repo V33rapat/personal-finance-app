@@ -43,6 +43,10 @@ describe('DashboardService', () => {
     service = new DashboardService(prisma as unknown as PrismaService);
   });
 
+  afterEach(() => {
+    jest.useRealTimers();
+  });
+
   it('returns a user-scoped summary for the selected reporting month', async () => {
     prisma.$transaction.mockResolvedValue([
       [
@@ -82,7 +86,7 @@ describe('DashboardService', () => {
     });
   });
 
-  it('counts only real expenses in the selected month', async () => {
+  it('excludes paired transfers from monthly spending without excluding them from total balance', async () => {
     prisma.$transaction.mockResolvedValue([
       [],
       { _sum: { amount: new Prisma.Decimal(450) } },
@@ -136,6 +140,120 @@ describe('DashboardService', () => {
       is_category_breakdown_enabled: false,
       hidden_category_ids: [],
     });
+  });
+
+  it('uses the Bangkok calendar date across midnight for defaults and future-date validation', async () => {
+    jest.useFakeTimers();
+    prisma.dashboard_preferences.findUnique.mockResolvedValue(null);
+    prisma.$transaction.mockResolvedValue([[], { _sum: { amount: null } }, 0]);
+
+    jest.setSystemTime(new Date('2026-07-31T16:59:59.000Z').getTime());
+
+    await expect(service.getPreferences('user-a')).resolves.toEqual({
+      period_start: '2026-07-27',
+      period_end: '2026-07-31',
+      is_category_breakdown_enabled: false,
+      hidden_category_ids: [],
+    });
+    await expect(service.getSummary('user-a')).resolves.toMatchObject({
+      month: '2026-07',
+    });
+    await expect(
+      service.getOverview('user-a', '2026-08-01', '2026-08-01'),
+    ).rejects.toBeInstanceOf(BadRequestException);
+
+    jest.setSystemTime(new Date('2026-07-31T17:00:00.000Z').getTime());
+    prisma.transactions.groupBy.mockResolvedValue([]);
+
+    await expect(service.getPreferences('user-a')).resolves.toEqual({
+      period_start: '2026-07-27',
+      period_end: '2026-08-01',
+      is_category_breakdown_enabled: false,
+      hidden_category_ids: [],
+    });
+    await expect(service.getSummary('user-a')).resolves.toMatchObject({
+      month: '2026-08',
+    });
+    await expect(
+      service.getOverview('user-a', '2026-08-01', '2026-08-01'),
+    ).resolves.toMatchObject({
+      period_start: '2026-08-01',
+      period_end: '2026-08-01',
+    });
+  });
+
+  it('returns one zero-filled day for a single-day overview', async () => {
+    prisma.transactions.groupBy.mockResolvedValue([]);
+
+    await expect(
+      service.getOverview('user-a', '2026-07-20', '2026-07-20'),
+    ).resolves.toEqual({
+      period_start: '2026-07-20',
+      period_end: '2026-07-20',
+      totals: { income: '0.00', expense: '0.00', net: '0.00' },
+      days: [
+        {
+          date: '2026-07-20',
+          income_total: '0.00',
+          expense_total: '0.00',
+          income_categories: [],
+          expense_categories: [],
+        },
+      ],
+      expense_categories: [],
+    });
+  });
+
+  it('allows a 10-day overview across months and scopes it to active wallets of the current user', async () => {
+    prisma.transactions.groupBy.mockResolvedValue([]);
+
+    const overview = await service.getOverview(
+      'user-a',
+      '2026-01-28',
+      '2026-02-06',
+    );
+
+    expect(overview.days).toHaveLength(10);
+    expect(overview.days.map((day) => day.date)).toEqual([
+      '2026-01-28',
+      '2026-01-29',
+      '2026-01-30',
+      '2026-01-31',
+      '2026-02-01',
+      '2026-02-02',
+      '2026-02-03',
+      '2026-02-04',
+      '2026-02-05',
+      '2026-02-06',
+    ]);
+    expect(prisma.transactions.groupBy).toHaveBeenCalledWith({
+      by: ['transaction_date', 'type', 'category_id'],
+      where: {
+        deleted_at: null,
+        transaction_date: {
+          gte: new Date('2026-01-28T00:00:00.000Z'),
+          lt: new Date('2026-02-07T00:00:00.000Z'),
+        },
+        wallets: {
+          user_id: 'user-a',
+          is_active: true,
+          deleted_at: null,
+          created_at: { lt: new Date('2026-02-07T00:00:00.000Z') },
+        },
+        transfers_transfers_from_transaction_idTotransactions: { is: null },
+        transfers_transfers_to_transaction_idTotransactions: { is: null },
+      },
+      _sum: { amount: true },
+      orderBy: [{ transaction_date: 'asc' }, { type: 'asc' }],
+    });
+  });
+
+  it('rejects an overview period longer than 10 days before querying Prisma', async () => {
+    await expect(
+      service.getOverview('user-a', '2026-01-28', '2026-02-07'),
+    ).rejects.toBeInstanceOf(BadRequestException);
+
+    expect(prisma.transactions.groupBy).not.toHaveBeenCalled();
   });
 
   it('saves validated dashboard preferences and hidden categories atomically', async () => {
@@ -231,7 +349,29 @@ describe('DashboardService', () => {
     ).rejects.toBeInstanceOf(BadRequestException);
   });
 
-  it('returns a zero-filled, user-scoped category overview without transfer transactions', async () => {
+  it('loads hidden category preferences only for the current user', async () => {
+    prisma.dashboard_preferences.findUnique.mockResolvedValue({
+      period_start: new Date('2026-07-20T00:00:00.000Z'),
+      period_end: new Date('2026-07-23T00:00:00.000Z'),
+      is_category_breakdown_enabled: true,
+      dashboard_hidden_categories: [
+        { category_id: 'd4c5104a-b394-4ba7-9c1a-6eb8052faa44' },
+      ],
+    });
+
+    await expect(service.getPreferences('user-a')).resolves.toEqual({
+      period_start: '2026-07-20',
+      period_end: '2026-07-23',
+      is_category_breakdown_enabled: true,
+      hidden_category_ids: ['d4c5104a-b394-4ba7-9c1a-6eb8052faa44'],
+    });
+    expect(prisma.dashboard_preferences.findUnique).toHaveBeenCalledWith({
+      where: { user_id: 'user-a' },
+      include: { dashboard_hidden_categories: true },
+    });
+  });
+
+  it('returns a zero-filled, user-scoped category overview without paired transfer transactions', async () => {
     prisma.transactions.groupBy.mockResolvedValue([
       {
         transaction_date: new Date('2026-07-20T00:00:00.000Z'),
