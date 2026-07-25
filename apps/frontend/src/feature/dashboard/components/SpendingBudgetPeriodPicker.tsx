@@ -249,8 +249,8 @@ export default function SpendingBudgetPeriodPicker({
               }}
               locale={th}
               weekStartsOn={1}
-              min={7}
-              max={7}
+              min={6}
+              max={6}
               excludeDisabled
               defaultMonth={draftRange?.from ?? getSelectionDate(selection)}
               showOutsideDays

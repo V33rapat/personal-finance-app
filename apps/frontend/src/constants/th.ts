@@ -98,7 +98,7 @@ export const TH_TEXT = {
     dateRequired: "กรุณาเลือกวันที่",
     applyPeriod: "ใช้ช่วงนี้",
     resetToday: "กลับสู่วันนี้",
-    resetCurrentWeek: "กลับสู่สัปดาห์ปัจจุบัน",
+    resetCurrentWeek: "เลือกสัปดาห์ปัจจุบัน",
     resetCurrentMonth: "กลับสู่เดือนปัจจุบัน",
     resetCurrentYear: "กลับสู่ปีปัจจุบัน",
     weeklyRangeError: "กรุณาเลือกช่วงต่อเนื่อง 7 วัน",

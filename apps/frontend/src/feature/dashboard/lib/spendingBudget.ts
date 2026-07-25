@@ -37,13 +37,15 @@ export interface SpendingBudgetValidationErrors {
   categories?: string;
 }
 
-function getCurrentWeekToDate(today: string) {
+function getCurrentWeek(today: string) {
   const currentDate = toUtcDate(today);
   const daysSinceMonday = (currentDate.getUTCDay() + 6) % 7;
   const start = new Date(currentDate);
   start.setUTCDate(currentDate.getUTCDate() - daysSinceMonday);
+  const end = new Date(start);
+  end.setUTCDate(start.getUTCDate() + 6);
 
-  return { start: toDateString(start), end: today };
+  return { start: toDateString(start), end: toDateString(end) };
 }
 
 export function getDefaultSpendingBudgetPeriodSelections(
@@ -51,7 +53,7 @@ export function getDefaultSpendingBudgetPeriodSelections(
 ): SpendingBudgetPeriodSelections {
   return {
     daily: { period: "daily", date: today },
-    weekly: { period: "weekly", ...getCurrentWeekToDate(today) },
+    weekly: { period: "weekly", ...getCurrentWeek(today) },
     monthly: { period: "monthly", month: today.slice(0, 7) },
     yearly: { period: "yearly", year: today.slice(0, 4) },
   };

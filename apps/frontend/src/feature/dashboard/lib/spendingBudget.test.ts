@@ -46,7 +46,7 @@ describe("spending budget helpers", () => {
   it("creates current selections for each reporting period", () => {
     expect(getDefaultSpendingBudgetPeriodSelections("2026-07-22")).toEqual({
       daily: { period: "daily", date: "2026-07-22" },
-      weekly: { period: "weekly", start: "2026-07-20", end: "2026-07-22" },
+      weekly: { period: "weekly", start: "2026-07-20", end: "2026-07-26" },
       monthly: { period: "monthly", month: "2026-07" },
       yearly: { period: "yearly", year: "2026" },
     });
