@@ -8,10 +8,14 @@ import { Prisma, transaction_type } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateCategoryDto } from './dto/create-category.dto';
 import { FindCategoryDto } from './dto/find-category.dto';
+import { SpendingBudgetService } from '../spending-budget/spending-budget.service';
 
 @Injectable()
 export class CategoryService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private readonly spendingBudgetService: SpendingBudgetService,
+  ) {}
 
   async findAll(userId: string, query: FindCategoryDto) {
     return this.prisma.categories.findMany({
@@ -109,9 +113,13 @@ export class CategoryService {
         },
       });
 
-      return tx.categories.delete({
+      const deletedCategory = await tx.categories.delete({
         where: { id },
       });
+
+      await this.spendingBudgetService.pauseEmptyBudgets(tx, userId);
+
+      return deletedCategory;
     });
   }
 }

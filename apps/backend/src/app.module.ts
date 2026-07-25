@@ -10,6 +10,7 @@ import { TransactionTemplateModule } from './transaction-template/transaction-te
 import { StorageModule } from './storage/storage.module';
 import { DashboardModule } from './dashboard/dashboard.module';
 import { AllocationModule } from './allocation/allocation.module';
+import { SpendingBudgetModule } from './spending-budget/spending-budget.module';
 
 @Module({
   controllers: [AppController],
@@ -24,6 +25,7 @@ import { AllocationModule } from './allocation/allocation.module';
     StorageModule,
     DashboardModule,
     AllocationModule,
+    SpendingBudgetModule,
   ],
 })
 export class AppModule {}
