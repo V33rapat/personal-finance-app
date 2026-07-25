@@ -4,6 +4,7 @@ import Button from "@/components/ui/Button";
 import Card from "@/components/ui/Card";
 import { TH_TEXT } from "@/constants/th";
 import { useDashboardSummary } from "../hooks/useDashboardSummary";
+import SpendingBudgetOverview from "./SpendingBudgetOverview";
 import DashboardWeeklyOverview from "./DashboardWeeklyOverview";
 
 function formatMonth(month: string) {
@@ -128,6 +129,7 @@ export default function DashboardPageContent() {
       </div>
 
       <DashboardWeeklyOverview />
+      <SpendingBudgetOverview />
     </div>
   );
 }
