@@ -55,8 +55,25 @@ export function formatThaiDateRange(start: string, end: string) {
   return `${formatter.format(toUtcDate(start))} - ${formatter.format(toUtcDate(end))}`;
 }
 
+export function formatThaiMonth(value: string) {
+  return new Intl.DateTimeFormat("th-TH", {
+    month: "long",
+    year: "numeric",
+    timeZone: "UTC",
+  }).format(toUtcDate(`${value}-01`));
+}
+
+export function formatThaiYear(value: string) {
+  return new Intl.DateTimeFormat("th-TH", {
+    year: "numeric",
+    timeZone: "UTC",
+  }).format(toUtcDate(`${value}-01-01`));
+}
+
 export function getDayCount(start: string, end: string) {
-  return Math.floor(
-    (toUtcDate(end).getTime() - toUtcDate(start).getTime()) / 86_400_000
-  ) + 1;
+  return (
+    Math.floor(
+      (toUtcDate(end).getTime() - toUtcDate(start).getTime()) / 86_400_000,
+    ) + 1
+  );
 }
