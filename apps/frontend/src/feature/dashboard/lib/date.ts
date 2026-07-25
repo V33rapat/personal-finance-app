@@ -3,21 +3,23 @@ export interface DashboardDateRange {
   end: string;
 }
 
-function getBangkokPart(type: Intl.DateTimeFormatPartTypes) {
-  return new Intl.DateTimeFormat("en-US", {
+function getBangkokDateParts(value: Date) {
+  const parts = new Intl.DateTimeFormat("en-US", {
     timeZone: "Asia/Bangkok",
     year: "numeric",
     month: "2-digit",
     day: "2-digit",
-  })
-    .formatToParts()
-    .find((part) => part.type === type)?.value;
+  }).formatToParts(value);
+
+  return {
+    year: parts.find((part) => part.type === "year")?.value,
+    month: parts.find((part) => part.type === "month")?.value,
+    day: parts.find((part) => part.type === "day")?.value,
+  };
 }
 
 export function getBangkokToday() {
-  const year = getBangkokPart("year");
-  const month = getBangkokPart("month");
-  const day = getBangkokPart("day");
+  const { year, month, day } = getBangkokDateParts(new Date());
 
   return year && month && day ? `${year}-${month}-${day}` : "";
 }
@@ -37,7 +39,13 @@ export function toUtcDate(value: string) {
 }
 
 export function toDateString(value: Date) {
-  return value.toISOString().slice(0, 10);
+  const { year, month, day } = getBangkokDateParts(value);
+
+  if (!year || !month || !day) {
+    throw new Error("Could not format Bangkok calendar date");
+  }
+
+  return `${year}-${month}-${day}`;
 }
 
 export function formatThaiDateRange(start: string, end: string) {
