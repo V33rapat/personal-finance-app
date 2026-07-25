@@ -162,6 +162,10 @@ _Avoid_: Chart, graph
 A named spending limit for one Reporting Period that tracks Expenses across one or more Transaction Categories.
 _Avoid_: Savings goal, wallet balance, transfer limit
 
+**Spending Budget Report**:
+A view of a Spending Budget for a selected daily, weekly, monthly, or yearly Reporting Period. It may show past or future periods, and always compares recorded Expenses with the Budget's current amount.
+_Avoid_: Budget history, forecasted expense
+
 **Dashboard Layout**:
 The user's chosen arrangement of Dashboard content.
 _Avoid_: Theme, page design

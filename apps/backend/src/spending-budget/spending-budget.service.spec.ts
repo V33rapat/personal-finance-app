@@ -7,6 +7,7 @@ function createBudget(
   overrides: Partial<{
     id: string;
     amount: Prisma.Decimal;
+    period: spending_budget_period;
     includes_uncategorized: boolean;
     spending_budget_categories: Array<{
       category_id: string;
@@ -81,7 +82,9 @@ describe('SpendingBudgetService', () => {
     ]);
 
     await expect(
-      service.getOverview('user-1', spending_budget_period.daily),
+      service.getOverview('user-1', {
+        period: spending_budget_period.daily,
+      }),
     ).resolves.toEqual({
       period: 'daily',
       period_start: '2026-07-20',
@@ -140,10 +143,9 @@ describe('SpendingBudgetService', () => {
       },
     ]);
 
-    const overview = await service.getOverview(
-      'user-1',
-      spending_budget_period.daily,
-    );
+    const overview = await service.getOverview('user-1', {
+      period: spending_budget_period.daily,
+    });
 
     expect(overview.budgets).toEqual([
       expect.objectContaining({ id: 'budget-1', spent: '100.00' }),
@@ -155,11 +157,13 @@ describe('SpendingBudgetService', () => {
     prisma.spending_budgets.findMany.mockResolvedValue([]);
 
     await expect(
-      service.getOverview('user-1', spending_budget_period.yearly),
+      service.getOverview('user-1', {
+        period: spending_budget_period.yearly,
+      }),
     ).resolves.toEqual({
       period: 'yearly',
       period_start: '2026-01-01',
-      period_end: '2026-07-20',
+      period_end: '2026-12-31',
       budgets: [],
     });
 
@@ -202,5 +206,115 @@ describe('SpendingBudgetService', () => {
         data: expect.objectContaining({ is_active: false }),
       }),
     );
+  });
+
+  it('uses a selected day, including a future day, for the daily overview', async () => {
+    prisma.spending_budgets.findMany.mockResolvedValue([createBudget()]);
+    prisma.transactions.groupBy.mockResolvedValue([]);
+
+    await expect(
+      service.getOverview('user-1', {
+        period: spending_budget_period.daily,
+        date: '2026-08-15',
+      }),
+    ).resolves.toEqual(
+      expect.objectContaining({
+        period_start: '2026-08-15',
+        period_end: '2026-08-15',
+      }),
+    );
+
+    expect(prisma.transactions.groupBy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          transaction_date: {
+            gte: new Date('2026-08-15T00:00:00.000Z'),
+            lt: new Date('2026-08-16T00:00:00.000Z'),
+          },
+        }),
+      }),
+    );
+  });
+
+  it('uses a selected seven-day range for the weekly overview', async () => {
+    prisma.spending_budgets.findMany.mockResolvedValue([
+      createBudget({ period: spending_budget_period.weekly }),
+    ]);
+    prisma.transactions.groupBy.mockResolvedValue([]);
+
+    await expect(
+      service.getOverview('user-1', {
+        period: spending_budget_period.weekly,
+        start: '2026-08-10',
+        end: '2026-08-16',
+      }),
+    ).resolves.toEqual(
+      expect.objectContaining({
+        period_start: '2026-08-10',
+        period_end: '2026-08-16',
+      }),
+    );
+  });
+
+  it('rejects incomplete or non-seven-day weekly ranges before querying budgets', async () => {
+    await expect(
+      service.getOverview('user-1', {
+        period: spending_budget_period.weekly,
+        start: '2026-08-10',
+      }),
+    ).rejects.toBeInstanceOf(BadRequestException);
+    await expect(
+      service.getOverview('user-1', {
+        period: spending_budget_period.weekly,
+        start: '2026-08-10',
+        end: '2026-08-15',
+      }),
+    ).rejects.toBeInstanceOf(BadRequestException);
+
+    expect(prisma.spending_budgets.findMany).not.toHaveBeenCalled();
+  });
+
+  it('uses full selected calendar months and years for their overviews', async () => {
+    prisma.spending_budgets.findMany.mockResolvedValue([]);
+
+    await expect(
+      service.getOverview('user-1', {
+        period: spending_budget_period.monthly,
+        month: '2024-02',
+      }),
+    ).resolves.toEqual({
+      period: 'monthly',
+      period_start: '2024-02-01',
+      period_end: '2024-02-29',
+      budgets: [],
+    });
+    await expect(
+      service.getOverview('user-1', {
+        period: spending_budget_period.yearly,
+        year: '2030',
+      }),
+    ).resolves.toEqual({
+      period: 'yearly',
+      period_start: '2030-01-01',
+      period_end: '2030-12-31',
+      budgets: [],
+    });
+  });
+
+  it('rejects unsupported filters and invalid calendar values', async () => {
+    await expect(
+      service.getOverview('user-1', {
+        period: spending_budget_period.daily,
+        month: '2026-07',
+      }),
+    ).rejects.toBeInstanceOf(BadRequestException);
+    await expect(
+      service.getOverview('user-1', {
+        period: spending_budget_period.daily,
+        date: '2026-02-30',
+      }),
+    ).rejects.toBeInstanceOf(BadRequestException);
+
+    expect(prisma.spending_budgets.findMany).not.toHaveBeenCalled();
   });
 });

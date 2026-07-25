@@ -6,6 +6,7 @@ import {
 import { Prisma, spending_budget_period } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateSpendingBudgetDto } from './dto/create-spending-budget.dto';
+import { FindSpendingBudgetOverviewDto } from './dto/find-spending-budget-overview.dto';
 import { UpdateSpendingBudgetDto } from './dto/update-spending-budget.dto';
 
 const BANGKOK_TIME_ZONE = 'Asia/Bangkok';
@@ -63,7 +64,9 @@ export class SpendingBudgetService {
     return budgets.map((budget) => this.toBudgetResponse(budget));
   }
 
-  async getOverview(userId: string, periodType: spending_budget_period) {
+  async getOverview(userId: string, query: FindSpendingBudgetOverviewDto) {
+    const period = this.resolvePeriod(query);
+    const periodType = query.period;
     const budgets = await this.prisma.spending_budgets.findMany({
       where: {
         user_id: userId,
@@ -73,8 +76,6 @@ export class SpendingBudgetService {
       include: spendingBudgetInclude,
       orderBy: { name: 'asc' },
     });
-    const period = this.getCurrentPeriod(periodType);
-
     if (budgets.length === 0) {
       return {
         period: periodType,
@@ -306,27 +307,94 @@ export class SpendingBudgetService {
     }
   }
 
-  private getCurrentPeriod(period: spending_budget_period): CurrentPeriod {
+  private resolvePeriod(query: FindSpendingBudgetOverviewDto): CurrentPeriod {
+    const { period } = query;
     const today = this.toUtcDate(this.getCurrentBangkokDate());
-    const start = new Date(today);
 
     if (period === 'weekly') {
-      const daysSinceMonday = (today.getUTCDay() + 6) % 7;
-      start.setUTCDate(today.getUTCDate() - daysSinceMonday);
+      this.assertOnlyPeriodFilters(query, ['start', 'end']);
+
+      if (query.start === undefined && query.end === undefined) {
+        const start = new Date(today);
+        const daysSinceMonday = (today.getUTCDay() + 6) % 7;
+        start.setUTCDate(today.getUTCDate() - daysSinceMonday);
+
+        return this.toCurrentPeriod(start, today);
+      }
+
+      if (!query.start || !query.end) {
+        throw new BadRequestException(
+          'Weekly overview requires both start and end dates',
+        );
+      }
+
+      const start = this.toUtcDate(query.start);
+      const end = this.toUtcDate(query.end);
+      const dayCount =
+        Math.floor((end.getTime() - start.getTime()) / 86_400_000) + 1;
+
+      if (dayCount !== 7) {
+        throw new BadRequestException(
+          'Weekly overview must cover exactly seven consecutive days',
+        );
+      }
+
+      return this.toCurrentPeriod(start, end);
+    }
+
+    if (period === 'daily') {
+      this.assertOnlyPeriodFilters(query, ['date']);
+      const date = query.date ? this.toUtcDate(query.date) : today;
+
+      return this.toCurrentPeriod(date, date);
     }
 
     if (period === 'monthly') {
-      start.setUTCDate(1);
+      this.assertOnlyPeriodFilters(query, ['month']);
+      const { year, month } = query.month
+        ? this.toMonthParts(query.month)
+        : {
+            year: today.getUTCFullYear(),
+            month: today.getUTCMonth() + 1,
+          };
+      const start = new Date(Date.UTC(year, month - 1, 1));
+      const end = new Date(Date.UTC(year, month, 0));
+
+      return this.toCurrentPeriod(start, end);
     }
 
-    if (period === 'yearly') {
-      start.setUTCMonth(0, 1);
+    this.assertOnlyPeriodFilters(query, ['year']);
+    const year = query.year
+      ? this.toYearNumber(query.year)
+      : today.getUTCFullYear();
+    const start = new Date(Date.UTC(year, 0, 1));
+    const end = new Date(Date.UTC(year, 11, 31));
+
+    return this.toCurrentPeriod(start, end);
+  }
+
+  private assertOnlyPeriodFilters(
+    query: FindSpendingBudgetOverviewDto,
+    allowedFilters: string[],
+  ) {
+    const unsupportedFilter = ['date', 'start', 'end', 'month', 'year'].find(
+      (filter) =>
+        query[filter as keyof FindSpendingBudgetOverviewDto] !== undefined &&
+        !allowedFilters.includes(filter),
+    );
+
+    if (unsupportedFilter) {
+      throw new BadRequestException(
+        `Filter "${unsupportedFilter}" is not supported for ${query.period} overview`,
+      );
     }
+  }
 
-    const endExclusive = new Date(today);
-    endExclusive.setUTCDate(today.getUTCDate() + 1);
+  private toCurrentPeriod(start: Date, end: Date): CurrentPeriod {
+    const endExclusive = new Date(end);
+    endExclusive.setUTCDate(end.getUTCDate() + 1);
 
-    return { start, end: today, endExclusive };
+    return { start, end, endExclusive };
   }
 
   private toBudgetResponse(budget: SpendingBudgetRecord) {
@@ -395,8 +463,48 @@ export class SpendingBudgetService {
   }
 
   private toUtcDate(value: string) {
-    const [year, month, day] = value.split('-').map(Number);
-    return new Date(Date.UTC(year, month - 1, day));
+    const dateMatch = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
+
+    if (!dateMatch) {
+      throw new BadRequestException('Date must use YYYY-MM-DD format');
+    }
+
+    const [, yearValue, monthValue, dayValue] = dateMatch;
+    const year = Number(yearValue);
+    const month = Number(monthValue);
+    const day = Number(dayValue);
+    const date = new Date(Date.UTC(year, month - 1, day));
+
+    if (
+      date.getUTCFullYear() !== year ||
+      date.getUTCMonth() !== month - 1 ||
+      date.getUTCDate() !== day
+    ) {
+      throw new BadRequestException('Date is not a valid calendar date');
+    }
+
+    return date;
+  }
+
+  private toMonthParts(value: string) {
+    const monthMatch = /^([1-9]\d{3})-(0[1-9]|1[0-2])$/.exec(value);
+
+    if (!monthMatch) {
+      throw new BadRequestException('Month must use YYYY-MM format');
+    }
+
+    return {
+      year: Number(monthMatch[1]),
+      month: Number(monthMatch[2]),
+    };
+  }
+
+  private toYearNumber(value: string) {
+    if (!/^[1-9]\d{3}$/.test(value)) {
+      throw new BadRequestException('Year must use YYYY format');
+    }
+
+    return Number(value);
   }
 
   private toDateString(date: Date) {

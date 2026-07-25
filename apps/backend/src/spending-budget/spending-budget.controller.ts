@@ -32,7 +32,7 @@ export class SpendingBudgetController {
     @Req() req: AuthenticatedRequest,
     @Query() query: FindSpendingBudgetOverviewDto,
   ) {
-    return this.spendingBudgetService.getOverview(req.user.sub, query.period);
+    return this.spendingBudgetService.getOverview(req.user.sub, query);
   }
 
   @Post()
