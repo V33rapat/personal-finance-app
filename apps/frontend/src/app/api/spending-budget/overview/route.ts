@@ -17,10 +17,13 @@ export async function GET(request: NextRequest) {
     }
 
     const url = new URL(`${getBackendUrl()}/spending-budget/overview`);
-    const period = request.nextUrl.searchParams.get("period");
 
-    if (period) {
-      url.searchParams.set("period", period);
+    for (const key of ["period", "date", "start", "end", "month", "year"]) {
+      const value = request.nextUrl.searchParams.get(key);
+
+      if (value) {
+        url.searchParams.set(key, value);
+      }
     }
 
     const response = await fetch(url, {
