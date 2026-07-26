@@ -101,9 +101,9 @@ function getResetLabel(period: SpendingBudgetPeriodSelection["period"]) {
 }
 
 const calendarLabels = {
-  labelDayButton: (date: Date) => `Select date ${toDateString(date)}`,
-  labelNext: () => "Show next month",
-  labelPrevious: () => "Show previous month",
+  labelDayButton: (date: Date) => `เลือกวันที่ ${toDateString(date)}`,
+  labelNext: () => "แสดงเดือนถัดไป",
+  labelPrevious: () => "แสดงเดือนก่อนหน้า",
 };
 
 export default function SpendingBudgetPeriodPicker({

@@ -151,7 +151,7 @@ async function showCalendarMonth(
     (target.getUTCFullYear() - initial.getUTCFullYear()) * 12 +
     target.getUTCMonth() -
     initial.getUTCMonth();
-  const navigationLabel = offset >= 0 ? "Show next month" : "Show previous month";
+  const navigationLabel = offset >= 0 ? "แสดงเดือนถัดไป" : "แสดงเดือนก่อนหน้า";
 
   for (let index = 0; index < Math.abs(offset); index += 1) {
     await dialog.getByRole("button", { name: navigationLabel }).click();
@@ -164,7 +164,7 @@ export async function selectCalendarDate(
   date: string,
 ) {
   await showCalendarMonth(dialog, getInitialCalendarDate(period), date);
-  await dialog.getByRole("button", { name: `Select date ${date}` }).click();
+  await dialog.getByRole("button", { name: `เลือกวันที่ ${date}` }).click();
 }
 
 export async function selectCalendarRange(
@@ -174,8 +174,8 @@ export async function selectCalendarRange(
 ) {
   const dialog = await openPeriodPicker(page, "weekly");
   await showCalendarMonth(dialog, getInitialCalendarDate("weekly"), start);
-  await dialog.getByRole("button", { name: `Select date ${start}` }).click();
-  await dialog.getByRole("button", { name: `Select date ${end}` }).click();
+  await dialog.getByRole("button", { name: `เลือกวันที่ ${start}` }).click();
+  await dialog.getByRole("button", { name: `เลือกวันที่ ${end}` }).click();
   return dialog;
 }
 
