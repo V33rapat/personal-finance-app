@@ -195,17 +195,18 @@ describe('SpendingBudgetService', () => {
       'user-1',
     );
 
-    expect(updateMany).toHaveBeenCalledWith(
-      expect.objectContaining({
-        where: {
-          user_id: 'user-1',
-          is_active: true,
-          includes_uncategorized: false,
-          spending_budget_categories: { none: {} },
-        },
-        data: expect.objectContaining({ is_active: false }),
-      }),
-    );
+    const updateCalls = updateMany.mock.calls as unknown as Array<
+      [Prisma.spending_budgetsUpdateManyArgs]
+    >;
+    const updateArgument = updateCalls[0]?.[0];
+
+    expect(updateArgument?.where).toEqual({
+      user_id: 'user-1',
+      is_active: true,
+      includes_uncategorized: false,
+      spending_budget_categories: { none: {} },
+    });
+    expect(updateArgument?.data).toMatchObject({ is_active: false });
   });
 
   it('uses a selected day, including a future day, for the daily overview', async () => {
@@ -224,16 +225,14 @@ describe('SpendingBudgetService', () => {
       }),
     );
 
-    expect(prisma.transactions.groupBy).toHaveBeenCalledWith(
-      expect.objectContaining({
-        where: expect.objectContaining({
-          transaction_date: {
-            gte: new Date('2026-08-15T00:00:00.000Z'),
-            lt: new Date('2026-08-16T00:00:00.000Z'),
-          },
-        }),
-      }),
-    );
+    const groupByCalls = prisma.transactions.groupBy.mock
+      .calls as unknown as Array<[Prisma.transactionsGroupByArgs]>;
+    const groupByArgument = groupByCalls[0]?.[0];
+
+    expect(groupByArgument.where?.transaction_date).toEqual({
+      gte: new Date('2026-08-15T00:00:00.000Z'),
+      lt: new Date('2026-08-16T00:00:00.000Z'),
+    });
   });
 
   it('uses a selected seven-day range for the weekly overview', async () => {
