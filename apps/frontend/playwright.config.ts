@@ -59,7 +59,7 @@ export default defineConfig({
     {
       command: `npm run start -- --hostname 127.0.0.1 --port ${frontendPort}`,
       cwd: ".",
-      url: baseURL,
+      url: `${baseURL}/login`,
       timeout: 120_000,
       reuseExistingServer: !isCi,
       env: {
