@@ -100,6 +100,10 @@ function getResetLabel(period: SpendingBudgetPeriodSelection["period"]) {
   return TH_TEXT.budget.resetCurrentYear;
 }
 
+const calendarLabels = {
+  labelDayButton: (date: Date) => `Select date ${toDateString(date)}`,
+};
+
 export default function SpendingBudgetPeriodPicker({
   selection,
   disabled = false,
@@ -206,6 +210,7 @@ export default function SpendingBudgetPeriodPicker({
         disabled={disabled}
         aria-expanded={isOpen}
         aria-haspopup="dialog"
+        aria-label={`${getPickerLabel(selection.period)}: ${formatSpendingBudgetPeriodSelection(selection)}`}
         className="flex min-h-[42px] w-full items-center justify-between gap-3 rounded-xl border border-slate-200 bg-white px-3 text-left text-sm font-semibold text-slate-700 transition hover:border-violet-300 disabled:cursor-not-allowed disabled:opacity-60 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:hover:border-violet-600 sm:min-w-60"
       >
         <span className="min-w-0 truncate">
@@ -235,6 +240,7 @@ export default function SpendingBudgetPeriodPicker({
               weekStartsOn={1}
               defaultMonth={draftDate ?? getSelectionDate(selection)}
               showOutsideDays
+              labels={calendarLabels}
               className="dashboard-day-picker mx-auto"
             />
           )}
@@ -254,6 +260,7 @@ export default function SpendingBudgetPeriodPicker({
               excludeDisabled
               defaultMonth={draftRange?.from ?? getSelectionDate(selection)}
               showOutsideDays
+              labels={calendarLabels}
               className="dashboard-day-picker mx-auto"
             />
           )}
@@ -350,7 +357,10 @@ export default function SpendingBudgetPeriodPicker({
           )}
 
           {selectionError && (
-            <p className="mt-3 text-sm text-red-600 dark:text-red-400">
+            <p
+              role="alert"
+              className="mt-3 text-sm text-red-600 dark:text-red-400"
+            >
               {selectionError}
             </p>
           )}
