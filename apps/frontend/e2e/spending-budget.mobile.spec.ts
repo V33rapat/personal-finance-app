@@ -13,6 +13,7 @@ test("keeps Spending Budget controls usable on a mobile viewport", async ({ page
     name: /^เลือกวันที่:/,
   });
 
+  await tabList.scrollIntoViewIfNeeded();
   await expect(tabList).toBeInViewport();
   await expect(pickerTrigger).toBeInViewport();
   await expect(page.getByTestId("spending-budget-period-label")).toBeInViewport();

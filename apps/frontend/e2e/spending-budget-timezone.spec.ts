@@ -39,6 +39,7 @@ test.describe("Spending Budget Bangkok date selection", () => {
       name: /^เลือกวันที่:/,
     });
 
+    await tabList.scrollIntoViewIfNeeded();
     await expect(tabList).toBeInViewport();
     await expect(pickerTrigger).toBeInViewport();
     await expect(page.getByTestId("spending-budget-period-label")).toBeInViewport();

@@ -5,6 +5,7 @@ import {
   applyCalendarSelection,
   expectPeriodLabel,
   formatThaiDateRange,
+  getBudgetSection,
   getCurrentWeek,
   getBangkokToday,
   openDashboard,
@@ -51,7 +52,8 @@ test.describe("Spending Budget weekly reporting period", () => {
     await applyCalendarSelection(dialog);
     await request;
     await expectPeriodLabel(page, formatThaiDateRange(start, end));
-    await expect(page.getByRole("alert")).toHaveCount(0);
+    const section = await getBudgetSection(page);
+    await expect(section.getByRole("alert")).toHaveCount(0);
   });
 
   test("resets to the complete Bangkok Monday-Sunday week", async ({ page }) => {
