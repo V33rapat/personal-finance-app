@@ -73,6 +73,21 @@ export function formatThaiDateRange(start: string, end: string) {
   return `${formatter.format(toUtcDate(start))} - ${formatter.format(toUtcDate(end))}`;
 }
 
+export function formatThaiMonth(month: string) {
+  return new Intl.DateTimeFormat("th-TH", {
+    month: "long",
+    year: "numeric",
+    timeZone: "UTC",
+  }).format(toUtcDate(`${month}-01`));
+}
+
+export function formatThaiYear(year: string) {
+  return new Intl.DateTimeFormat("th-TH", {
+    year: "numeric",
+    timeZone: "UTC",
+  }).format(toUtcDate(`${year}-01-01`));
+}
+
 function getTabLabel(period: BudgetPeriod) {
   return BUDGET_TEXT[period];
 }
