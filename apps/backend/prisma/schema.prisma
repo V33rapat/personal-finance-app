@@ -24,10 +24,38 @@ model categories {
   transaction_templates transaction_templates[]
   transactions          transactions[]
   dashboard_hidden_categories dashboard_hidden_categories[]
+  spending_budget_categories  spending_budget_categories[]
 
   @@unique([user_id, name, type], map: "uq_category_user_name")
   @@index([user_id, type], map: "idx_categories_type")
   @@index([user_id], map: "idx_categories_user")
+}
+
+model spending_budgets {
+  id                     String                       @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  user_id                String                       @db.Uuid
+  name                   String                       @db.VarChar(100)
+  amount                 Decimal                      @db.Decimal(20, 2)
+  period                 spending_budget_period
+  includes_uncategorized Boolean                      @default(false)
+  is_active              Boolean                      @default(true)
+  created_at             DateTime                     @default(now()) @db.Timestamptz(6)
+  updated_at             DateTime                     @default(now()) @db.Timestamptz(6)
+  users                  users                        @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  spending_budget_categories spending_budget_categories[]
+
+  @@index([user_id, is_active, period], map: "idx_spending_budgets_user_active_period")
+}
+
+model spending_budget_categories {
+  budget_id        String           @db.Uuid
+  category_id      String           @db.Uuid
+  created_at       DateTime         @default(now()) @db.Timestamptz(6)
+  spending_budgets spending_budgets @relation(fields: [budget_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  categories       categories       @relation(fields: [category_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@id([budget_id, category_id])
+  @@index([category_id], map: "idx_spending_budget_categories_category_id")
 }
 
 model dashboard_preferences {
@@ -185,6 +213,7 @@ model users {
   refresh_tokens        refresh_tokens[]
   transaction_templates transaction_templates[]
   money_allocations     money_allocations[]
+  spending_budgets      spending_budgets[]
   wallets               wallets[]
 }
 
@@ -220,6 +249,13 @@ model wallets {
 enum transaction_type {
   income
   expense
+}
+
+enum spending_budget_period {
+  daily
+  weekly
+  monthly
+  yearly
 }
 
 enum user_role {
