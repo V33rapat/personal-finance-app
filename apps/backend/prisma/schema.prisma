@@ -11,18 +11,18 @@ datasource db {
 /// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
 /// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
 model categories {
-  id                    String                  @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
-  user_id               String?                 @db.Uuid
-  name                  String                  @db.VarChar(100)
-  type                  transaction_type
-  color                 String?                 @db.VarChar(7)
-  icon                  String?                 @db.VarChar(100)
-  is_system             Boolean                 @default(false)
-  created_at            DateTime                @default(now()) @db.Timestamptz(6)
-  updated_at            DateTime                @default(now()) @db.Timestamptz(6)
-  users                 users?                  @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
-  transaction_templates transaction_templates[]
-  transactions          transactions[]
+  id                          String                        @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  user_id                     String?                       @db.Uuid
+  name                        String                        @db.VarChar(100)
+  type                        transaction_type
+  color                       String?                       @db.VarChar(7)
+  icon                        String?                       @db.VarChar(100)
+  is_system                   Boolean                       @default(false)
+  created_at                  DateTime                      @default(now()) @db.Timestamptz(6)
+  updated_at                  DateTime                      @default(now()) @db.Timestamptz(6)
+  users                       users?                        @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  transaction_templates       transaction_templates[]
+  transactions                transactions[]
   dashboard_hidden_categories dashboard_hidden_categories[]
   spending_budget_categories  spending_budget_categories[]
 
@@ -32,19 +32,32 @@ model categories {
 }
 
 model spending_budgets {
-  id                     String                       @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
-  user_id                String                       @db.Uuid
-  name                   String                       @db.VarChar(100)
-  amount                 Decimal                      @db.Decimal(20, 2)
-  period                 spending_budget_period
-  includes_uncategorized Boolean                      @default(false)
-  is_active              Boolean                      @default(true)
-  created_at             DateTime                     @default(now()) @db.Timestamptz(6)
-  updated_at             DateTime                     @default(now()) @db.Timestamptz(6)
-  users                  users                        @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  id                         String                       @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  user_id                    String                       @db.Uuid
+  name                       String                       @db.VarChar(100)
+  amount                     Decimal                      @db.Decimal(20, 2)
+  period                     spending_budget_period
+  wallet_scope               spending_budget_wallet_scope @default(all)
+  includes_uncategorized     Boolean                      @default(false)
+  is_active                  Boolean                      @default(true)
+  created_at                 DateTime                     @default(now()) @db.Timestamptz(6)
+  updated_at                 DateTime                     @default(now()) @db.Timestamptz(6)
+  users                      users                        @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
   spending_budget_categories spending_budget_categories[]
+  spending_budget_wallets    spending_budget_wallets[]
 
   @@index([user_id, is_active, period], map: "idx_spending_budgets_user_active_period")
+}
+
+model spending_budget_wallets {
+  budget_id        String           @db.Uuid
+  wallet_id        String           @db.Uuid
+  created_at       DateTime         @default(now()) @db.Timestamptz(6)
+  spending_budgets spending_budgets @relation(fields: [budget_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  wallets          wallets          @relation(fields: [wallet_id], references: [id], onUpdate: NoAction)
+
+  @@id([budget_id, wallet_id])
+  @@index([wallet_id], map: "idx_spending_budget_wallets_wallet_id")
 }
 
 model spending_budget_categories {
@@ -148,24 +161,24 @@ model transactions {
 /// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
 /// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
 model transfers {
-  id                                                       String        @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
-  allocation_id                                            String?       @db.Uuid
-  from_wallet_id                                           String        @db.Uuid
-  to_wallet_id                                             String        @db.Uuid
-  from_transaction_id                                      String?       @unique @db.Uuid
-  to_transaction_id                                        String?       @unique @db.Uuid
-  amount                                                   Decimal       @db.Decimal(20, 2)
-  fee                                                      Decimal       @default(0.00) @db.Decimal(20, 2)
+  id                                                       String             @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  allocation_id                                            String?            @db.Uuid
+  from_wallet_id                                           String             @db.Uuid
+  to_wallet_id                                             String             @db.Uuid
+  from_transaction_id                                      String?            @unique @db.Uuid
+  to_transaction_id                                        String?            @unique @db.Uuid
+  amount                                                   Decimal            @db.Decimal(20, 2)
+  fee                                                      Decimal            @default(0.00) @db.Decimal(20, 2)
   note                                                     String?
-  transfer_date                                            DateTime      @db.Date
-  created_at                                               DateTime      @default(now()) @db.Timestamptz(6)
-  updated_at                                               DateTime      @default(now()) @db.Timestamptz(6)
-  deleted_at                                               DateTime?     @db.Timestamptz(6)
+  transfer_date                                            DateTime           @db.Date
+  created_at                                               DateTime           @default(now()) @db.Timestamptz(6)
+  updated_at                                               DateTime           @default(now()) @db.Timestamptz(6)
+  deleted_at                                               DateTime?          @db.Timestamptz(6)
   money_allocations                                        money_allocations? @relation(fields: [allocation_id], references: [id], onUpdate: NoAction)
-  transactions_transfers_from_transaction_idTotransactions transactions? @relation("transfers_from_transaction_idTotransactions", fields: [from_transaction_id], references: [id], onUpdate: NoAction)
-  wallets_transfers_from_wallet_idTowallets                wallets       @relation("transfers_from_wallet_idTowallets", fields: [from_wallet_id], references: [id], onUpdate: NoAction)
-  transactions_transfers_to_transaction_idTotransactions   transactions? @relation("transfers_to_transaction_idTotransactions", fields: [to_transaction_id], references: [id], onUpdate: NoAction)
-  wallets_transfers_to_wallet_idTowallets                  wallets       @relation("transfers_to_wallet_idTowallets", fields: [to_wallet_id], references: [id], onUpdate: NoAction)
+  transactions_transfers_from_transaction_idTotransactions transactions?      @relation("transfers_from_transaction_idTotransactions", fields: [from_transaction_id], references: [id], onUpdate: NoAction)
+  wallets_transfers_from_wallet_idTowallets                wallets            @relation("transfers_from_wallet_idTowallets", fields: [from_wallet_id], references: [id], onUpdate: NoAction)
+  transactions_transfers_to_transaction_idTotransactions   transactions?      @relation("transfers_to_transaction_idTotransactions", fields: [to_transaction_id], references: [id], onUpdate: NoAction)
+  wallets_transfers_to_wallet_idTowallets                  wallets            @relation("transfers_to_wallet_idTowallets", fields: [to_wallet_id], references: [id], onUpdate: NoAction)
 
   @@index([transfer_date(sort: Desc)], map: "idx_transfers_date")
   @@index([deleted_at], map: "idx_transfers_deleted_at")
@@ -175,18 +188,18 @@ model transfers {
 }
 
 model money_allocations {
-  id                                                   String        @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
-  user_id                                              String        @db.Uuid
-  source_wallet_id                                     String        @db.Uuid
-  amount                                               Decimal       @db.Decimal(20, 2)
-  allocation_date                                      DateTime      @db.Date
-  note                                                 String?
-  created_at                                           DateTime      @default(now()) @db.Timestamptz(6)
-  updated_at                                           DateTime      @default(now()) @db.Timestamptz(6)
-  deleted_at                                           DateTime?     @db.Timestamptz(6)
-  users                                                users         @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
-  wallets_money_allocations_source_wallet_idTowallets wallets       @relation("money_allocations_source_wallet_idTowallets", fields: [source_wallet_id], references: [id], onUpdate: NoAction)
-  transfers                                            transfers[]
+  id                                                  String      @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  user_id                                             String      @db.Uuid
+  source_wallet_id                                    String      @db.Uuid
+  amount                                              Decimal     @db.Decimal(20, 2)
+  allocation_date                                     DateTime    @db.Date
+  note                                                String?
+  created_at                                          DateTime    @default(now()) @db.Timestamptz(6)
+  updated_at                                          DateTime    @default(now()) @db.Timestamptz(6)
+  deleted_at                                          DateTime?   @db.Timestamptz(6)
+  users                                               users       @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  wallets_money_allocations_source_wallet_idTowallets wallets     @relation("money_allocations_source_wallet_idTowallets", fields: [source_wallet_id], references: [id], onUpdate: NoAction)
+  transfers                                           transfers[]
 
   @@index([user_id, deleted_at, allocation_date(sort: Desc)], map: "idx_money_allocations_user_date")
   @@index([source_wallet_id], map: "idx_money_allocations_source_wallet")
@@ -221,29 +234,30 @@ model users {
 /// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
 /// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
 model wallets {
-  id                                          String                  @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
-  user_id                                     String                  @db.Uuid
-  parent_wallet_id                            String?                 @db.Uuid
-  name                                        String                  @db.VarChar(150)
-  description                                 String?
-  wallet_type                                 wallet_type             @default(normal)
-  balance                                     Decimal                 @default(0.00) @db.Decimal(20, 2)
-  currency                                    String                  @default("THB") @db.Char(3)
-  color                                       String?                 @db.VarChar(7)
-  icon                                        String?                 @db.VarChar(100)
-  sort_order                                  Int                     @default(0)
-  is_active                                   Boolean                 @default(true)
-  created_at                                  DateTime                @default(now()) @db.Timestamptz(6)
-  updated_at                                  DateTime                @default(now()) @db.Timestamptz(6)
-  deleted_at                                  DateTime?               @db.Timestamptz(6)
-  transaction_templates                       transaction_templates[]
-  transactions                                transactions[]
-  transfers_transfers_from_wallet_idTowallets transfers[]             @relation("transfers_from_wallet_idTowallets")
-  transfers_transfers_to_wallet_idTowallets   transfers[]             @relation("transfers_to_wallet_idTowallets")
-  money_allocations_money_allocations_source_wallet_idTowallets money_allocations[] @relation("money_allocations_source_wallet_idTowallets")
-  wallets                                     wallets?                @relation("walletsTowallets", fields: [parent_wallet_id], references: [id], onUpdate: NoAction)
-  other_wallets                               wallets[]               @relation("walletsTowallets")
-  users                                       users                   @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  id                                                            String                    @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  user_id                                                       String                    @db.Uuid
+  parent_wallet_id                                              String?                   @db.Uuid
+  name                                                          String                    @db.VarChar(150)
+  description                                                   String?
+  wallet_type                                                   wallet_type               @default(normal)
+  balance                                                       Decimal                   @default(0.00) @db.Decimal(20, 2)
+  currency                                                      String                    @default("THB") @db.Char(3)
+  color                                                         String?                   @db.VarChar(7)
+  icon                                                          String?                   @db.VarChar(100)
+  sort_order                                                    Int                       @default(0)
+  is_active                                                     Boolean                   @default(true)
+  created_at                                                    DateTime                  @default(now()) @db.Timestamptz(6)
+  updated_at                                                    DateTime                  @default(now()) @db.Timestamptz(6)
+  deleted_at                                                    DateTime?                 @db.Timestamptz(6)
+  transaction_templates                                         transaction_templates[]
+  transactions                                                  transactions[]
+  transfers_transfers_from_wallet_idTowallets                   transfers[]               @relation("transfers_from_wallet_idTowallets")
+  transfers_transfers_to_wallet_idTowallets                     transfers[]               @relation("transfers_to_wallet_idTowallets")
+  money_allocations_money_allocations_source_wallet_idTowallets money_allocations[]       @relation("money_allocations_source_wallet_idTowallets")
+  spending_budget_wallets                                       spending_budget_wallets[]
+  wallets                                                       wallets?                  @relation("walletsTowallets", fields: [parent_wallet_id], references: [id], onUpdate: NoAction)
+  other_wallets                                                 wallets[]                 @relation("walletsTowallets")
+  users                                                         users                     @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
 }
 
 enum transaction_type {
@@ -256,6 +270,11 @@ enum spending_budget_period {
   weekly
   monthly
   yearly
+}
+
+enum spending_budget_wallet_scope {
+  all
+  selected
 }
 
 enum user_role {

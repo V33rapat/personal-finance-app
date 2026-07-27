@@ -3,7 +3,12 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { Prisma, spending_budget_period } from '@prisma/client';
+import {
+  Prisma,
+  spending_budget_period,
+  spending_budget_wallet_scope,
+  wallet_type,
+} from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateSpendingBudgetDto } from './dto/create-spending-budget.dto';
 import { FindSpendingBudgetOverviewDto } from './dto/find-spending-budget-overview.dto';
@@ -20,6 +25,24 @@ const spendingBudgetInclude = {
       },
     },
   },
+  spending_budget_wallets: {
+    include: {
+      wallets: {
+        select: {
+          id: true,
+          name: true,
+          wallet_type: true,
+          is_active: true,
+          deleted_at: true,
+          wallets: { select: { name: true } },
+          other_wallets: {
+            where: { is_active: true, deleted_at: null },
+            select: { id: true },
+          },
+        },
+      },
+    },
+  },
 } satisfies Prisma.spending_budgetsInclude;
 
 interface SpendingBudgetCategoryRecord {
@@ -31,17 +54,32 @@ interface SpendingBudgetCategoryRecord {
   };
 }
 
+interface SpendingBudgetWalletRecord {
+  wallet_id: string;
+  wallets: {
+    id: string;
+    name: string;
+    wallet_type: wallet_type;
+    is_active: boolean;
+    deleted_at: Date | null;
+    wallets: { name: string } | null;
+    other_wallets: Array<{ id: string }>;
+  };
+}
+
 interface SpendingBudgetRecord {
   id: string;
   user_id: string;
   name: string;
   amount: Prisma.Decimal;
   period: spending_budget_period;
+  wallet_scope: spending_budget_wallet_scope;
   includes_uncategorized: boolean;
   is_active: boolean;
   created_at: Date;
   updated_at: Date;
   spending_budget_categories: SpendingBudgetCategoryRecord[];
+  spending_budget_wallets: SpendingBudgetWalletRecord[];
 }
 
 interface CurrentPeriod {
@@ -49,6 +87,8 @@ interface CurrentPeriod {
   end: Date;
   endExclusive: Date;
 }
+
+type AmountByCategoryAndWallet = Map<string, Map<string, Prisma.Decimal>>;
 
 @Injectable()
 export class SpendingBudgetService {
@@ -86,7 +126,7 @@ export class SpendingBudgetService {
     }
 
     const totals = await this.prisma.transactions.groupBy({
-      by: ['category_id'],
+      by: ['category_id', 'wallet_id'],
       where: {
         deleted_at: null,
         type: 'expense',
@@ -100,25 +140,36 @@ export class SpendingBudgetService {
           is_active: true,
           deleted_at: null,
           created_at: { lt: period.endExclusive },
+          other_wallets: {
+            none: { is_active: true, deleted_at: null },
+          },
         },
         transfers_transfers_from_transaction_idTotransactions: { is: null },
         transfers_transfers_to_transaction_idTotransactions: { is: null },
       },
       _sum: { amount: true },
     });
-    const amountByCategory = new Map(
-      totals.map((total) => [
-        total.category_id ?? UNCATEGORIZED_KEY,
+    const amountByCategoryAndWallet: AmountByCategoryAndWallet = new Map();
+
+    totals.forEach((total) => {
+      const categoryKey = total.category_id ?? UNCATEGORIZED_KEY;
+      const walletAmounts =
+        amountByCategoryAndWallet.get(categoryKey) ??
+        new Map<string, Prisma.Decimal>();
+
+      walletAmounts.set(
+        total.wallet_id,
         new Prisma.Decimal(total._sum.amount ?? 0),
-      ]),
-    );
+      );
+      amountByCategoryAndWallet.set(categoryKey, walletAmounts);
+    });
 
     return {
       period: periodType,
       period_start: this.toDateString(period.start),
       period_end: this.toDateString(period.end),
       budgets: budgets.map((budget) =>
-        this.toOverviewResponse(budget, amountByCategory),
+        this.toOverviewResponse(budget, amountByCategoryAndWallet),
       ),
     };
   }
@@ -127,11 +178,20 @@ export class SpendingBudgetService {
     const name = this.normalizeName(dto.name);
     this.validateAmount(dto.amount);
     const categoryIds = this.normalizeCategoryIds(dto.category_ids);
+    const walletIds = this.normalizeWalletIds(dto.wallet_ids);
     await this.validateCategorySelection(
       userId,
       categoryIds,
       dto.includes_uncategorized,
     );
+    await this.validateWalletSelection(userId, dto.wallet_scope, walletIds);
+    await this.assertNoDuplicateActiveBudget(userId, {
+      period: dto.period,
+      categoryIds,
+      includesUncategorized: dto.includes_uncategorized,
+      walletScope: dto.wallet_scope,
+      walletIds,
+    });
 
     const budget = await this.prisma.spending_budgets.create({
       data: {
@@ -139,12 +199,21 @@ export class SpendingBudgetService {
         name,
         amount: dto.amount,
         period: dto.period,
+        wallet_scope: dto.wallet_scope,
         includes_uncategorized: dto.includes_uncategorized,
         spending_budget_categories: {
           create: categoryIds.map((categoryId) => ({
             category_id: categoryId,
           })),
         },
+        spending_budget_wallets:
+          dto.wallet_scope === spending_budget_wallet_scope.selected
+            ? {
+                create: walletIds.map((walletId) => ({
+                  wallet_id: walletId,
+                })),
+              }
+            : undefined,
       },
       include: spendingBudgetInclude,
     });
@@ -166,6 +235,25 @@ export class SpendingBudgetService {
         : this.normalizeCategoryIds(dto.category_ids);
     const includesUncategorized =
       dto.includes_uncategorized ?? existing.includes_uncategorized;
+    const isWalletSelectionUpdated =
+      dto.wallet_scope !== undefined || dto.wallet_ids !== undefined;
+
+    if ((dto.wallet_scope === undefined) !== (dto.wallet_ids === undefined)) {
+      throw new BadRequestException(
+        'Wallet scope and wallet ids must be updated together',
+      );
+    }
+
+    const walletScope = dto.wallet_scope ?? existing.wallet_scope;
+    const walletIds =
+      dto.wallet_ids === undefined
+        ? existing.spending_budget_wallets.map((wallet) => wallet.wallet_id)
+        : this.normalizeWalletIds(dto.wallet_ids);
+    const existingWalletIds = existing.spending_budget_wallets.map(
+      (wallet) => wallet.wallet_id,
+    );
+    const period = dto.period ?? existing.period;
+    const isActive = dto.is_active ?? existing.is_active;
 
     this.validateAmount(amount);
     await this.validateCategorySelection(
@@ -173,6 +261,26 @@ export class SpendingBudgetService {
       categoryIds,
       includesUncategorized,
     );
+    await this.validateWalletSelection(
+      userId,
+      walletScope,
+      walletIds,
+      existingWalletIds,
+    );
+
+    if (isActive) {
+      await this.assertNoDuplicateActiveBudget(
+        userId,
+        {
+          period,
+          categoryIds,
+          includesUncategorized,
+          walletScope,
+          walletIds,
+        },
+        id,
+      );
+    }
 
     const budget = await this.prisma.$transaction(async (tx) => {
       if (dto.category_ids !== undefined) {
@@ -190,14 +298,30 @@ export class SpendingBudgetService {
         }
       }
 
+      if (isWalletSelectionUpdated) {
+        await tx.spending_budget_wallets.deleteMany({
+          where: { budget_id: id },
+        });
+
+        if (walletScope === spending_budget_wallet_scope.selected) {
+          await tx.spending_budget_wallets.createMany({
+            data: walletIds.map((walletId) => ({
+              budget_id: id,
+              wallet_id: walletId,
+            })),
+          });
+        }
+      }
+
       return tx.spending_budgets.update({
         where: { id },
         data: {
           name,
           amount,
-          period: dto.period ?? existing.period,
+          period,
+          wallet_scope: walletScope,
           includes_uncategorized: includesUncategorized,
-          is_active: dto.is_active ?? existing.is_active,
+          is_active: isActive,
           updated_at: new Date(),
         },
         include: spendingBudgetInclude,
@@ -281,6 +405,124 @@ export class SpendingBudgetService {
     }
 
     return uniqueCategoryIds;
+  }
+
+  private normalizeWalletIds(walletIds: string[]) {
+    const uniqueWalletIds = [...new Set(walletIds)];
+
+    if (uniqueWalletIds.length !== walletIds.length) {
+      throw new BadRequestException('Wallets cannot be duplicated');
+    }
+
+    return uniqueWalletIds;
+  }
+
+  private async validateWalletSelection(
+    userId: string,
+    walletScope: spending_budget_wallet_scope,
+    walletIds: string[],
+    existingWalletIds: string[] = [],
+  ) {
+    if (walletScope === spending_budget_wallet_scope.all) {
+      if (walletIds.length > 0) {
+        throw new BadRequestException(
+          'All wallet budgets cannot include selected wallets',
+        );
+      }
+
+      return;
+    }
+
+    if (walletIds.length === 0) {
+      throw new BadRequestException('Select at least one wallet');
+    }
+
+    const existingWalletIdSet = new Set(existingWalletIds);
+    const newWalletIds = walletIds.filter(
+      (walletId) => !existingWalletIdSet.has(walletId),
+    );
+
+    if (newWalletIds.length === 0) {
+      return;
+    }
+
+    const wallets = await this.prisma.wallets.findMany({
+      where: {
+        id: { in: newWalletIds },
+        user_id: userId,
+        wallet_type: wallet_type.normal,
+        is_active: true,
+        deleted_at: null,
+        other_wallets: {
+          none: { is_active: true, deleted_at: null },
+        },
+      },
+      select: { id: true },
+    });
+
+    if (wallets.length !== newWalletIds.length) {
+      throw new BadRequestException(
+        'Wallets must be available normal transaction wallets',
+      );
+    }
+  }
+
+  private async assertNoDuplicateActiveBudget(
+    userId: string,
+    values: {
+      period: spending_budget_period;
+      categoryIds: string[];
+      includesUncategorized: boolean;
+      walletScope: spending_budget_wallet_scope;
+      walletIds: string[];
+    },
+    excludeBudgetId?: string,
+  ) {
+    const budgets = await this.prisma.spending_budgets.findMany({
+      where: {
+        user_id: userId,
+        is_active: true,
+        period: values.period,
+        ...(excludeBudgetId ? { id: { not: excludeBudgetId } } : {}),
+      },
+      include: spendingBudgetInclude,
+    });
+
+    const hasDuplicate = budgets.some((budget) => {
+      if (
+        budget.includes_uncategorized !== values.includesUncategorized ||
+        budget.wallet_scope !== values.walletScope
+      ) {
+        return false;
+      }
+
+      const budgetCategoryIds = budget.spending_budget_categories.map(
+        (category) => category.category_id,
+      );
+      const budgetWalletIds = budget.spending_budget_wallets.map(
+        (wallet) => wallet.wallet_id,
+      );
+
+      return (
+        this.hasSameIds(budgetCategoryIds, values.categoryIds) &&
+        this.hasSameIds(budgetWalletIds, values.walletIds)
+      );
+    });
+
+    if (hasDuplicate) {
+      throw new BadRequestException(
+        'An active spending budget with the same scope already exists',
+      );
+    }
+  }
+
+  private hasSameIds(left: string[], right: string[]) {
+    if (left.length !== right.length) {
+      return false;
+    }
+
+    const rightIds = new Set(right);
+    return left.every((id) => rightIds.has(id));
   }
 
   private normalizeName(name: string) {
@@ -398,15 +640,29 @@ export class SpendingBudgetService {
   }
 
   private toBudgetResponse(budget: SpendingBudgetRecord) {
+    const wallets =
+      budget.wallet_scope === spending_budget_wallet_scope.selected
+        ? budget.spending_budget_wallets.map((budgetWallet) => ({
+            id: budgetWallet.wallets.id,
+            name: budgetWallet.wallets.name,
+            parent_name: budgetWallet.wallets.wallets?.name ?? null,
+            is_available: this.isBudgetWalletAvailable(budgetWallet),
+          }))
+        : [];
+
     return {
       id: budget.id,
       name: budget.name,
       amount: budget.amount.toFixed(2),
       period: budget.period,
+      wallet_scope: budget.wallet_scope,
       includes_uncategorized: budget.includes_uncategorized,
       is_active: budget.is_active,
       created_at: budget.created_at,
       updated_at: budget.updated_at,
+      wallets,
+      unavailable_wallet_count: wallets.filter((wallet) => !wallet.is_available)
+        .length,
       categories: budget.spending_budget_categories.map((category) => ({
         id: category.categories.id,
         name: category.categories.name,
@@ -417,15 +673,31 @@ export class SpendingBudgetService {
 
   private toOverviewResponse(
     budget: SpendingBudgetRecord,
-    amountByCategory: Map<string, Prisma.Decimal>,
+    amountByCategoryAndWallet: AmountByCategoryAndWallet,
   ) {
+    const selectedWalletIds =
+      budget.wallet_scope === spending_budget_wallet_scope.selected
+        ? this.getAvailableSelectedWalletIds(budget)
+        : null;
     const categoryTotal = budget.spending_budget_categories.reduce(
       (total, category) =>
-        total.plus(amountByCategory.get(category.category_id) ?? 0),
+        total.plus(
+          this.getCategoryTotal(
+            amountByCategoryAndWallet,
+            category.category_id,
+            selectedWalletIds,
+          ),
+        ),
       new Prisma.Decimal(0),
     );
     const spent = budget.includes_uncategorized
-      ? categoryTotal.plus(amountByCategory.get(UNCATEGORIZED_KEY) ?? 0)
+      ? categoryTotal.plus(
+          this.getCategoryTotal(
+            amountByCategoryAndWallet,
+            UNCATEGORIZED_KEY,
+            selectedWalletIds,
+          ),
+        )
       : categoryTotal;
     const percentage = spent.dividedBy(budget.amount).times(100);
     const roundedPercentage = Number(percentage.toFixed(2));
@@ -442,6 +714,44 @@ export class SpendingBudgetService {
       percentage: roundedPercentage,
       status,
     };
+  }
+
+  private getAvailableSelectedWalletIds(budget: SpendingBudgetRecord) {
+    return budget.spending_budget_wallets
+      .filter((wallet) => this.isBudgetWalletAvailable(wallet))
+      .map((wallet) => wallet.wallet_id);
+  }
+
+  private isBudgetWalletAvailable(wallet: SpendingBudgetWalletRecord) {
+    return (
+      wallet.wallets.wallet_type === wallet_type.normal &&
+      wallet.wallets.is_active &&
+      wallet.wallets.deleted_at === null &&
+      wallet.wallets.other_wallets.length === 0
+    );
+  }
+
+  private getCategoryTotal(
+    amountByCategoryAndWallet: AmountByCategoryAndWallet,
+    categoryId: string,
+    selectedWalletIds: string[] | null,
+  ) {
+    const walletAmounts = amountByCategoryAndWallet.get(categoryId);
+
+    if (!walletAmounts) {
+      return new Prisma.Decimal(0);
+    }
+
+    const amounts = selectedWalletIds
+      ? selectedWalletIds.map(
+          (walletId) => walletAmounts.get(walletId) ?? new Prisma.Decimal(0),
+        )
+      : [...walletAmounts.values()];
+
+    return amounts.reduce(
+      (total, amount) => total.plus(amount),
+      new Prisma.Decimal(0),
+    );
   }
 
   private getCurrentBangkokDate() {
