@@ -41,6 +41,26 @@ function getStatusLabel(status: SpendingBudgetStatus) {
   return TH_TEXT.budget.onTrack;
 }
 
+function getWalletScopeLabel(budget: SpendingBudgetOverview) {
+  if (budget.wallet_scope === "all") {
+    return TH_TEXT.budget.allWallets;
+  }
+
+  const firstWallet = budget.wallets[0];
+
+  if (!firstWallet) {
+    return TH_TEXT.budget.selectedWallets;
+  }
+
+  const firstWalletLabel = firstWallet.parent_name
+    ? `${firstWallet.parent_name}: ${firstWallet.name}`
+    : firstWallet.name;
+
+  return budget.wallets.length === 1
+    ? firstWalletLabel
+    : `${firstWalletLabel} +${budget.wallets.length - 1}`;
+}
+
 export default function SpendingBudgetCard({ budget }: { budget: SpendingBudgetOverview }) {
   const statusStyle = statusStyles[budget.status];
   const progress = getSpendingBudgetProgress(budget.percentage);
@@ -51,7 +71,7 @@ export default function SpendingBudgetCard({ budget }: { budget: SpendingBudgetO
   const isOverBudget = Number(budget.remaining) < 0;
 
   return (
-    <Card className="min-h-[220px] p-5">
+    <Card className="min-h-[244px] p-5">
       <div className="flex items-start justify-between gap-4">
         <div className="min-w-0">
           <h3 className="truncate text-base font-bold text-slate-900 dark:text-slate-50">
@@ -60,6 +80,17 @@ export default function SpendingBudgetCard({ budget }: { budget: SpendingBudgetO
           <p className="mt-1 line-clamp-2 min-h-10 text-sm leading-5 text-slate-500 dark:text-slate-400">
             {categoryNames.join(", ")}
           </p>
+          <p className="mt-1 truncate text-xs font-medium text-slate-500 dark:text-slate-400">
+            {getWalletScopeLabel(budget)}
+          </p>
+          {budget.unavailable_wallet_count > 0 && (
+            <p className="mt-1 text-xs font-medium text-amber-700 dark:text-amber-300">
+              {TH_TEXT.budget.unavailableWalletsCount.replace(
+                "%s",
+                String(budget.unavailable_wallet_count),
+              )}
+            </p>
+          )}
         </div>
         <span className={["shrink-0 text-xs font-semibold", statusStyle.text].join(" ")}>
           {getStatusLabel(budget.status)}

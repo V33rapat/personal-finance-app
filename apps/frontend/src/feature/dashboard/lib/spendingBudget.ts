@@ -7,6 +7,7 @@ import {
 } from "./date";
 
 export type SpendingBudgetPeriod = "daily" | "weekly" | "monthly" | "yearly";
+export type SpendingBudgetWalletScope = "all" | "selected";
 
 export type SpendingBudgetPeriodSelection =
   | { period: "daily"; date: string }
@@ -27,6 +28,8 @@ export interface SpendingBudgetFormValues {
   period: SpendingBudgetPeriod;
   category_ids: string[];
   includes_uncategorized: boolean;
+  wallet_scope: SpendingBudgetWalletScope;
+  wallet_ids: string[];
 }
 
 export type SpendingBudgetStatus = "on_track" | "near_limit" | "over_budget";
@@ -35,6 +38,7 @@ export interface SpendingBudgetValidationErrors {
   name?: string;
   amount?: string;
   categories?: string;
+  wallets?: string;
 }
 
 function getCurrentWeek(today: string) {
@@ -151,6 +155,10 @@ export function getSpendingBudgetValidationErrors(
 
   if (values.category_ids.length === 0 && !values.includes_uncategorized) {
     errors.categories = "เลือกอย่างน้อย 1 หมวด หรือเลือกไม่ระบุหมวดหมู่";
+  }
+
+  if (values.wallet_scope === "selected" && values.wallet_ids.length === 0) {
+    errors.wallets = "กรุณาเลือกกระเป๋าอย่างน้อย 1 ใบ";
   }
 
   return errors;

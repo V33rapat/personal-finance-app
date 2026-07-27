@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Settings2 } from "lucide-react";
 import Button from "@/components/ui/Button";
 import { TH_TEXT } from "@/constants/th";
+import { useWallet } from "@/feature/wallet/hooks/useWallet";
 import {
   formatSpendingBudgetPeriodSelection,
   type SpendingBudgetPeriod,
@@ -28,6 +29,7 @@ function BudgetCardSkeleton() {
 
 export default function SpendingBudgetOverview() {
   const [isManagementOpen, setIsManagementOpen] = useState(false);
+  const { wallets, isLoading: isLoadingWallets } = useWallet();
   const {
     selectedPeriod,
     selectedPeriodSelection,
@@ -166,6 +168,8 @@ export default function SpendingBudgetOverview() {
           isLoading={isLoadingBudgets}
           isSaving={isSaving}
           error={error}
+          wallets={wallets}
+          isLoadingWallets={isLoadingWallets}
           onClose={() => setIsManagementOpen(false)}
           onCreate={createBudget}
           onUpdate={updateBudget}

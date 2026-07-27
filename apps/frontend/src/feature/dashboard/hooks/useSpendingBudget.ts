@@ -15,6 +15,7 @@ import {
   type SpendingBudgetPeriodSelection,
   type SpendingBudgetPeriodSelections,
   type SpendingBudgetStatus,
+  type SpendingBudgetWalletScope,
 } from "../lib/spendingBudget";
 
 interface ApiBudgetCategory {
@@ -23,11 +24,21 @@ interface ApiBudgetCategory {
   color: string | null;
 }
 
+interface ApiBudgetWallet {
+  id: string;
+  name: string;
+  parent_name: string | null;
+  is_available: boolean;
+}
+
 interface ApiSpendingBudget {
   id: string;
   name: string;
   amount: string | number;
   period: SpendingBudgetPeriod;
+  wallet_scope: SpendingBudgetWalletScope;
+  wallets: ApiBudgetWallet[];
+  unavailable_wallet_count: number;
   includes_uncategorized: boolean;
   is_active: boolean;
   created_at: string;
@@ -50,12 +61,16 @@ interface ApiSpendingBudgetOverview {
 }
 
 export type SpendingBudgetCategory = ApiBudgetCategory;
+export type SpendingBudgetWallet = ApiBudgetWallet;
 
 export interface SpendingBudget {
   id: string;
   name: string;
   amount: string;
   period: SpendingBudgetPeriod;
+  wallet_scope: SpendingBudgetWalletScope;
+  wallets: SpendingBudgetWallet[];
+  unavailable_wallet_count: number;
   includes_uncategorized: boolean;
   is_active: boolean;
   created_at: string;
@@ -83,6 +98,13 @@ function mapBudget(budget: ApiSpendingBudget): SpendingBudget {
     name: budget.name,
     amount: String(budget.amount ?? "0"),
     period: budget.period,
+    wallet_scope: budget.wallet_scope === "selected" ? "selected" : "all",
+    wallets: Array.isArray(budget.wallets) ? budget.wallets : [],
+    unavailable_wallet_count: Number.isFinite(
+      Number(budget.unavailable_wallet_count),
+    )
+      ? Number(budget.unavailable_wallet_count)
+      : 0,
     includes_uncategorized: budget.includes_uncategorized,
     is_active: budget.is_active,
     created_at: budget.created_at,
@@ -119,6 +141,8 @@ function toPayload(values: SpendingBudgetFormValues) {
     period: values.period,
     category_ids: values.category_ids,
     includes_uncategorized: values.includes_uncategorized,
+    wallet_scope: values.wallet_scope,
+    wallet_ids: values.wallet_ids,
   };
 }
 
