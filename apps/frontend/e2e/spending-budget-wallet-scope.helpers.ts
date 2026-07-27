@@ -79,8 +79,13 @@ export async function selectWalletScope(
 
 export async function selectWallets(dialog: Locator, walletLabels: string[]) {
   for (const walletLabel of walletLabels) {
-    await dialog.getByLabel(walletLabel, { exact: true }).check();
+    await getWalletCheckbox(dialog, walletLabel).check();
   }
+}
+
+export function getWalletCheckbox(dialog: Locator, walletLabel: string) {
+  const escapedLabel = walletLabel.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  return dialog.getByLabel(new RegExp(`^${escapedLabel} \\(`));
 }
 
 export async function saveNewBudget(dialog: Locator) {

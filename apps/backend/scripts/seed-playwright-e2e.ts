@@ -13,8 +13,7 @@ const primaryEmail =
 const secondaryEmail =
   process.env.PLAYWRIGHT_E2E_SECONDARY_EMAIL ??
   'playwright-e2e-secondary@walpaca.test';
-const password =
-  process.env.PLAYWRIGHT_E2E_PASSWORD ?? 'PlaywrightE2E!123';
+const password = process.env.PLAYWRIGHT_E2E_PASSWORD ?? 'PlaywrightE2E!123';
 const reportingDate = new Date('2026-07-20T00:00:00.000Z');
 
 async function resetUserData(userId: string) {
@@ -181,14 +180,54 @@ async function seedPrimaryUser() {
     ],
   });
 
+  const allocation = await prisma.money_allocations.create({
+    data: {
+      user_id: user.id,
+      source_wallet_id: cash.id,
+      amount: 50,
+      allocation_date: reportingDate,
+      note: 'E2E allocation pair that must not count as spending',
+    },
+  });
+  const fromTransaction = await prisma.transactions.create({
+    data: {
+      wallet_id: cash.id,
+      category_id: food.id,
+      name: 'E2E allocation transfer expense',
+      type: transaction_type.expense,
+      amount: 50,
+      transaction_date: reportingDate,
+    },
+  });
+  const toTransaction = await prisma.transactions.create({
+    data: {
+      wallet_id: savingsChild.id,
+      category_id: food.id,
+      name: 'E2E allocation transfer income',
+      type: transaction_type.income,
+      amount: 50,
+      transaction_date: reportingDate,
+    },
+  });
+
+  await prisma.transfers.create({
+    data: {
+      allocation_id: allocation.id,
+      from_wallet_id: cash.id,
+      to_wallet_id: savingsChild.id,
+      from_transaction_id: fromTransaction.id,
+      to_transaction_id: toTransaction.id,
+      amount: 50,
+      transfer_date: reportingDate,
+      note: 'E2E allocation transfer pair',
+    },
+  });
+
   return { user, cash, savingsChild, food, travel, leisure };
 }
 
 async function seedSecondaryUser() {
-  const user = await upsertUser(
-    secondaryEmail,
-    'Playwright Secondary User',
-  );
+  const user = await upsertUser(secondaryEmail, 'Playwright Secondary User');
   const category = await prisma.categories.create({
     data: {
       user_id: user.id,
