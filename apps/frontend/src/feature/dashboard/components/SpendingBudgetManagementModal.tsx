@@ -204,9 +204,12 @@ export default function SpendingBudgetManagementModal({
   const unavailableWallets = useMemo(
     () =>
       editingBudget?.wallet_scope === "selected"
-        ? editingBudget.wallets.filter((wallet) => !wallet.is_available)
+        ? editingBudget.wallets.filter(
+            (wallet) =>
+              !wallet.is_available && formValues.wallet_ids.includes(wallet.id),
+          )
         : [],
-    [editingBudget],
+    [editingBudget, formValues.wallet_ids],
   );
 
   if (!isOpen) {
