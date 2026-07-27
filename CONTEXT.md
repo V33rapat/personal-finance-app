@@ -159,7 +159,7 @@ The comparison of Expenses by Transaction Category to understand where money is 
 _Avoid_: Chart, graph
 
 **Spending Budget**:
-A named spending limit for one Reporting Period that tracks Expenses across one or more Transaction Categories.
+A named spending limit for one Reporting Period that tracks Expenses across one or more Transaction Categories within its Wallet Scope. The Wallet Scope is either all eligible Transaction Wallets or an explicitly selected set of Transaction Wallets.
 _Avoid_: Savings goal, wallet balance, transfer limit
 
 **Spending Budget Report**:
