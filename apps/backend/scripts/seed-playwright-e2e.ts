@@ -15,6 +15,7 @@ const secondaryEmail =
   'playwright-e2e-secondary@walpaca.test';
 const password = process.env.PLAYWRIGHT_E2E_PASSWORD ?? 'PlaywrightE2E!123';
 const reportingDate = new Date('2026-07-20T00:00:00.000Z');
+const seededWalletCreatedAt = new Date('2026-07-01T00:00:00.000Z');
 
 async function resetUserData(userId: string) {
   const wallets = await prisma.wallets.findMany({
@@ -89,6 +90,7 @@ async function seedPrimaryUser() {
       name: 'E2E เงินสด',
       wallet_type: wallet_type.normal,
       balance: 5_000,
+      created_at: seededWalletCreatedAt,
     },
   });
   const savingsParent = await prisma.wallets.create({
@@ -97,6 +99,7 @@ async function seedPrimaryUser() {
       name: 'E2E เงินเก็บ',
       wallet_type: wallet_type.normal,
       balance: 2_000,
+      created_at: seededWalletCreatedAt,
     },
   });
   const savingsChild = await prisma.wallets.create({
@@ -106,6 +109,7 @@ async function seedPrimaryUser() {
       name: 'E2E เงินสำรอง',
       wallet_type: wallet_type.normal,
       balance: 2_000,
+      created_at: seededWalletCreatedAt,
     },
   });
   const investment = await prisma.wallets.create({
@@ -114,6 +118,7 @@ async function seedPrimaryUser() {
       name: 'E2E พอร์ตลงทุน',
       wallet_type: wallet_type.investment,
       balance: 10_000,
+      created_at: seededWalletCreatedAt,
     },
   });
   const inactive = await prisma.wallets.create({
@@ -123,6 +128,7 @@ async function seedPrimaryUser() {
       wallet_type: wallet_type.normal,
       is_active: false,
       balance: 500,
+      created_at: seededWalletCreatedAt,
     },
   });
   const deleted = await prisma.wallets.create({
@@ -132,6 +138,7 @@ async function seedPrimaryUser() {
       wallet_type: wallet_type.normal,
       balance: 500,
       deleted_at: new Date('2026-07-01T00:00:00.000Z'),
+      created_at: seededWalletCreatedAt,
     },
   });
 
@@ -242,6 +249,7 @@ async function seedSecondaryUser() {
       name: 'E2E กระเป๋าของ User B',
       wallet_type: wallet_type.normal,
       balance: 3_000,
+      created_at: seededWalletCreatedAt,
     },
   });
 

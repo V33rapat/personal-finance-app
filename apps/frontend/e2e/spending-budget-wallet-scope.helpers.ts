@@ -28,9 +28,23 @@ export interface BudgetFormValues {
 }
 
 export async function openBudgetManagement(page: Page) {
-  const existingDialog = page.getByRole("dialog", {
-    name: WALLET_SCOPE_TEXT.manage,
-  });
+  const activeFormDialog = page
+    .locator('[role="dialog"]')
+    .filter({
+      has: page.getByRole("heading", {
+        name: /^(สร้างงบใช้จ่าย|แก้ไขงบใช้จ่าย)$/,
+      }),
+    })
+    .first();
+
+  if (await activeFormDialog.isVisible()) {
+    await expect(activeFormDialog).toBeHidden();
+  }
+
+  const existingDialog = page
+    .locator('[role="dialog"]')
+    .filter({ hasText: WALLET_SCOPE_TEXT.manage })
+    .first();
 
   if (await existingDialog.isVisible()) {
     return existingDialog;
@@ -88,6 +102,12 @@ export function getWalletCheckbox(dialog: Locator, walletLabel: string) {
   return dialog.getByLabel(new RegExp(`^${escapedLabel} \\(`));
 }
 
+export function getManagedBudgetRow(dialog: Locator, name: string) {
+  return dialog
+    .getByText(name, { exact: true })
+    .locator("xpath=../..");
+}
+
 export async function saveNewBudget(dialog: Locator) {
   await dialog
     .getByRole("button", { name: WALLET_SCOPE_TEXT.save, exact: true })
@@ -123,6 +143,6 @@ export async function expectManagedBudget(
   name: string,
   scopeLabel: string,
 ) {
-  const row = dialog.locator("li").filter({ hasText: name });
+  const row = getManagedBudgetRow(dialog, name);
   await expect(row).toContainText(scopeLabel);
 }

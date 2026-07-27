@@ -55,7 +55,7 @@ export default defineConfig({
   ],
   webServer: [
     {
-      command: "pnpm run start:prod",
+      command: "node dist/src/main.js",
       cwd: "../backend",
       url: `http://127.0.0.1:${backendPort}`,
       timeout: 120_000,

@@ -4,6 +4,7 @@ import {
   expectWalletScopePayload,
   fillBudgetForm,
   getWalletCheckbox,
+  getManagedBudgetRow,
   openBudgetCreateForm,
   openBudgetManagement,
   saveNewBudget,
@@ -29,7 +30,7 @@ const UNAVAILABLE_BUDGET_NAME = "E2E งบกระเป๋าที่ถู�
 function getBudgetCard(page: Page, name: string) {
   return page
     .getByRole("heading", { name, exact: true })
-    .locator("xpath=../..");
+    .locator("xpath=../../..");
 }
 
 async function closeManagementDialog(dialog: Locator) {
@@ -74,12 +75,21 @@ async function createExpenseThroughUi(
 
   const modal = page
     .getByRole("heading", { name: "เพิ่มรายการ", exact: true })
-    .locator("xpath=..");
+    .locator("xpath=../..");
   const walletSelect = modal.locator("select").first();
-  const walletId = await walletSelect
-    .locator("option")
-    .filter({ hasText: walletName })
-    .getAttribute("value");
+  await expect(walletSelect).toBeVisible();
+  const walletId = await walletSelect.locator("option").evaluateAll(
+    (options, expectedWalletName) => {
+      const walletOption = options.find(
+        (option): option is HTMLOptionElement =>
+          option instanceof HTMLOptionElement &&
+          option.textContent?.includes(expectedWalletName),
+      );
+
+      return walletOption?.value ?? null;
+    },
+    walletName,
+  );
 
   if (!walletId) {
     throw new Error(`Missing transaction wallet option: ${walletName}`);
@@ -168,9 +178,7 @@ test.describe("Spending Budget wallet availability and reporting", () => {
     expectWalletScopePayload(await createRequestPromise, "selected", 2);
 
     const managementDialog = await openBudgetManagement(page);
-    const budgetRow = managementDialog.locator("li").filter({
-      hasText: EDIT_BUDGET_NAME,
-    });
+    const budgetRow = getManagedBudgetRow(managementDialog, EDIT_BUDGET_NAME);
     await budgetRow.getByRole("button", { name: "แก้ไข", exact: true }).click();
 
     const editDialog = page.getByRole("dialog", { name: "แก้ไขงบใช้จ่าย" });
@@ -184,9 +192,7 @@ test.describe("Spending Budget wallet availability and reporting", () => {
     await expect(getBudgetCard(page, EDIT_BUDGET_NAME)).toContainText("฿200.00");
 
     const reopenedManagement = await openBudgetManagement(page);
-    const reopenedRow = reopenedManagement.locator("li").filter({
-      hasText: EDIT_BUDGET_NAME,
-    });
+    const reopenedRow = getManagedBudgetRow(reopenedManagement, EDIT_BUDGET_NAME);
     await reopenedRow.getByRole("button", { name: "แก้ไข", exact: true }).click();
 
     const reopenedEditDialog = page.getByRole("dialog", {
@@ -269,19 +275,16 @@ test.describe("Spending Budget wallet availability and reporting", () => {
     await page.getByRole("button", { name: "ลบ", exact: true }).click();
     const confirmDialog = page
       .getByText("ลบกระเป๋า?", { exact: true })
-      .locator("xpath=../..");
-    const deleteRequestPromise = page.waitForRequest((request) => {
-      const url = new URL(request.url());
-      return url.pathname.startsWith("/api/wallet/") && request.method() === "DELETE";
-    });
+      .locator("xpath=../../..");
     await confirmDialog.getByRole("button", { name: "ลบ", exact: true }).click();
-    await deleteRequestPromise;
+    await expect(confirmDialog).toBeHidden();
+    await expect(
+      page.getByRole("heading", { name: UNAVAILABLE_WALLET_NAME, exact: true }),
+    ).toBeHidden();
 
     await openDashboard(page);
     const managementDialog = await openBudgetManagement(page);
-    const budgetRow = managementDialog.locator("li").filter({
-      hasText: UNAVAILABLE_BUDGET_NAME,
-    });
+    const budgetRow = getManagedBudgetRow(managementDialog, UNAVAILABLE_BUDGET_NAME);
     await expect(budgetRow).toContainText("มีกระเป๋าที่เลือกไว้ไม่พร้อมใช้งาน 1 ใบ");
     await budgetRow.getByRole("button", { name: "แก้ไข", exact: true }).click();
 
@@ -303,9 +306,10 @@ test.describe("Spending Budget wallet availability and reporting", () => {
     expectWalletScopePayload(await updateRequestPromise, "selected", 1);
 
     const updatedManagementDialog = await openBudgetManagement(page);
-    const updatedRow = updatedManagementDialog.locator("li").filter({
-      hasText: UNAVAILABLE_BUDGET_NAME,
-    });
+    const updatedRow = getManagedBudgetRow(
+      updatedManagementDialog,
+      UNAVAILABLE_BUDGET_NAME,
+    );
     await expect(updatedRow).not.toContainText("มีกระเป๋าที่เลือกไว้ไม่พร้อมใช้งาน");
   });
 });
