@@ -7,6 +7,8 @@ import ConfirmationDialog from "@/components/ui/ConfirmationDialog";
 import FormField from "@/components/ui/FormField";
 import { TH_TEXT } from "@/constants/th";
 import { useCategory } from "@/feature/transaction/hooks/useCategory";
+import { getTransactionWalletOptions } from "@/feature/transaction/lib/transactionWallet";
+import type { Wallet } from "@/feature/wallet/hooks/useWallet";
 import type {
   SpendingBudget,
   SpendingBudgetCategory,
@@ -30,6 +32,8 @@ interface SpendingBudgetManagementModalProps {
   isLoading: boolean;
   isSaving: boolean;
   error: string | null;
+  wallets: Wallet[];
+  isLoadingWallets: boolean;
   onClose: () => void;
   onCreate: (values: SpendingBudgetFormValues) => Promise<MutationResult>;
   onUpdate: (id: string, values: SpendingBudgetFormValues) => Promise<MutationResult>;
@@ -43,6 +47,8 @@ const emptyFormValues: SpendingBudgetFormValues = {
   period: "daily",
   category_ids: [],
   includes_uncategorized: false,
+  wallet_scope: "all",
+  wallet_ids: [],
 };
 
 function toFormValues(budget: SpendingBudget): SpendingBudgetFormValues {
@@ -52,11 +58,33 @@ function toFormValues(budget: SpendingBudget): SpendingBudgetFormValues {
     period: budget.period,
     category_ids: budget.categories.map((category) => category.id),
     includes_uncategorized: budget.includes_uncategorized,
+    wallet_scope: budget.wallet_scope,
+    wallet_ids: budget.wallets.map((wallet) => wallet.id),
   };
 }
 
 function periodLabel(period: SpendingBudgetPeriod) {
   return TH_TEXT.budget[period];
+}
+
+function getWalletScopeLabel(budget: SpendingBudget) {
+  if (budget.wallet_scope === "all") {
+    return TH_TEXT.budget.allWallets;
+  }
+
+  const firstWallet = budget.wallets[0];
+
+  if (!firstWallet) {
+    return TH_TEXT.budget.selectedWallets;
+  }
+
+  const firstWalletLabel = firstWallet.parent_name
+    ? `${firstWallet.parent_name}: ${firstWallet.name}`
+    : firstWallet.name;
+
+  return budget.wallets.length === 1
+    ? firstWalletLabel
+    : `${firstWalletLabel} +${budget.wallets.length - 1}`;
 }
 
 function CategoryCheckbox({
@@ -89,12 +117,42 @@ function CategoryCheckbox({
   );
 }
 
+function WalletCheckbox({
+  id,
+  label,
+  checked,
+  disabled,
+  onChange,
+}: {
+  id: string;
+  label: string;
+  checked: boolean;
+  disabled: boolean;
+  onChange: (checked: boolean) => void;
+}) {
+  return (
+    <label className="flex cursor-pointer items-center gap-3 px-3 py-2.5 text-sm text-slate-700 hover:bg-slate-50 dark:text-slate-200 dark:hover:bg-slate-800/70">
+      <input
+        id={`spending-budget-wallet-${id}`}
+        type="checkbox"
+        checked={checked}
+        disabled={disabled}
+        onChange={(event) => onChange(event.target.checked)}
+        className="h-4 w-4 accent-violet-600"
+      />
+      <span className="min-w-0 truncate">{label}</span>
+    </label>
+  );
+}
+
 export default function SpendingBudgetManagementModal({
   isOpen,
   budgets,
   isLoading,
   isSaving,
   error,
+  wallets,
+  isLoadingWallets,
   onClose,
   onCreate,
   onUpdate,
@@ -110,6 +168,7 @@ export default function SpendingBudgetManagementModal({
   const [formValues, setFormValues] = useState<SpendingBudgetFormValues>(emptyFormValues);
   const [validationErrors, setValidationErrors] = useState<SpendingBudgetValidationErrors>({});
   const [categorySearch, setCategorySearch] = useState("");
+  const [walletSearch, setWalletSearch] = useState("");
   const [deletingBudget, setDeletingBudget] = useState<SpendingBudget | null>(null);
 
   const visibleCategories = useMemo(() => {
@@ -121,6 +180,34 @@ export default function SpendingBudgetManagementModal({
 
     return categories.filter((category) => category.name.toLocaleLowerCase().includes(search));
   }, [categories, categorySearch]);
+
+  const availableWalletOptions = useMemo(
+    () =>
+      getTransactionWalletOptions(
+        wallets.filter((wallet) => wallet.wallet_type === "normal"),
+      ),
+    [wallets],
+  );
+
+  const visibleWalletOptions = useMemo(() => {
+    const search = walletSearch.trim().toLocaleLowerCase();
+
+    if (!search) {
+      return availableWalletOptions;
+    }
+
+    return availableWalletOptions.filter((wallet) =>
+      wallet.label.toLocaleLowerCase().includes(search),
+    );
+  }, [availableWalletOptions, walletSearch]);
+
+  const unavailableWallets = useMemo(
+    () =>
+      editingBudget?.wallet_scope === "selected"
+        ? editingBudget.wallets.filter((wallet) => !wallet.is_available)
+        : [],
+    [editingBudget],
+  );
 
   if (!isOpen) {
     return null;
@@ -138,6 +225,7 @@ export default function SpendingBudgetManagementModal({
     setFormValues(emptyFormValues);
     setValidationErrors({});
     setCategorySearch("");
+    setWalletSearch("");
   };
 
   const openEdit = (budget: SpendingBudget) => {
@@ -146,6 +234,7 @@ export default function SpendingBudgetManagementModal({
     setFormValues(toFormValues(budget));
     setValidationErrors({});
     setCategorySearch("");
+    setWalletSearch("");
   };
 
   const returnToList = () => {
@@ -153,6 +242,7 @@ export default function SpendingBudgetManagementModal({
     setEditingBudget(null);
     setValidationErrors({});
     setCategorySearch("");
+    setWalletSearch("");
   };
 
   const updateFormValue = <Key extends keyof SpendingBudgetFormValues>(
@@ -160,7 +250,13 @@ export default function SpendingBudgetManagementModal({
     value: SpendingBudgetFormValues[Key]
   ) => {
     setFormValues((current) => ({ ...current, [key]: value }));
-    setValidationErrors((current) => ({ ...current, [key === "category_ids" ? "categories" : key]: undefined }));
+    const errorKey =
+      key === "category_ids"
+        ? "categories"
+        : key === "wallet_ids" || key === "wallet_scope"
+          ? "wallets"
+          : key;
+    setValidationErrors((current) => ({ ...current, [errorKey]: undefined }));
   };
 
   const toggleCategory = (categoryId: string, checked: boolean) => {
@@ -169,6 +265,26 @@ export default function SpendingBudgetManagementModal({
       checked
         ? [...formValues.category_ids, categoryId]
         : formValues.category_ids.filter((selectedCategoryId) => selectedCategoryId !== categoryId)
+    );
+  };
+
+  const setWalletScope = (walletScope: SpendingBudgetFormValues["wallet_scope"]) => {
+    setFormValues((current) => ({
+      ...current,
+      wallet_scope: walletScope,
+      wallet_ids: walletScope === "all" ? [] : current.wallet_ids,
+    }));
+    setValidationErrors((current) => ({ ...current, wallets: undefined }));
+  };
+
+  const toggleWallet = (walletId: string, checked: boolean) => {
+    updateFormValue(
+      "wallet_ids",
+      checked
+        ? [...formValues.wallet_ids, walletId]
+        : formValues.wallet_ids.filter(
+            (selectedWalletId) => selectedWalletId !== walletId,
+          ),
     );
   };
 
@@ -294,6 +410,101 @@ export default function SpendingBudgetManagementModal({
 
               <fieldset className="mt-5">
                 <legend className="text-xs font-semibold uppercase tracking-widest text-slate-500 dark:text-slate-400">
+                  {TH_TEXT.budget.walletScope}
+                </legend>
+                <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                  <label className="flex cursor-pointer items-start gap-3 border border-slate-200 p-3 text-sm text-slate-700 transition has-[:checked]:border-violet-500 has-[:checked]:bg-violet-50 dark:border-slate-700 dark:text-slate-200 dark:has-[:checked]:border-violet-500 dark:has-[:checked]:bg-violet-950/20">
+                    <input
+                      type="radio"
+                      name="spending-budget-wallet-scope"
+                      checked={formValues.wallet_scope === "all"}
+                      disabled={isSaving}
+                      onChange={() => setWalletScope("all")}
+                      className="mt-0.5 h-4 w-4 accent-violet-600"
+                    />
+                    <span className="font-semibold">{TH_TEXT.budget.allWallets}</span>
+                  </label>
+                  <label className="flex cursor-pointer items-start gap-3 border border-slate-200 p-3 text-sm text-slate-700 transition has-[:checked]:border-violet-500 has-[:checked]:bg-violet-50 dark:border-slate-700 dark:text-slate-200 dark:has-[:checked]:border-violet-500 dark:has-[:checked]:bg-violet-950/20">
+                    <input
+                      type="radio"
+                      name="spending-budget-wallet-scope"
+                      checked={formValues.wallet_scope === "selected"}
+                      disabled={isSaving}
+                      onChange={() => setWalletScope("selected")}
+                      className="mt-0.5 h-4 w-4 accent-violet-600"
+                    />
+                    <span className="font-semibold">{TH_TEXT.budget.selectedWallets}</span>
+                  </label>
+                </div>
+
+                {formValues.wallet_scope === "selected" && (
+                  <>
+                    <div className="relative mt-3">
+                      <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" aria-hidden />
+                      <input
+                        value={walletSearch}
+                        onChange={(event) => setWalletSearch(event.target.value)}
+                        placeholder={TH_TEXT.budget.walletSearch}
+                        disabled={isSaving || isLoadingWallets}
+                        className="h-11 w-full border border-slate-200 bg-white pl-10 pr-3 text-sm text-slate-800 outline-none transition placeholder:text-slate-400 focus:border-violet-400 focus:ring-2 focus:ring-violet-400/20 disabled:cursor-not-allowed disabled:opacity-60 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:placeholder:text-slate-500 dark:focus:border-violet-500 dark:focus:ring-violet-500/20"
+                      />
+                    </div>
+
+                    <div className="mt-2 max-h-52 overflow-y-auto border border-slate-200 dark:border-slate-700">
+                      {isLoadingWallets ? (
+                        <p className="p-3 text-sm text-slate-500 dark:text-slate-400">กำลังโหลดกระเป๋า...</p>
+                      ) : visibleWalletOptions.length === 0 ? (
+                        <p className="p-3 text-sm text-slate-500 dark:text-slate-400">{TH_TEXT.budget.noEligibleWallets}</p>
+                      ) : (
+                        visibleWalletOptions.map((wallet) => (
+                          <WalletCheckbox
+                            key={wallet.id}
+                            id={wallet.id}
+                            label={wallet.label}
+                            checked={formValues.wallet_ids.includes(wallet.id)}
+                            disabled={isSaving}
+                            onChange={(checked) => toggleWallet(wallet.id, checked)}
+                          />
+                        ))
+                      )}
+                    </div>
+
+                    {unavailableWallets.length > 0 && (
+                      <div className="mt-3 border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800 dark:border-amber-900/70 dark:bg-amber-950/30 dark:text-amber-200">
+                        <p className="font-semibold">{TH_TEXT.budget.unavailableWallets}</p>
+                        <ul className="mt-2 space-y-1">
+                          {unavailableWallets.map((wallet) => (
+                            <li key={wallet.id} className="flex items-center justify-between gap-3">
+                              <span className="min-w-0 truncate">
+                                {wallet.parent_name ? `${wallet.parent_name}: ${wallet.name}` : wallet.name}
+                              </span>
+                              <button
+                                type="button"
+                                onClick={() => toggleWallet(wallet.id, false)}
+                                disabled={isSaving}
+                                aria-label={`${TH_TEXT.budget.removeWallet}: ${wallet.name}`}
+                                title={TH_TEXT.budget.removeWallet}
+                                className="shrink-0 rounded p-1 transition hover:bg-amber-100 disabled:cursor-not-allowed disabled:opacity-60 dark:hover:bg-amber-900/50"
+                              >
+                                <X className="h-4 w-4" aria-hidden />
+                              </button>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                  </>
+                )}
+
+                {validationErrors.wallets && (
+                  <p role="alert" className="mt-2 text-xs text-red-600 dark:text-red-400">
+                    {validationErrors.wallets}
+                  </p>
+                )}
+              </fieldset>
+
+              <fieldset className="mt-5">
+                <legend className="text-xs font-semibold uppercase tracking-widest text-slate-500 dark:text-slate-400">
                   {TH_TEXT.budget.categories}
                 </legend>
                 <label className="mt-3 flex cursor-pointer items-start gap-3 border border-slate-200 p-3 text-sm text-slate-700 dark:border-slate-700 dark:text-slate-200">
@@ -384,6 +595,17 @@ export default function SpendingBudgetManagementModal({
                           {periodLabel(budget.period)} · ฿{budget.amount}
                           {budget.is_active ? "" : " · พักไว้"}
                         </p>
+                        <p className="mt-1 truncate text-xs text-slate-500 dark:text-slate-400">
+                          {getWalletScopeLabel(budget)}
+                        </p>
+                        {budget.unavailable_wallet_count > 0 && (
+                          <p className="mt-1 text-xs font-medium text-amber-700 dark:text-amber-300">
+                            {TH_TEXT.budget.unavailableWalletsCount.replace(
+                              "%s",
+                              String(budget.unavailable_wallet_count),
+                            )}
+                          </p>
+                        )}
                       </div>
                       <div className="flex shrink-0 items-center gap-1">
                         <button

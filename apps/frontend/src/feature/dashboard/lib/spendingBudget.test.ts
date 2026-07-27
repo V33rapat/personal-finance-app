@@ -35,11 +35,29 @@ describe("spending budget helpers", () => {
         period: "daily",
         category_ids: [],
         includes_uncategorized: false,
+        wallet_scope: "all",
+        wallet_ids: [],
       }),
     ).toEqual({
       name: "ชื่องบใช้จ่ายต้องมี 3-100 ตัวอักษร",
       amount: "กรุณากรอกวงเงินมากกว่า 0 บาท และมีทศนิยมไม่เกิน 2 ตำแหน่ง",
       categories: "เลือกอย่างน้อย 1 หมวด หรือเลือกไม่ระบุหมวดหมู่",
+    });
+  });
+
+  it("requires at least one wallet when the budget tracks selected wallets", () => {
+    expect(
+      getSpendingBudgetValidationErrors({
+        name: "ค่าอาหาร",
+        amount: "180",
+        period: "daily",
+        category_ids: ["category-id"],
+        includes_uncategorized: false,
+        wallet_scope: "selected",
+        wallet_ids: [],
+      }),
+    ).toEqual({
+      wallets: "กรุณาเลือกกระเป๋าอย่างน้อย 1 ใบ",
     });
   });
 
