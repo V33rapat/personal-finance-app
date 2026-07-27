@@ -29,16 +29,25 @@ export default defineConfig({
       name: "chromium-desktop",
       use: {
         ...devices["Desktop Chrome"],
-        storageState: "playwright/.auth/user.json",
+        storageState: "playwright/.auth/user-a.json",
       },
       dependencies: ["setup"],
-      testIgnore: /.*\.mobile\.spec\.ts/,
+      testIgnore: [/.*\.mobile\.spec\.ts/, /.*\.user-b\.spec\.ts/],
+    },
+    {
+      name: "chromium-desktop-user-b",
+      use: {
+        ...devices["Desktop Chrome"],
+        storageState: "playwright/.auth/user-b.json",
+      },
+      dependencies: ["setup"],
+      testMatch: /.*\.user-b\.spec\.ts/,
     },
     {
       name: "chromium-mobile",
       use: {
         ...devices["Pixel 7"],
-        storageState: "playwright/.auth/user.json",
+        storageState: "playwright/.auth/user-a.json",
       },
       dependencies: ["setup"],
       testMatch: /.*\.mobile\.spec\.ts/,

@@ -1,12 +1,19 @@
 import { mkdirSync } from "node:fs";
 import { dirname } from "node:path";
-import { expect, test } from "@playwright/test";
+import { expect, test, type Page } from "@playwright/test";
 
-const email = process.env.PLAYWRIGHT_E2E_EMAIL ?? "playwright-e2e@walpaca.test";
 const password = process.env.PLAYWRIGHT_E2E_PASSWORD ?? "PlaywrightE2E!123";
-const storageStatePath = "playwright/.auth/user.json";
+const primaryEmail =
+  process.env.PLAYWRIGHT_E2E_EMAIL ?? "playwright-e2e@walpaca.test";
+const secondaryEmail =
+  process.env.PLAYWRIGHT_E2E_SECONDARY_EMAIL ??
+  "playwright-e2e-secondary@walpaca.test";
 
-test("signs in through the login page", async ({ page }) => {
+async function signInAndStore(
+  page: Page,
+  email: string,
+  storageStatePath: string,
+) {
   await page.goto("/login");
   await page.getByLabel("อีเมล").fill(email);
   await page
@@ -20,4 +27,12 @@ test("signs in through the login page", async ({ page }) => {
   ).toBeVisible();
   mkdirSync(dirname(storageStatePath), { recursive: true });
   await page.context().storageState({ path: storageStatePath });
+}
+
+test("signs in User A through the login page", async ({ page }) => {
+  await signInAndStore(page, primaryEmail, "playwright/.auth/user-a.json");
+});
+
+test("signs in User B through the login page", async ({ page }) => {
+  await signInAndStore(page, secondaryEmail, "playwright/.auth/user-b.json");
 });
