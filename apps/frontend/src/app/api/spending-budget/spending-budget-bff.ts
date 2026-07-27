@@ -16,6 +16,10 @@ export interface SpendingBudgetRequestBody {
   category_ids?: unknown;
   includesUncategorized?: unknown;
   includes_uncategorized?: unknown;
+  walletScope?: unknown;
+  wallet_scope?: unknown;
+  walletIds?: unknown;
+  wallet_ids?: unknown;
   isActive?: unknown;
   is_active?: unknown;
 }
@@ -47,6 +51,8 @@ export function toBackendSpendingBudgetCreateBody(body: SpendingBudgetRequestBod
       "includesUncategorized",
       "includes_uncategorized"
     ),
+    wallet_scope: getValue(body, "walletScope", "wallet_scope"),
+    wallet_ids: getValue(body, "walletIds", "wallet_ids"),
   };
 }
 
