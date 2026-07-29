@@ -7,6 +7,7 @@ import {
   ReferenceLine,
   ResponsiveContainer,
   Tooltip,
+  type TooltipContentProps,
   XAxis,
   YAxis,
 } from "recharts";
@@ -23,6 +24,10 @@ interface DashboardBarChartProps {
 }
 
 export type DashboardChartTransactionType = "all" | "income" | "expense";
+
+interface DashboardChartTooltipProps extends TooltipContentProps {
+  visibleTransactionType: DashboardChartTransactionType;
+}
 
 function formatCurrency(value: number) {
   return new Intl.NumberFormat("th-TH", {
@@ -49,6 +54,77 @@ function formatAxisAmount(value: number) {
   }
 
   return `฿${absoluteValue.toFixed(0)}`;
+}
+
+function DashboardChartTooltip({
+  active,
+  label,
+  payload,
+  visibleTransactionType,
+}: DashboardChartTooltipProps) {
+  if (!active || payload.length === 0) {
+    return null;
+  }
+
+  const totals = payload.reduce(
+    (current, item) => {
+      const value = Math.abs(Number(item.value ?? 0));
+
+      if (String(item.dataKey).startsWith("income")) {
+        current.income += value;
+      } else {
+        current.expense += value;
+      }
+
+      return current;
+    },
+    { income: 0, expense: 0 }
+  );
+  const shouldShowIncome = visibleTransactionType !== "expense";
+  const shouldShowExpense = visibleTransactionType !== "income";
+  const net = totals.income - totals.expense;
+
+  return (
+    <div className="min-w-48 rounded-lg border border-[var(--dashboard-tooltip-border)] bg-[var(--dashboard-tooltip-background)] px-3 py-2 text-sm text-[var(--dashboard-tooltip-foreground)] shadow-lg">
+      <p className="mb-2 font-medium">{formatAxisDate(String(label))}</p>
+      <div className="space-y-1">
+        {payload.map((item) => (
+          <div key={String(item.dataKey)} className="flex items-center justify-between gap-4">
+            <span className="flex items-center gap-2">
+              <span
+                aria-hidden="true"
+                className="size-2 rounded-full"
+                style={{ backgroundColor: item.color }}
+              />
+              <span>{item.name}</span>
+            </span>
+            <span>{formatCurrency(Math.abs(Number(item.value ?? 0)))}</span>
+          </div>
+        ))}
+      </div>
+      <div className="my-2 border-t border-[var(--dashboard-tooltip-border)]" />
+      <div className="space-y-1 font-semibold">
+        {shouldShowIncome && (
+          <div className="flex items-center justify-between gap-4 text-emerald-600 dark:text-emerald-400">
+            <span>{TH_TEXT.dashboard.totalIncome}</span>
+            <span>{formatCurrency(totals.income)}</span>
+          </div>
+        )}
+        {shouldShowExpense && (
+          <div className="flex items-center justify-between gap-4 text-rose-600 dark:text-rose-400">
+            <span>{TH_TEXT.dashboard.totalExpense}</span>
+            <span>{formatCurrency(totals.expense)}</span>
+          </div>
+        )}
+        {visibleTransactionType === "all" && (
+          <div className="flex items-center justify-between gap-4">
+            <span>{TH_TEXT.dashboard.net}</span>
+            <span>{formatCurrency(net)}</span>
+          </div>
+        )}
+      </div>
+    </div>
+  );
 }
 
 export default function DashboardBarChart({
@@ -99,14 +175,12 @@ export default function DashboardBarChart({
           <ReferenceLine y={0} stroke="#64748b" strokeOpacity={0.75} />
           <Tooltip
             cursor={{ fill: "rgba(148, 163, 184, 0.14)" }}
-            labelFormatter={(label) => formatAxisDate(String(label))}
-            formatter={(value, name) => [formatCurrency(Math.abs(Number(value))), name]}
-            contentStyle={{
-              border: "1px solid var(--dashboard-tooltip-border)",
-              borderRadius: "8px",
-              background: "var(--dashboard-tooltip-background)",
-              color: "var(--dashboard-tooltip-foreground)",
-            }}
+            content={(props) => (
+              <DashboardChartTooltip
+                {...props}
+                visibleTransactionType={visibleTransactionType}
+              />
+            )}
           />
           {isCategoryBreakdownEnabled ? (
             <>
