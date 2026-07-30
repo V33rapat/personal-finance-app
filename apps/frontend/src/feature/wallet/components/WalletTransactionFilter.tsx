@@ -34,6 +34,8 @@ export default function WalletTransactionFilter({
         <select
           value={selectedType}
           onChange={(e) => onTypeChange?.(e.target.value as TransactionType | "")}
+          aria-label={TH_TEXT.transaction.allTypes}
+          data-testid="daily-filter-type"
           className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-800 focus:border-violet-500 focus:outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
         >
           <option value="">{TH_TEXT.transaction.allTypes}</option>
@@ -44,6 +46,8 @@ export default function WalletTransactionFilter({
         <select
           value={selectedCategoryId}
           onChange={(e) => onCategoryChange?.(e.target.value)}
+          aria-label={TH_TEXT.transaction.allCategories}
+          data-testid="daily-filter-category"
           className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-800 focus:border-violet-500 focus:outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
         >
           <option value="">{TH_TEXT.transaction.allCategories}</option>
@@ -65,6 +69,8 @@ export default function WalletTransactionFilter({
           value={searchQuery}
           onChange={(e) => onSearchChange?.(e.target.value)}
           placeholder={TH_TEXT.transaction.searchPlaceholder}
+          aria-label={TH_TEXT.transaction.searchPlaceholder}
+          data-testid="daily-filter-search"
           className="w-full rounded-lg border border-slate-200 bg-slate-50 pl-10 pr-3 py-2 text-sm text-slate-800 placeholder:text-slate-400 focus:border-violet-500 focus:outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
         />
       </div>

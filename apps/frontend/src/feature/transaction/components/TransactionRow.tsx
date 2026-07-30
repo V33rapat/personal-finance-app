@@ -49,6 +49,8 @@ export default function TransactionRow({
 
   return (
     <div
+      data-testid="daily-transaction-row"
+      data-management={transaction.management ?? "manual"}
       className={[
         "group flex items-center gap-3 rounded-xl px-4 py-3 transition-all duration-150",
         isSelected ? "bg-violet-50/50 dark:bg-violet-950/30" : "hover:bg-slate-50 dark:hover:bg-slate-800/50",
@@ -63,7 +65,7 @@ export default function TransactionRow({
               ? "border-violet-500 bg-violet-500 text-white"
               : "border-slate-300 hover:border-violet-400 dark:border-slate-600",
           ].join(" ")}
-          aria-label={isSelected ? "Unselect" : "Select"}
+          aria-label={`${isSelected ? "ยกเลิกการเลือก" : "เลือกรายการ"}: ${transaction.name}`}
         >
           {isSelected && (
             <svg className="h-3 w-3" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth={3}>

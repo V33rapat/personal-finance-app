@@ -22,9 +22,23 @@ export default function WalletDailySummary({ summary }: WalletDailySummaryProps)
   ];
 
   return (
-    <section aria-label={TH_TEXT.transaction.dailySummary} className="mb-5 grid divide-y divide-slate-200 rounded-xl border border-slate-200 bg-slate-50 sm:grid-cols-3 sm:divide-x sm:divide-y-0 dark:divide-slate-800 dark:border-slate-800 dark:bg-slate-950/40">
+    <section
+      aria-label={TH_TEXT.transaction.dailySummary}
+      data-testid="daily-summary"
+      className="mb-5 grid divide-y divide-slate-200 rounded-xl border border-slate-200 bg-slate-50 sm:grid-cols-3 sm:divide-x sm:divide-y-0 dark:divide-slate-800 dark:border-slate-800 dark:bg-slate-950/40"
+    >
       {values.map((item) => (
-        <div key={item.label} className="px-4 py-3">
+        <div
+          key={item.label}
+          data-testid={
+            item.label === TH_TEXT.transaction.dailyIncome
+              ? "daily-summary-income"
+              : item.label === TH_TEXT.transaction.dailyExpense
+                ? "daily-summary-expense"
+                : "daily-summary-net"
+          }
+          className="px-4 py-3"
+        >
           <p className="text-xs font-medium text-slate-500 dark:text-slate-400">{item.label}</p>
           <p className={`mt-1 text-lg font-bold ${item.className}`}>{formatMoney(item.value)}</p>
         </div>

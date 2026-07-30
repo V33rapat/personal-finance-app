@@ -228,6 +228,19 @@ export default function WalletDetail({
     [router, searchParams, today]
   );
 
+  const handleTabChange = useCallback(
+    (tab: TabType) => {
+      setActiveTab(tab);
+
+      if (tab !== "transactions" || requestedDate === selectedDate) return;
+
+      const nextSearchParams = new URLSearchParams(searchParams.toString());
+      nextSearchParams.set("date", selectedDate);
+      router.replace(`/wallet?${nextSearchParams.toString()}`, { scroll: false });
+    },
+    [requestedDate, router, searchParams, selectedDate]
+  );
+
   const handleDeleteSelected = () => {
     setShowDeleteConfirm(true);
   };
@@ -304,7 +317,7 @@ export default function WalletDetail({
             {tabs.map((tab) => (
               <button
                 key={tab.id}
-                onClick={() => setActiveTab(tab.id)}
+                onClick={() => handleTabChange(tab.id)}
                 className={[
                   "rounded-md px-4 py-2 text-sm font-medium transition-colors",
                   visibleTab === tab.id

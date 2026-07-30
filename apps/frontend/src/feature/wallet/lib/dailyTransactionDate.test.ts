@@ -3,6 +3,7 @@ import {
   addCalendarDays,
   formatThaiCalendarDate,
   isCalendarDate,
+  toCalendarDateString,
   toUtcDate,
 } from "./dailyTransactionDate";
 
@@ -10,6 +11,12 @@ describe("daily transaction dates", () => {
   it("keeps selected calendar dates in UTC without shifting the day", () => {
     expect(toUtcDate("2026-07-20").toISOString().slice(0, 10)).toBe("2026-07-20");
     expect(formatThaiCalendarDate("2026-07-20")).toContain("20");
+  });
+
+  it("serializes a DayPicker calendar date without converting it through UTC", () => {
+    const selectedDate = new Date(2026, 6, 20);
+
+    expect(toCalendarDateString(selectedDate)).toBe("2026-07-20");
   });
 
   it("moves through calendar days across month and year boundaries", () => {

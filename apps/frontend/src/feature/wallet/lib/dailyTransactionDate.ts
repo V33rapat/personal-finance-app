@@ -43,6 +43,14 @@ export function toUtcDate(value: string) {
   return new Date(Date.UTC(year, month - 1, day));
 }
 
+export function toCalendarDateString(value: Date) {
+  const year = value.getFullYear();
+  const month = String(value.getMonth() + 1).padStart(2, "0");
+  const day = String(value.getDate()).padStart(2, "0");
+
+  return `${year}-${month}-${day}`;
+}
+
 export function addCalendarDays(value: string, amount: number) {
   const date = toUtcDate(value);
   date.setUTCDate(date.getUTCDate() + amount);

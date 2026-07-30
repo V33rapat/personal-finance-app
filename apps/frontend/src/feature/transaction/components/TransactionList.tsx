@@ -49,7 +49,10 @@ export default function TransactionList({
 
   if (empty) {
     return (
-      <div className="flex flex-col items-center justify-center py-12 text-center">
+      <div
+        data-testid="daily-transaction-empty-state"
+        className="flex flex-col items-center justify-center py-12 text-center"
+      >
         <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-slate-100 text-slate-400 dark:bg-slate-800">
           <svg className="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 7.5A2.25 2.25 0 0 1 6 5.25h11.25A2.25 2.25 0 0 1 19.5 7.5v1.125h.75A1.5 1.5 0 0 1 21.75 10.125v6.75a1.5 1.5 0 0 1-1.5 1.5H6a2.25 2.25 0 0 1-2.25-2.25V7.5Z" />
@@ -91,7 +94,13 @@ export default function TransactionList({
 
       {hasMore && (
         <div className="flex justify-center py-4">
-          <Button variant="secondary" size="sm" onClick={onLoadMore} disabled={isLoading}>
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={onLoadMore}
+            disabled={isLoading}
+            data-testid="daily-load-more"
+          >
             {isLoading ? (
               <span className="flex items-center gap-2">
                 <svg className="h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none" aria-hidden>

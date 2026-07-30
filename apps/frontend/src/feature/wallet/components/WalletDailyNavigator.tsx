@@ -10,8 +10,15 @@ import {
   addCalendarDays,
   formatThaiCalendarDate,
   getBangkokToday,
+  toCalendarDateString,
   toUtcDate,
 } from "../lib/dailyTransactionDate";
+
+const calendarLabels = {
+  labelDayButton: (day: Date) => `เลือกวันที่ ${toCalendarDateString(day)}`,
+  labelNext: () => "แสดงเดือนถัดไป",
+  labelPrevious: () => "แสดงเดือนก่อนหน้า",
+};
 
 interface WalletDailyNavigatorProps {
   date: string;
@@ -30,7 +37,7 @@ export default function WalletDailyNavigator({
 
   const selectDate = (nextDate: Date | undefined) => {
     if (!nextDate) return;
-    onChange(nextDate.toISOString().slice(0, 10));
+    onChange(toCalendarDateString(nextDate));
     setIsOpen(false);
   };
 
@@ -40,6 +47,7 @@ export default function WalletDailyNavigator({
         type="button"
         title={TH_TEXT.transaction.previousDay}
         aria-label={TH_TEXT.transaction.previousDay}
+        data-testid="daily-previous-day"
         onClick={() => onChange(addCalendarDays(date, -1))}
         disabled={disabled}
         className="inline-flex h-10 w-10 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-600 transition hover:border-violet-300 hover:text-violet-700 disabled:cursor-not-allowed disabled:opacity-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300 dark:hover:border-violet-600 dark:hover:text-violet-300"
@@ -54,6 +62,8 @@ export default function WalletDailyNavigator({
           disabled={disabled}
           aria-expanded={isOpen}
           aria-haspopup="dialog"
+          aria-label={`${TH_TEXT.transaction.selectDate}: ${date}`}
+          data-testid="daily-date-picker-trigger"
           className="flex h-10 w-full items-center justify-between gap-3 rounded-lg border border-slate-200 bg-white px-3 text-left text-sm font-semibold text-slate-700 transition hover:border-violet-300 disabled:cursor-not-allowed disabled:opacity-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:hover:border-violet-600"
         >
           <span>{formatThaiCalendarDate(date)}</span>
@@ -64,6 +74,7 @@ export default function WalletDailyNavigator({
           <div
             role="dialog"
             aria-label={TH_TEXT.transaction.selectDate}
+            data-testid="daily-date-picker"
             className="absolute left-0 z-30 mt-2 w-[min(21rem,calc(100vw-3rem))] border border-slate-200 bg-white p-4 shadow-2xl dark:border-slate-700 dark:bg-slate-900"
           >
             <DayPicker
@@ -76,6 +87,7 @@ export default function WalletDailyNavigator({
               endMonth={toUtcDate(today)}
               disabled={{ after: toUtcDate(today) }}
               showOutsideDays
+              labels={calendarLabels}
               className="dashboard-day-picker mx-auto"
             />
           </div>
@@ -87,6 +99,7 @@ export default function WalletDailyNavigator({
         variant="secondary"
         disabled={disabled || isToday}
         onClick={() => onChange(today)}
+        data-testid="daily-today"
       >
         {TH_TEXT.transaction.today}
       </Button>
@@ -95,6 +108,7 @@ export default function WalletDailyNavigator({
         type="button"
         title={TH_TEXT.transaction.nextDay}
         aria-label={TH_TEXT.transaction.nextDay}
+        data-testid="daily-next-day"
         onClick={() => onChange(addCalendarDays(date, 1))}
         disabled={disabled || isToday}
         className="inline-flex h-10 w-10 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-600 transition hover:border-violet-300 hover:text-violet-700 disabled:cursor-not-allowed disabled:opacity-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300 dark:hover:border-violet-600 dark:hover:text-violet-300"
