@@ -15,11 +15,20 @@ async function signInAndStore(
   storageStatePath: string,
 ) {
   await page.goto("/login");
-  await page.getByLabel("อีเมล").fill(email);
-  await page
-    .getByRole("textbox", { name: "รหัสผ่าน", exact: true })
-    .fill(password);
-  await page.getByRole("button", { name: "เข้าสู่ระบบ" }).click();
+  const emailInput = page.getByLabel("อีเมล");
+  const passwordInput = page.getByRole("textbox", {
+    name: "รหัสผ่าน",
+    exact: true,
+  });
+  const submitButton = page.getByRole("button", { name: "เข้าสู่ระบบ" });
+
+  await emailInput.click();
+  await emailInput.pressSequentially(email);
+  await passwordInput.click();
+  await passwordInput.pressSequentially(password);
+  await passwordInput.press("Tab");
+  await expect(submitButton).toBeEnabled();
+  await submitButton.click();
 
   await page.waitForURL("**/dashboard", { timeout: 10_000 });
   await expect(
