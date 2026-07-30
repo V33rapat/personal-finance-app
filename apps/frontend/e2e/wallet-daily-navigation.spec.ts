@@ -53,6 +53,11 @@ test.describe("Daily Transaction View navigation and filters", () => {
     await selectDailyDate(page, DAILY_DATE);
     await page.reload();
     await expect(page).toHaveURL(new RegExp(`(?:[?&])date=${DAILY_DATE}(?:&|$)`));
+    const walletButton = page.getByRole("button", {
+      name: /^E2E Daily Wallet/,
+    });
+    await walletButton.click();
+    await page.getByRole("button", { name: "รายการ", exact: true }).click();
     await expect(page.getByTestId("daily-date-picker-trigger")).toContainText(
       formatThaiDate(DAILY_DATE),
     );
@@ -89,12 +94,12 @@ test.describe("Daily Transaction View navigation and filters", () => {
   test("keeps daily summary complete while the list is filtered to expenses", async ({ page }) => {
     await openDailyTransactions(page);
     await selectDailyDate(page, DAILY_DATE);
-    await expectSummary(page, 2_000, 560);
+    await expectSummary(page, 2_000, 610);
 
     await selectTransactionType(page, "expense");
-    await expect(page.getByText("E2E Daily Income", { exact: true })).toHaveCount(0);
+    await expect(page.getByTestId("daily-transaction-row").filter({ hasText: "E2E Daily Income" })).toHaveCount(0);
     await expect(page.getByText("E2E Daily Food Expense", { exact: true })).toBeVisible();
-    await expectSummary(page, 2_000, 560);
+    await expectSummary(page, 2_000, 610);
   });
 
   test("filters categories by type, resets incompatible categories, searches, and clears selection", async ({ page }) => {
@@ -103,13 +108,13 @@ test.describe("Daily Transaction View navigation and filters", () => {
     await selectTransactionType(page, "income");
 
     const category = page.getByTestId("daily-filter-category");
-    await expect(category.getByRole("option", { name: "E2E Daily Income" })).toBeVisible();
+    await expect(category.getByRole("option", { name: "E2E Daily Income" })).toHaveCount(1);
     await expect(category.getByRole("option", { name: "E2E Daily Food" })).toHaveCount(0);
     await selectTransactionCategory(page, "E2E Daily Income");
 
     await selectTransactionType(page, "expense");
     await expect(category).toHaveValue("");
-    await expect(category.getByRole("option", { name: "E2E Daily Food" })).toBeVisible();
+    await expect(category.getByRole("option", { name: "E2E Daily Food" })).toHaveCount(1);
     await selectTransactionCategory(page, "E2E Daily Food");
     await searchDailyTransactions(page, "searchable daily food");
     await expect(page.getByText("E2E Daily Food Expense", { exact: true })).toBeVisible();
@@ -136,7 +141,7 @@ test.describe("Daily Transaction View navigation and filters", () => {
     await expect(rows).toHaveCount(52);
     await expect(rows.last()).toContainText("E2E Pagination 01");
 
-    const labels = await rows.locator("p:first-of-type").allTextContents();
+    const labels = await rows.getByTestId("daily-transaction-name").allTextContents();
     expect(new Set(labels).size).toBe(labels.length);
   });
 

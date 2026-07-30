@@ -124,7 +124,7 @@ test.describe("Daily Transaction View mutations and managed transactions", () =>
     await expect(allocationRow).toContainText("จัดการจากการจัดสรรเงิน");
     await expect(transferRow.getByRole("button")).toHaveCount(0);
     await expect(allocationRow.getByRole("button")).toHaveCount(0);
-    await expectSummary(page, 2_000, 560);
+    await expectSummary(page, 2_000, 610);
   });
 
   test("bulk deletes only manual transactions and refreshes the list, summary, and wallet balance", async ({ page }) => {

@@ -89,7 +89,12 @@ export default function TransactionRow({
       </div>
 
       <div className="min-w-0 flex-1">
-        <p className="truncate font-medium text-slate-800 dark:text-slate-100">{transaction.name}</p>
+        <p
+          data-testid="daily-transaction-name"
+          className="truncate font-medium text-slate-800 dark:text-slate-100"
+        >
+          {transaction.name}
+        </p>
         <div className="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
           {showWallet && transaction.wallet_name && (
             <>
