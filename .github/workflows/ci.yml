@@ -207,6 +207,8 @@ jobs:
       JWT_SECRET: ci-playwright-e2e-test-secret
       NEXT_PUBLIC_BACKEND_URL: http://127.0.0.1:3001
       PLAYWRIGHT_E2E_EMAIL: playwright-e2e@walpaca.test
+      PLAYWRIGHT_E2E_SECONDARY_EMAIL: playwright-e2e-secondary@walpaca.test
+      PLAYWRIGHT_E2E_DAILY_EMAIL: playwright-e2e-daily@walpaca.test
       PLAYWRIGHT_E2E_PASSWORD: PlaywrightE2E!123
     services:
       postgres:

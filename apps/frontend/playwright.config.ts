@@ -32,7 +32,11 @@ export default defineConfig({
         storageState: "playwright/.auth/user-a.json",
       },
       dependencies: ["setup"],
-      testIgnore: [/.*\.mobile\.spec\.ts/, /.*\.user-b\.spec\.ts/],
+      testIgnore: [
+        /.*\.mobile\.spec\.ts/,
+        /.*\.user-b\.spec\.ts/,
+        /wallet-daily-(navigation|mutations|wallet-state)\.spec\.ts/,
+      ],
     },
     {
       name: "chromium-desktop-user-b",
@@ -51,6 +55,25 @@ export default defineConfig({
       },
       dependencies: ["setup"],
       testMatch: /.*\.mobile\.spec\.ts/,
+      testIgnore: [/wallet-daily\.mobile\.spec\.ts/],
+    },
+    {
+      name: "chromium-desktop-daily",
+      use: {
+        ...devices["Desktop Chrome"],
+        storageState: "playwright/.auth/user-daily.json",
+      },
+      dependencies: ["setup"],
+      testMatch: /wallet-daily-(navigation|mutations|wallet-state)\.spec\.ts/,
+    },
+    {
+      name: "chromium-mobile-daily",
+      use: {
+        ...devices["Pixel 7"],
+        storageState: "playwright/.auth/user-daily.json",
+      },
+      dependencies: ["setup"],
+      testMatch: /wallet-daily\.mobile\.spec\.ts/,
     },
   ],
   webServer: [

@@ -135,7 +135,8 @@ test.describe("Daily Transaction View mutations and managed transactions", () =>
     await openDailyTransactions(page);
     await selectDailyDate(page, date);
     const walletButton = page.getByRole("button", { name: /^E2E Daily Wallet/ });
-    const startingBalance = await walletButton.innerText();
+    const startingBalance = await walletButton.textContent();
+    expect(startingBalance).not.toBeNull();
 
     for (const [name, amount] of [
       [firstName, "10"],
@@ -166,6 +167,6 @@ test.describe("Daily Transaction View mutations and managed transactions", () =>
     await expect(getDailyRow(page, firstName)).toHaveCount(0);
     await expect(getDailyRow(page, secondName)).toHaveCount(0);
     await expectSummary(page, 0, 0);
-    await expect(walletButton).toHaveText(startingBalance);
+    await expect.poll(() => walletButton.textContent()).toBe(startingBalance);
   });
 });

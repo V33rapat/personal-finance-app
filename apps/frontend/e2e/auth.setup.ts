@@ -8,6 +8,9 @@ const primaryEmail =
 const secondaryEmail =
   process.env.PLAYWRIGHT_E2E_SECONDARY_EMAIL ??
   "playwright-e2e-secondary@walpaca.test";
+const dailyEmail =
+  process.env.PLAYWRIGHT_E2E_DAILY_EMAIL ??
+  "playwright-e2e-daily@walpaca.test";
 
 async function signInAndStore(
   page: Page,
@@ -44,4 +47,8 @@ test("signs in User A through the login page", async ({ page }) => {
 
 test("signs in User B through the login page", async ({ page }) => {
   await signInAndStore(page, secondaryEmail, "playwright/.auth/user-b.json");
+});
+
+test("signs in Daily Transaction View user through the login page", async ({ page }) => {
+  await signInAndStore(page, dailyEmail, "playwright/.auth/user-daily.json");
 });

@@ -3,7 +3,7 @@ import { expect, type Locator, type Page } from "@playwright/test";
 export const DAILY_WALLET_NAME = "E2E Daily Wallet";
 export const DAILY_DESTINATION_NAME = "E2E Daily Destination";
 export const DAILY_PARENT_WITHOUT_CHILD_NAME = "E2E Parent Without Active Child";
-export const DAILY_PARENT_WITH_CHILD_NAME = "E2E เงินเก็บ";
+export const DAILY_PARENT_WITH_CHILD_NAME = "E2E Daily Parent With Active Child";
 export const DAILY_DATE = "2026-07-20";
 export const EMPTY_DATE = "2026-07-21";
 export const PAGINATION_DATE = "2026-07-24";
