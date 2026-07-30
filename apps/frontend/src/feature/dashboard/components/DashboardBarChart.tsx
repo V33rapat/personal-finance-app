@@ -7,7 +7,9 @@ import {
   ReferenceLine,
   ResponsiveContainer,
   Tooltip,
+  type TooltipContentProps,
   XAxis,
+  type XAxisTickContentProps,
   YAxis,
 } from "recharts";
 import { TH_TEXT } from "@/constants/th";
@@ -23,6 +25,10 @@ interface DashboardBarChartProps {
 }
 
 export type DashboardChartTransactionType = "all" | "income" | "expense";
+
+interface DashboardChartTooltipProps extends TooltipContentProps {
+  visibleTransactionType: DashboardChartTransactionType;
+}
 
 function formatCurrency(value: number) {
   return new Intl.NumberFormat("th-TH", {
@@ -49,6 +55,111 @@ function formatAxisAmount(value: number) {
   }
 
   return `฿${absoluteValue.toFixed(0)}`;
+}
+
+function DashboardDateTick({ x, y, payload }: XAxisTickContentProps) {
+  const date = String(payload.value);
+
+  return (
+    <text
+      data-testid={`dashboard-overview-chart-date-${date}`}
+      x={x}
+      y={y}
+      dy={12}
+      fill="#64748b"
+      fontSize={12}
+      textAnchor="middle"
+    >
+      {formatAxisDate(date)}
+    </text>
+  );
+}
+
+function DashboardChartTooltip({
+  active,
+  label,
+  payload,
+  visibleTransactionType,
+}: DashboardChartTooltipProps) {
+  if (!active || payload.length === 0) {
+    return null;
+  }
+
+  const entries = payload.filter((item) => Number(item.value ?? 0) !== 0);
+
+  const totals = payload.reduce(
+    (current, item) => {
+      const value = Math.abs(Number(item.value ?? 0));
+
+      if (String(item.dataKey).startsWith("income")) {
+        current.income += value;
+      } else {
+        current.expense += value;
+      }
+
+      return current;
+    },
+    { income: 0, expense: 0 }
+  );
+  const shouldShowIncome = visibleTransactionType !== "expense";
+  const shouldShowExpense = visibleTransactionType !== "income";
+  const net = totals.income - totals.expense;
+
+  return (
+    <div
+      data-testid="dashboard-overview-chart-tooltip"
+      className="min-w-48 rounded-lg border border-[var(--dashboard-tooltip-border)] bg-[var(--dashboard-tooltip-background)] px-3 py-2 text-sm text-[var(--dashboard-tooltip-foreground)] shadow-lg"
+    >
+      <p className="mb-2 font-medium">{formatAxisDate(String(label))}</p>
+      {entries.length > 0 && (
+        <div className="space-y-1">
+          {entries.map((item) => (
+            <div key={String(item.dataKey)} className="flex items-center justify-between gap-4">
+              <span className="flex items-center gap-2">
+                <span
+                  aria-hidden="true"
+                  className="size-2 rounded-full"
+                  style={{ backgroundColor: item.color }}
+                />
+                <span>{item.name}</span>
+              </span>
+              <span>{formatCurrency(Math.abs(Number(item.value ?? 0)))}</span>
+            </div>
+          ))}
+        </div>
+      )}
+      <div className="my-2 border-t border-[var(--dashboard-tooltip-border)]" />
+      <div className="space-y-1 font-semibold">
+        {shouldShowIncome && (
+          <div
+            data-testid="dashboard-overview-chart-total-income"
+            className="flex items-center justify-between gap-4 text-emerald-600 dark:text-emerald-400"
+          >
+            <span>{TH_TEXT.dashboard.totalIncome}</span>
+            <span>{formatCurrency(totals.income)}</span>
+          </div>
+        )}
+        {shouldShowExpense && (
+          <div
+            data-testid="dashboard-overview-chart-total-expense"
+            className="flex items-center justify-between gap-4 text-rose-600 dark:text-rose-400"
+          >
+            <span>{TH_TEXT.dashboard.totalExpense}</span>
+            <span>{formatCurrency(totals.expense)}</span>
+          </div>
+        )}
+        {visibleTransactionType === "all" && (
+          <div
+            data-testid="dashboard-overview-chart-total-net"
+            className="flex items-center justify-between gap-4"
+          >
+            <span>{TH_TEXT.dashboard.net}</span>
+            <span>{formatCurrency(net)}</span>
+          </div>
+        )}
+      </div>
+    </div>
+  );
 }
 
 export default function DashboardBarChart({
@@ -78,14 +189,17 @@ export default function DashboardBarChart({
   }
 
   return (
-    <div className="h-[300px] w-full" aria-label={TH_TEXT.dashboard.incomeExpenseChart}>
+    <div
+      data-testid="dashboard-overview-chart"
+      className="h-[300px] w-full"
+      aria-label={TH_TEXT.dashboard.incomeExpenseChart}
+    >
       <ResponsiveContainer width="100%" height="100%">
         <BarChart data={rows} margin={{ top: 16, right: 4, left: -12, bottom: 0 }}>
           <CartesianGrid vertical={false} stroke="#cbd5e1" strokeOpacity={0.38} />
           <XAxis
             dataKey="date"
-            tickFormatter={formatAxisDate}
-            tick={{ fill: "#64748b", fontSize: 12 }}
+            tick={DashboardDateTick}
             axisLine={false}
             tickLine={false}
           />
@@ -99,14 +213,14 @@ export default function DashboardBarChart({
           <ReferenceLine y={0} stroke="#64748b" strokeOpacity={0.75} />
           <Tooltip
             cursor={{ fill: "rgba(148, 163, 184, 0.14)" }}
-            labelFormatter={(label) => formatAxisDate(String(label))}
-            formatter={(value, name) => [formatCurrency(Math.abs(Number(value))), name]}
-            contentStyle={{
-              border: "1px solid var(--dashboard-tooltip-border)",
-              borderRadius: "8px",
-              background: "var(--dashboard-tooltip-background)",
-              color: "var(--dashboard-tooltip-foreground)",
-            }}
+            shared
+            filterNull={false}
+            content={(props) => (
+              <DashboardChartTooltip
+                {...props}
+                visibleTransactionType={visibleTransactionType}
+              />
+            )}
           />
           {isCategoryBreakdownEnabled ? (
             <>

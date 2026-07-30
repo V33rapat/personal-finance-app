@@ -26,6 +26,7 @@ async function resetUserData(userId: string) {
   const walletIds = wallets.map((wallet) => wallet.id);
 
   await prisma.refresh_tokens.deleteMany({ where: { user_id: userId } });
+  await prisma.dashboard_preferences.deleteMany({ where: { user_id: userId } });
   await prisma.spending_budgets.deleteMany({ where: { user_id: userId } });
 
   if (walletIds.length > 0) {
@@ -72,25 +73,51 @@ async function upsertUser(email: string, fullName: string) {
 
 async function seedPrimaryUser() {
   const user = await upsertUser(primaryEmail, 'Playwright Wallet Scope User');
-  const [food, travel, leisure, dailyIncome, dailyFood, dailyTravel] = await Promise.all(
-    [
-      { name: 'E2E อาหาร', type: transaction_type.expense, color: '#f97316' },
-      { name: 'E2E เดินทาง', type: transaction_type.expense, color: '#2563eb' },
-      { name: 'E2E พักผ่อน', type: transaction_type.expense, color: '#8b5cf6' },
-      { name: 'E2E Daily Income', type: transaction_type.income, color: '#16a34a' },
-      { name: 'E2E Daily Food', type: transaction_type.expense, color: '#ea580c' },
-      { name: 'E2E Daily Travel', type: transaction_type.expense, color: '#0284c7' },
-    ].map(({ name, type, color }) =>
-      prisma.categories.create({
-        data: {
-          user_id: user.id,
-          name,
-          type,
-          color,
+  const [food, travel, leisure, salary, dailyIncome, dailyFood, dailyTravel] =
+    await Promise.all(
+      [
+        { name: 'E2E อาหาร', type: transaction_type.expense, color: '#f97316' },
+        {
+          name: 'E2E เดินทาง',
+          type: transaction_type.expense,
+          color: '#2563eb',
         },
-      }),
-    ),
-  );
+        {
+          name: 'E2E พักผ่อน',
+          type: transaction_type.expense,
+          color: '#8b5cf6',
+        },
+        {
+          name: 'E2E เงินเดือน',
+          type: transaction_type.income,
+          color: '#059669',
+        },
+        {
+          name: 'E2E Daily Income',
+          type: transaction_type.income,
+          color: '#16a34a',
+        },
+        {
+          name: 'E2E Daily Food',
+          type: transaction_type.expense,
+          color: '#ea580c',
+        },
+        {
+          name: 'E2E Daily Travel',
+          type: transaction_type.expense,
+          color: '#0284c7',
+        },
+      ].map(({ name, type, color }) =>
+        prisma.categories.create({
+          data: {
+            user_id: user.id,
+            name,
+            type,
+            color,
+          },
+        }),
+      ),
+    );
 
   const cash = await prisma.wallets.create({
     data: {
@@ -196,6 +223,22 @@ async function seedPrimaryUser() {
         transaction_date: reportingDate,
       },
       {
+        wallet_id: cash.id,
+        category_id: travel.id,
+        name: 'E2E ค่าเดินทางเงินสด',
+        type: transaction_type.expense,
+        amount: 60,
+        transaction_date: reportingDate,
+      },
+      {
+        wallet_id: cash.id,
+        category_id: salary.id,
+        name: 'E2E เงินเดือน',
+        type: transaction_type.income,
+        amount: 2_000,
+        transaction_date: reportingDate,
+      },
+      {
         wallet_id: inactive.id,
         category_id: food.id,
         name: 'E2E รายจ่ายกระเป๋าปิด',
@@ -209,7 +252,7 @@ async function seedPrimaryUser() {
         name: 'E2E รายจ่ายลงทุน',
         type: transaction_type.expense,
         amount: 900,
-        transaction_date: reportingDate,
+        transaction_date: new Date('2026-07-18T00:00:00.000Z'),
       },
       {
         wallet_id: deleted.id,
@@ -220,6 +263,15 @@ async function seedPrimaryUser() {
         transaction_date: reportingDate,
       },
     ],
+  });
+
+  await prisma.dashboard_preferences.create({
+    data: {
+      user_id: user.id,
+      period_start: new Date('2026-07-19T00:00:00.000Z'),
+      period_end: reportingDate,
+      is_category_breakdown_enabled: false,
+    },
   });
 
   await prisma.transactions.createMany({
@@ -264,7 +316,7 @@ async function seedPrimaryUser() {
     ],
   });
 
-  const transferFromTransaction = await prisma.transactions.create({
+  const dailyTransferFromTransaction = await prisma.transactions.create({
     data: {
       wallet_id: dailyWallet.id,
       category_id: null,
@@ -274,7 +326,7 @@ async function seedPrimaryUser() {
       transaction_date: reportingDate,
     },
   });
-  const transferToTransaction = await prisma.transactions.create({
+  const dailyTransferToTransaction = await prisma.transactions.create({
     data: {
       wallet_id: dailyDestination.id,
       category_id: null,
@@ -288,8 +340,8 @@ async function seedPrimaryUser() {
     data: {
       from_wallet_id: dailyWallet.id,
       to_wallet_id: dailyDestination.id,
-      from_transaction_id: transferFromTransaction.id,
-      to_transaction_id: transferToTransaction.id,
+      from_transaction_id: dailyTransferFromTransaction.id,
+      to_transaction_id: dailyTransferToTransaction.id,
       amount: 300,
       transfer_date: reportingDate,
       note: 'E2E managed transfer pair',
@@ -299,13 +351,56 @@ async function seedPrimaryUser() {
   const allocation = await prisma.money_allocations.create({
     data: {
       user_id: user.id,
-      source_wallet_id: dailyWallet.id,
+      source_wallet_id: cash.id,
       amount: 50,
       allocation_date: reportingDate,
       note: 'E2E allocation pair that must not count as spending',
     },
   });
   const fromTransaction = await prisma.transactions.create({
+    data: {
+      wallet_id: cash.id,
+      category_id: food.id,
+      name: 'E2E allocation transfer expense',
+      type: transaction_type.expense,
+      amount: 50,
+      transaction_date: reportingDate,
+    },
+  });
+  const toTransaction = await prisma.transactions.create({
+    data: {
+      wallet_id: savingsChild.id,
+      category_id: food.id,
+      name: 'E2E allocation transfer income',
+      type: transaction_type.income,
+      amount: 50,
+      transaction_date: reportingDate,
+    },
+  });
+
+  await prisma.transfers.create({
+    data: {
+      allocation_id: allocation.id,
+      from_wallet_id: cash.id,
+      to_wallet_id: savingsChild.id,
+      from_transaction_id: fromTransaction.id,
+      to_transaction_id: toTransaction.id,
+      amount: 50,
+      transfer_date: reportingDate,
+      note: 'E2E allocation transfer pair',
+    },
+  });
+
+  const dailyAllocation = await prisma.money_allocations.create({
+    data: {
+      user_id: user.id,
+      source_wallet_id: dailyWallet.id,
+      amount: 50,
+      allocation_date: reportingDate,
+      note: 'E2E daily allocation pair',
+    },
+  });
+  const dailyAllocationFromTransaction = await prisma.transactions.create({
     data: {
       wallet_id: dailyWallet.id,
       category_id: null,
@@ -315,7 +410,7 @@ async function seedPrimaryUser() {
       transaction_date: reportingDate,
     },
   });
-  const toTransaction = await prisma.transactions.create({
+  const dailyAllocationToTransaction = await prisma.transactions.create({
     data: {
       wallet_id: dailyDestination.id,
       category_id: null,
@@ -328,14 +423,14 @@ async function seedPrimaryUser() {
 
   await prisma.transfers.create({
     data: {
-      allocation_id: allocation.id,
+      allocation_id: dailyAllocation.id,
       from_wallet_id: dailyWallet.id,
       to_wallet_id: dailyDestination.id,
-      from_transaction_id: fromTransaction.id,
-      to_transaction_id: toTransaction.id,
+      from_transaction_id: dailyAllocationFromTransaction.id,
+      to_transaction_id: dailyAllocationToTransaction.id,
       amount: 50,
       transfer_date: reportingDate,
-      note: 'E2E allocation transfer pair',
+      note: 'E2E daily allocation transfer pair',
     },
   });
 
@@ -346,6 +441,7 @@ async function seedPrimaryUser() {
     food,
     travel,
     leisure,
+    salary,
     dailyWallet,
     dailyDestination,
     standaloneParent,

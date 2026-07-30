@@ -126,7 +126,7 @@ export default function DashboardWeeklyOverview() {
   const rangeLabel = formatThaiDateRange(preferences.period_start, preferences.period_end);
 
   return (
-    <Card className="p-5 sm:p-6">
+    <Card data-testid="dashboard-overview" className="p-5 sm:p-6">
       <header className="flex flex-col gap-4 border-b border-slate-100 pb-5 dark:border-slate-800 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <h2 className="text-lg font-bold text-slate-900 dark:text-slate-50">

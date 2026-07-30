@@ -64,6 +64,8 @@ export const TH_TEXT = {
     income: "รายรับ",
     expense: "รายจ่าย",
     net: "สุทธิ",
+    totalIncome: "รวมรายรับ",
+    totalExpense: "รวมรายจ่าย",
     incomeExpenseChart: "กราฟรายรับและรายจ่ายตามวัน",
     expenseByCategory: "รายจ่ายตามหมวดหมู่",
     configureCategories: "ตั้งค่าหมวดหมู่",
