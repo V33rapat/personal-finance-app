@@ -109,6 +109,7 @@ export function useTransaction(options: UseTransactionOptions = {}) {
   const [modalOpen, setModalOpen] = useState(false);
   const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
   const [currentWalletId, setCurrentWalletId] = useState<string | null>(walletId ?? null);
+  const [defaultTransactionDate, setDefaultTransactionDate] = useState<string | undefined>();
   const [page, setPage] = useState(1);
   const [isLoading, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -213,9 +214,10 @@ export function useTransaction(options: UseTransactionOptions = {}) {
     setPage((current) => current + 1);
   };
 
-  const openModal = (nextWalletId?: string) => {
+  const openModal = (nextWalletId?: string, nextTransactionDate?: string) => {
     setError("");
     setCurrentWalletId(nextWalletId ?? null);
+    setDefaultTransactionDate(nextTransactionDate);
     setEditingTransaction(null);
     setModalOpen(true);
   };
@@ -223,6 +225,7 @@ export function useTransaction(options: UseTransactionOptions = {}) {
   const openEditModal = (transaction: Transaction) => {
     setError("");
     setCurrentWalletId(transaction.wallet_id);
+    setDefaultTransactionDate(undefined);
     setEditingTransaction(transaction);
     setModalOpen(true);
   };
@@ -230,6 +233,7 @@ export function useTransaction(options: UseTransactionOptions = {}) {
   const closeModal = () => {
     setModalOpen(false);
     setEditingTransaction(null);
+    setDefaultTransactionDate(undefined);
   };
 
   const addTransaction = async (values: TransactionFormValues) => {
@@ -374,6 +378,7 @@ export function useTransaction(options: UseTransactionOptions = {}) {
     modalOpen,
     editingTransaction,
     currentWalletId,
+    defaultTransactionDate,
 
     loadTransactions,
     reload: loadTransactions,

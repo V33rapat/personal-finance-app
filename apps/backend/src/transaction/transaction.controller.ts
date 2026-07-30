@@ -13,6 +13,7 @@ import {
 import { TransactionService } from './transaction.service';
 import { CreateTransactionDto } from './dto/create-transaction.dto';
 import { UpdateTransactionDto } from './dto/update-transaction.dto';
+import { FindDailyTransactionDto } from './dto/find-daily-transaction.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import type { AuthenticatedRequest } from '../auth/types/authenticated-request';
 
@@ -32,6 +33,14 @@ export class TransactionController {
     @Query('walletId') walletId?: string,
   ) {
     return this.transactionService.findAll(req.user.sub, walletId);
+  }
+
+  @Get('daily')
+  findDaily(
+    @Req() req: AuthenticatedRequest,
+    @Query() query: FindDailyTransactionDto,
+  ) {
+    return this.transactionService.findDaily(req.user.sub, query);
   }
 
   @Get(':id')

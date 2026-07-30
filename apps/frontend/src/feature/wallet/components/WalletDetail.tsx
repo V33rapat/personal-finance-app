@@ -1,17 +1,22 @@
 "use client";
 
-import { useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import Button from "@/components/ui/Button";
 import ConfirmationDialog from "@/components/ui/ConfirmationDialog";
 import { TH_TEXT } from "@/constants/th";
 import TransactionList from "@/feature/transaction/components/TransactionList";
 import TransactionModal from "@/feature/transaction/components/TransactionModal";
 import WalletTransactionFilter from "./WalletTransactionFilter";
+import WalletDailyNavigator from "./WalletDailyNavigator";
+import WalletDailySummary from "./WalletDailySummary";
 import { useTransaction } from "@/feature/transaction/hooks/useTransaction";
 import { useTransactionSelection } from "@/feature/transaction/hooks/useTransactionSelection";
 import { useTransactionTemplate } from "@/feature/transaction/hooks/useTransactionTemplate";
 import { toTemplateValuesFromTransaction } from "@/feature/transaction/lib/transactionTemplate";
 import type { Wallet } from "../hooks/useWallet";
+import { useWalletDailyTransactions } from "../hooks/useWalletDailyTransactions";
+import { getBangkokToday, isCalendarDate } from "../lib/dailyTransactionDate";
 
 type TabType = "overview" | "transactions";
 
@@ -165,34 +170,76 @@ export default function WalletDetail({
   onCreateWallet,
   onTransactionsChanged,
 }: WalletDetailProps) {
+  const router = useRouter();
+  const searchParams = useSearchParams();
   const [activeTab, setActiveTab] = useState<TabType>("overview");
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const today = useMemo(() => getBangkokToday(), []);
+  const requestedDate = searchParams.get("date");
+  const selectedDate =
+    requestedDate && isCalendarDate(requestedDate) && requestedDate <= today
+      ? requestedDate
+      : today;
+  const hasActiveSubWallet = useMemo(
+    () =>
+      !!wallet &&
+      wallets.some(
+        (candidate) =>
+          candidate.parent_wallet_id === wallet.id &&
+          candidate.is_active &&
+          !candidate.deleted_at
+      ),
+    [wallet, wallets]
+  );
 
   const {
-    displayedTransactions,
-    categories,
     modalOpen,
     editingTransaction,
     currentWalletId,
+    defaultTransactionDate,
     openModal,
     openEditModal,
     closeModal,
     addTransaction,
     updateTransaction,
     deleteTransactions,
-    loadMore,
-    hasMore,
-    isLoading,
     isSaving,
     error,
-    filters,
-    updateFilter,
-  } = useTransaction({ walletId: wallet?.id });
+  } = useTransaction({ walletId: wallet?.id, autoLoad: false });
+  const dailyTransactions = useWalletDailyTransactions(wallet?.id ?? null, selectedDate);
   const { selectedIds, selectedCount, toggleSelection, clearSelection, selectAll } = useTransactionSelection();
   const {
     createTemplate,
     isSaving: isSavingTemplate,
   } = useTransactionTemplate({ autoLoad: false });
+
+  useEffect(() => {
+    clearSelection();
+  }, [clearSelection, dailyTransactions.filters, selectedDate, wallet?.id]);
+
+  const updateSelectedDate = useCallback(
+    (nextDate: string) => {
+      if (!isCalendarDate(nextDate) || nextDate > today) return;
+
+      const nextSearchParams = new URLSearchParams(searchParams.toString());
+      nextSearchParams.set("date", nextDate);
+      router.push(`/wallet?${nextSearchParams.toString()}`, { scroll: false });
+    },
+    [router, searchParams, today]
+  );
+
+  const handleTabChange = useCallback(
+    (tab: TabType) => {
+      setActiveTab(tab);
+
+      if (tab !== "transactions" || requestedDate === selectedDate) return;
+
+      const nextSearchParams = new URLSearchParams(searchParams.toString());
+      nextSearchParams.set("date", selectedDate);
+      router.replace(`/wallet?${nextSearchParams.toString()}`, { scroll: false });
+    },
+    [requestedDate, router, searchParams, selectedDate]
+  );
 
   const handleDeleteSelected = () => {
     setShowDeleteConfirm(true);
@@ -201,6 +248,7 @@ export default function WalletDetail({
   const handleTransactionSaved = async (...args: Parameters<typeof addTransaction>) => {
     const success = await addTransaction(...args);
     if (success) {
+      dailyTransactions.reload();
       await onTransactionsChanged?.();
     }
   };
@@ -208,6 +256,7 @@ export default function WalletDetail({
   const handleTransactionUpdated = async (...args: Parameters<typeof updateTransaction>) => {
     const success = await updateTransaction(...args);
     if (success) {
+      dailyTransactions.reload();
       await onTransactionsChanged?.();
     }
   };
@@ -217,6 +266,7 @@ export default function WalletDetail({
     if (!success) return;
 
     await onTransactionsChanged?.();
+    dailyTransactions.reload();
     clearSelection();
     setShowDeleteConfirm(false);
   };
@@ -234,8 +284,11 @@ export default function WalletDetail({
 
   const tabs = [
     { id: "overview" as TabType, label: TH_TEXT.transaction.overview },
-    { id: "transactions" as TabType, label: TH_TEXT.transaction.transactions },
+    ...(!hasActiveSubWallet
+      ? [{ id: "transactions" as TabType, label: TH_TEXT.transaction.transactions }]
+      : []),
   ];
+  const visibleTab = hasActiveSubWallet ? "overview" : activeTab;
 
   if (!wallet) {
     return (
@@ -259,15 +312,15 @@ export default function WalletDetail({
   return (
     <>
       <section className="min-h-[520px] rounded-2xl border border-slate-200/80 bg-white/85 p-6 shadow-xl shadow-slate-200/50 backdrop-blur-xl dark:border-slate-800 dark:bg-slate-900/80 dark:shadow-slate-950/40">
-        <div className="mb-6 flex items-center justify-between">
+        <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex gap-1 rounded-lg bg-slate-100 p-1 dark:bg-slate-800">
             {tabs.map((tab) => (
               <button
                 key={tab.id}
-                onClick={() => setActiveTab(tab.id)}
+                onClick={() => handleTabChange(tab.id)}
                 className={[
                   "rounded-md px-4 py-2 text-sm font-medium transition-colors",
-                  activeTab === tab.id
+                  visibleTab === tab.id
                     ? "bg-white text-slate-800 shadow-sm dark:bg-slate-700 dark:text-slate-100"
                     : "text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200",
                 ].join(" ")}
@@ -277,17 +330,9 @@ export default function WalletDetail({
             ))}
           </div>
 
-          {activeTab === "transactions" && (
-            <Button onClick={() => openModal(wallet.id)}>
-              <svg className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor" aria-hidden>
-                <path d="M10 4a1 1 0 0 1 1 1v4h4a1 1 0 1 1 0 2h-4v4a1 1 0 1 1-2 0v-4H5a1 1 0 1 1 0-2h4V5a1 1 0 0 1 1-1Z" />
-              </svg>
-              {TH_TEXT.transaction.addTransaction}
-            </Button>
-          )}
         </div>
 
-        {activeTab === "overview" && (
+        {visibleTab === "overview" && (
           <OverviewTab
             wallet={wallet}
             childCount={childCount}
@@ -297,38 +342,72 @@ export default function WalletDetail({
           />
         )}
 
-        {activeTab === "transactions" && (
+        {visibleTab === "transactions" && !hasActiveSubWallet && (
           <>
+            <div className="mb-5 flex flex-col gap-4 border-b border-slate-100 pb-5 dark:border-slate-800">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <WalletDailyNavigator
+                  date={selectedDate}
+                  disabled={dailyTransactions.isLoading}
+                  onChange={updateSelectedDate}
+                />
+                <Button className="w-full sm:w-auto" onClick={() => openModal(wallet.id, selectedDate)}>
+                  <svg className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor" aria-hidden>
+                    <path d="M10 4a1 1 0 0 1 1 1v4h4a1 1 0 1 1 0 2h-4v4a1 1 0 1 1-2 0v-4H5a1 1 0 1 1 0-2h4V5a1 1 0 0 1 1-1Z" />
+                  </svg>
+                  {TH_TEXT.transaction.addTransaction}
+                </Button>
+              </div>
+              <WalletDailySummary summary={dailyTransactions.summary} />
+            </div>
             <WalletTransactionFilter
-              categories={categories}
-              selectedType={filters.type}
-              selectedCategoryId={filters.categoryId}
-              startDate={filters.startDate}
-              endDate={filters.endDate}
-              searchQuery={filters.searchQuery}
-              onTypeChange={(value) => updateFilter("type", value)}
-              onCategoryChange={(value) => updateFilter("categoryId", value)}
-              onStartDateChange={(value) => updateFilter("startDate", value)}
-              onEndDateChange={(value) => updateFilter("endDate", value)}
-              onSearchChange={(value) => updateFilter("searchQuery", value)}
+              categories={dailyTransactions.categories}
+              selectedType={dailyTransactions.filters.type}
+              selectedCategoryId={dailyTransactions.filters.categoryId}
+              searchQuery={dailyTransactions.filters.searchQuery}
+              onTypeChange={(value) => dailyTransactions.updateFilter("type", value)}
+              onCategoryChange={(value) => dailyTransactions.updateFilter("categoryId", value)}
+              onSearchChange={(value) => dailyTransactions.updateFilter("searchQuery", value)}
             />
-            <TransactionList
-              transactions={displayedTransactions}
-              hasMore={hasMore}
-              isLoading={isLoading}
-              onLoadMore={loadMore}
-              empty={displayedTransactions.length === 0}
-              onEdit={openEditModal}
-              onSaveAsTemplate={(transaction) =>
-                createTemplate(toTemplateValuesFromTransaction(transaction))
-              }
-              isSavingTemplate={isSavingTemplate}
-              selectedIds={selectedIds}
-              onToggleSelect={toggleSelection}
-              onDeleteSelected={handleDeleteSelected}
-              onClearSelection={clearSelection}
-              onSelectAll={() => selectAll(displayedTransactions.map(t => t.id))}
-            />
+            {dailyTransactions.error && (
+              <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-900/70 dark:bg-red-950/30 dark:text-red-300">
+                <span>{dailyTransactions.error}</span>
+                <Button size="sm" variant="secondary" onClick={dailyTransactions.reload}>
+                  {TH_TEXT.common.retry}
+                </Button>
+              </div>
+            )}
+            {dailyTransactions.isLoading && dailyTransactions.items.length === 0 ? (
+              <div className="space-y-3 py-2" aria-label={TH_TEXT.common.loading}>
+                {[0, 1, 2].map((item) => (
+                  <div key={item} className="h-16 animate-pulse rounded-xl bg-slate-100 dark:bg-slate-800" />
+                ))}
+              </div>
+            ) : (
+              <TransactionList
+                transactions={dailyTransactions.items}
+                hasMore={dailyTransactions.hasMore}
+                isLoading={dailyTransactions.isLoadingMore}
+                onLoadMore={dailyTransactions.loadMore}
+                empty={dailyTransactions.items.length === 0}
+                onEdit={openEditModal}
+                onSaveAsTemplate={(transaction) =>
+                  createTemplate(toTemplateValuesFromTransaction(transaction))
+                }
+                isSavingTemplate={isSavingTemplate}
+                selectedIds={selectedIds}
+                onToggleSelect={toggleSelection}
+                onDeleteSelected={handleDeleteSelected}
+                onClearSelection={clearSelection}
+                onSelectAll={() =>
+                  selectAll(
+                    dailyTransactions.items
+                      .filter((transaction) => transaction.management === "manual")
+                      .map((transaction) => transaction.id)
+                  )
+                }
+              />
+            )}
           </>
         )}
       </section>
@@ -338,6 +417,7 @@ export default function WalletDetail({
         transaction={editingTransaction}
         wallets={wallets}
         defaultWalletId={currentWalletId}
+        defaultTransactionDate={defaultTransactionDate}
         isSaving={isSaving}
         error={error}
         onClose={closeModal}
