@@ -317,14 +317,6 @@ export default function WalletDetail({
             ))}
           </div>
 
-          {visibleTab === "transactions" && !hasActiveSubWallet && (
-            <Button onClick={() => openModal(wallet.id, selectedDate)}>
-              <svg className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor" aria-hidden>
-                <path d="M10 4a1 1 0 0 1 1 1v4h4a1 1 0 1 1 0 2h-4v4a1 1 0 1 1-2 0v-4H5a1 1 0 1 1 0-2h4V5a1 1 0 0 1 1-1Z" />
-              </svg>
-              {TH_TEXT.transaction.addTransaction}
-            </Button>
-          )}
         </div>
 
         {visibleTab === "overview" && (
@@ -340,11 +332,19 @@ export default function WalletDetail({
         {visibleTab === "transactions" && !hasActiveSubWallet && (
           <>
             <div className="mb-5 flex flex-col gap-4 border-b border-slate-100 pb-5 dark:border-slate-800">
-              <WalletDailyNavigator
-                date={selectedDate}
-                disabled={dailyTransactions.isLoading}
-                onChange={updateSelectedDate}
-              />
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <WalletDailyNavigator
+                  date={selectedDate}
+                  disabled={dailyTransactions.isLoading}
+                  onChange={updateSelectedDate}
+                />
+                <Button className="w-full sm:w-auto" onClick={() => openModal(wallet.id, selectedDate)}>
+                  <svg className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor" aria-hidden>
+                    <path d="M10 4a1 1 0 0 1 1 1v4h4a1 1 0 1 1 0 2h-4v4a1 1 0 1 1-2 0v-4H5a1 1 0 1 1 0-2h4V5a1 1 0 0 1 1-1Z" />
+                  </svg>
+                  {TH_TEXT.transaction.addTransaction}
+                </Button>
+              </div>
               <WalletDailySummary summary={dailyTransactions.summary} />
             </div>
             <WalletTransactionFilter
