@@ -6,19 +6,16 @@ import type { TransactionType } from "@/feature/transaction/components/Transacti
 interface Category {
   id: string;
   name: string;
+  type: TransactionType;
 }
 
 interface WalletTransactionFilterProps {
   categories: Category[];
   selectedType?: TransactionType | "";
   selectedCategoryId?: string;
-  startDate?: string;
-  endDate?: string;
   searchQuery?: string;
   onTypeChange?: (type: TransactionType | "") => void;
   onCategoryChange?: (categoryId: string) => void;
-  onStartDateChange?: (date: string) => void;
-  onEndDateChange?: (date: string) => void;
   onSearchChange?: (query: string) => void;
 }
 
@@ -26,13 +23,9 @@ export default function WalletTransactionFilter({
   categories,
   selectedType = "",
   selectedCategoryId = "",
-  startDate = "",
-  endDate = "",
   searchQuery = "",
   onTypeChange,
   onCategoryChange,
-  onStartDateChange,
-  onEndDateChange,
   onSearchChange,
 }: WalletTransactionFilterProps) {
   return (
@@ -61,21 +54,6 @@ export default function WalletTransactionFilter({
           ))}
         </select>
 
-        <div className="flex items-center gap-1">
-          <input
-            type="date"
-            value={startDate}
-            onChange={(e) => onStartDateChange?.(e.target.value)}
-            className="rounded-lg border border-slate-200 bg-slate-50 px-2 py-2 text-xs text-slate-800 focus:border-violet-500 focus:outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
-          />
-          <span className="text-slate-400">-</span>
-          <input
-            type="date"
-            value={endDate}
-            onChange={(e) => onEndDateChange?.(e.target.value)}
-            className="rounded-lg border border-slate-200 bg-slate-50 px-2 py-2 text-xs text-slate-800 focus:border-violet-500 focus:outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
-          />
-        </div>
       </div>
 
       <div className="relative">

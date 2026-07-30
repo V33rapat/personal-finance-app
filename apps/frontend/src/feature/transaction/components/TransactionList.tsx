@@ -43,7 +43,9 @@ export default function TransactionList({
 }: TransactionListProps) {
   const selectedCount = selectedIds?.size ?? 0;
   const selectionMode = selectedCount > 0;
-  const totalCount = transactions.length;
+  const totalCount = transactions.filter(
+    (transaction) => !transaction.management || transaction.management === "manual"
+  ).length;
 
   if (empty) {
     return (

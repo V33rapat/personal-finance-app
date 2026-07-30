@@ -18,6 +18,7 @@ interface TransactionModalProps {
   transaction?: Transaction | null;
   wallets: Wallet[];
   defaultWalletId?: string | null;
+  defaultTransactionDate?: string;
   isSaving?: boolean;
   error?: string | null;
   onClose: () => void;
@@ -28,14 +29,31 @@ interface TransactionModalProps {
 interface TransactionModalFormProps
   extends Omit<
     TransactionModalProps,
-    "isOpen" | "transaction" | "wallets" | "defaultWalletId"
+    "isOpen" | "transaction" | "wallets" | "defaultWalletId" | "defaultTransactionDate"
   > {
   initialValues: TransactionFormValues;
   isEditMode: boolean;
   walletOptions: TransactionWalletOption[];
 }
 
-function getDefaultValues(defaultWalletId?: string | null): TransactionFormValues {
+function getBangkokToday() {
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone: "Asia/Bangkok",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(new Date());
+  const year = parts.find((part) => part.type === "year")?.value;
+  const month = parts.find((part) => part.type === "month")?.value;
+  const day = parts.find((part) => part.type === "day")?.value;
+
+  return year && month && day ? `${year}-${month}-${day}` : new Date().toISOString().slice(0, 10);
+}
+
+function getDefaultValues(
+  defaultWalletId?: string | null,
+  defaultTransactionDate?: string
+): TransactionFormValues {
   return {
     wallet_id: defaultWalletId ?? "",
     name: "",
@@ -43,7 +61,7 @@ function getDefaultValues(defaultWalletId?: string | null): TransactionFormValue
     type: "expense",
     category_id: null,
     template_id: null,
-    transaction_date: new Date().toISOString().split("T")[0],
+    transaction_date: defaultTransactionDate ?? getBangkokToday(),
     note: "",
   };
 }
@@ -51,13 +69,15 @@ function getDefaultValues(defaultWalletId?: string | null): TransactionFormValue
 function getInitialValues(
   transaction: Transaction | null | undefined,
   defaultWalletId: string | null | undefined,
+  defaultTransactionDate: string | undefined,
   eligibleWalletIds: Set<string>
 ): TransactionFormValues {
   if (!transaction) {
     return getDefaultValues(
       defaultWalletId && eligibleWalletIds.has(defaultWalletId)
         ? defaultWalletId
-        : undefined
+        : undefined,
+      defaultTransactionDate
     );
   }
 
@@ -146,6 +166,12 @@ function TransactionModalForm({
       nextErrors.amount = TH_TEXT.transaction.amountRequired;
     } else if (!Number.isFinite(amount) || amount <= 0) {
       nextErrors.amount = "กรุณากรอกจำนวนเงินที่ถูกต้อง";
+    }
+
+    if (!values.transaction_date) {
+      nextErrors.transaction_date = TH_TEXT.transaction.dateRequired;
+    } else if (values.transaction_date > getBangkokToday()) {
+      nextErrors.transaction_date = TH_TEXT.transaction.futureDate;
     }
 
     setErrors(nextErrors);
@@ -344,10 +370,11 @@ function TransactionModalForm({
             />
           </FormField>
 
-          <FormField label={TH_TEXT.transaction.date}>
+          <FormField label={TH_TEXT.transaction.date} error={errors.transaction_date}>
             <input
               type="date"
               value={values.transaction_date}
+              max={getBangkokToday()}
               onChange={(event) => updateValue("transaction_date", event.target.value)}
               className="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-800 focus:border-violet-500 focus:outline-none focus:ring-2 focus:ring-violet-500/20 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
             />
@@ -386,6 +413,7 @@ export default function TransactionModal({
   transaction,
   wallets,
   defaultWalletId,
+  defaultTransactionDate,
   ...props
 }: TransactionModalProps) {
   const walletOptions = useMemo(
@@ -401,10 +429,11 @@ export default function TransactionModal({
 
   return (
     <TransactionModalForm
-      key={transaction?.id ?? "new"}
+      key={transaction?.id ?? `new-${defaultTransactionDate ?? ""}`}
       initialValues={getInitialValues(
         transaction,
         defaultWalletId,
+        defaultTransactionDate,
         eligibleWalletIds
       )}
       isEditMode={!!transaction}

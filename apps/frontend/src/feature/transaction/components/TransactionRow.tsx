@@ -41,6 +41,11 @@ export default function TransactionRow({
   onToggleSelect,
 }: TransactionRowProps) {
   const isIncome = transaction.type === "income";
+  const isManaged = transaction.management && transaction.management !== "manual";
+  const managementLabel =
+    transaction.management === "allocation"
+      ? TH_TEXT.transaction.managedAllocation
+      : TH_TEXT.transaction.managedTransfer;
 
   return (
     <div
@@ -49,7 +54,7 @@ export default function TransactionRow({
         isSelected ? "bg-violet-50/50 dark:bg-violet-950/30" : "hover:bg-slate-50 dark:hover:bg-slate-800/50",
       ].join(" ")}
     >
-      {onToggleSelect ? (
+      {onToggleSelect && !isManaged ? (
         <button
           onClick={() => onToggleSelect(transaction.id)}
           className={[
@@ -91,6 +96,11 @@ export default function TransactionRow({
             </>
           )}
           <span>{formatDate(transaction.transaction_date)}</span>
+          {isManaged && (
+            <span className="rounded-full bg-slate-100 px-2 py-0.5 font-medium text-slate-600 dark:bg-slate-800 dark:text-slate-300">
+              {managementLabel}
+            </span>
+          )}
         </div>
       </div>
 
@@ -104,7 +114,7 @@ export default function TransactionRow({
             {isIncome ? TH_TEXT.transaction.income : TH_TEXT.transaction.expense}
           </p>
         </div>
-        {onEdit && (
+        {onEdit && !isManaged && (
           <button
           onClick={() => onEdit(transaction)}
           className="rounded-lg p-1.5 text-slate-400 opacity-0 transition-opacity hover:bg-slate-100 hover:text-slate-600 group-hover:opacity-100 dark:hover:bg-slate-800 dark:hover:text-slate-300"
@@ -115,7 +125,7 @@ export default function TransactionRow({
             </svg>
           </button>
         )}
-        {onSaveAsTemplate && (
+        {onSaveAsTemplate && !isManaged && (
           <button
             onClick={() => onSaveAsTemplate(transaction)}
             disabled={isSavingTemplate}
