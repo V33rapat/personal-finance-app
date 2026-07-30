@@ -235,9 +235,18 @@ function TransactionModalForm({
         aria-label={TH_TEXT.common.close}
       />
 
-      <div className="relative w-full max-w-md rounded-2xl border border-slate-200 bg-white p-6 shadow-2xl dark:border-slate-800 dark:bg-slate-900">
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="transaction-modal-title"
+        data-testid="transaction-modal"
+        className="relative w-full max-w-md rounded-2xl border border-slate-200 bg-white p-6 shadow-2xl dark:border-slate-800 dark:bg-slate-900"
+      >
         <div className="mb-6 flex items-center justify-between">
-          <h2 className="text-lg font-bold text-slate-800 dark:text-slate-100">
+          <h2
+            id="transaction-modal-title"
+            className="text-lg font-bold text-slate-800 dark:text-slate-100"
+          >
             {isEditMode ? TH_TEXT.common.edit : TH_TEXT.transaction.addTransaction}
           </h2>
           <button
@@ -256,7 +265,7 @@ function TransactionModalForm({
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form noValidate onSubmit={handleSubmit} className="space-y-4">
           {error && (
             <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-900/70 dark:bg-red-950/30 dark:text-red-300">
               {error}
@@ -271,6 +280,8 @@ function TransactionModalForm({
               value={values.wallet_id}
               disabled={isSaving || walletOptions.length === 0}
               onChange={(event) => updateValue("wallet_id", event.target.value)}
+              aria-label={TH_TEXT.transaction.wallet}
+              data-testid="transaction-wallet"
               className="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-800 focus:border-violet-500 focus:outline-none focus:ring-2 focus:ring-violet-500/20 disabled:cursor-not-allowed disabled:opacity-60 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
             >
               <option value="">{TH_TEXT.transaction.selectWallet}</option>
@@ -343,6 +354,8 @@ function TransactionModalForm({
               value={values.name}
               onChange={(event) => updateValue("name", event.target.value)}
               placeholder={TH_TEXT.transaction.namePlaceholder}
+              aria-label={TH_TEXT.transaction.name}
+              data-testid="transaction-name"
               className="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-800 placeholder:text-slate-400 focus:border-violet-500 focus:outline-none focus:ring-2 focus:ring-violet-500/20 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
             />
           </FormField>
@@ -355,6 +368,8 @@ function TransactionModalForm({
               value={values.amount}
               onChange={(event) => updateValue("amount", event.target.value)}
               placeholder={TH_TEXT.transaction.amountPlaceholder}
+              aria-label={TH_TEXT.transaction.amount}
+              data-testid="transaction-amount"
               className="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-800 placeholder:text-slate-400 focus:border-violet-500 focus:outline-none focus:ring-2 focus:ring-violet-500/20 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
             />
           </FormField>
@@ -376,6 +391,8 @@ function TransactionModalForm({
               value={values.transaction_date}
               max={getBangkokToday()}
               onChange={(event) => updateValue("transaction_date", event.target.value)}
+              aria-label={TH_TEXT.transaction.date}
+              data-testid="transaction-date"
               className="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-800 focus:border-violet-500 focus:outline-none focus:ring-2 focus:ring-violet-500/20 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
             />
           </FormField>
@@ -385,6 +402,8 @@ function TransactionModalForm({
               value={values.note}
               onChange={(event) => updateValue("note", event.target.value)}
               placeholder={TH_TEXT.transaction.notePlaceholder}
+              aria-label={TH_TEXT.transaction.note}
+              data-testid="transaction-note"
               rows={2}
               className="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-800 placeholder:text-slate-400 focus:border-violet-500 focus:outline-none focus:ring-2 focus:ring-violet-500/20 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
             />
