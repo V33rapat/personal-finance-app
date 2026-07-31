@@ -175,6 +175,8 @@ model transactions {
   wallets                                               wallets                @relation(fields: [wallet_id], references: [id], onUpdate: NoAction)
   transfers_transfers_from_transaction_idTotransactions transfers?             @relation("transfers_from_transaction_idTotransactions")
   transfers_transfers_to_transaction_idTotransactions   transfers?             @relation("transfers_to_transaction_idTotransactions")
+
+  @@index([wallet_id, transaction_date(sort: Desc)], map: "idx_transactions_wallet_date")
 }
 
 /// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.

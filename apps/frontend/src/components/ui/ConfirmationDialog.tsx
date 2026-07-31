@@ -32,7 +32,12 @@ export default function ConfirmationDialog({
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onCancel} aria-hidden />
 
-      <div className="relative w-full max-w-sm rounded-2xl border border-slate-200 bg-white p-6 shadow-2xl dark:border-slate-800 dark:bg-slate-900">
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="confirmation-dialog-title"
+        className="relative w-full max-w-sm rounded-2xl border border-slate-200 bg-white p-6 shadow-2xl dark:border-slate-800 dark:bg-slate-900"
+      >
         <div className="flex items-center gap-4">
           <div className={["flex h-10 w-10 shrink-0 items-center justify-center rounded-full", variant === "danger" ? "bg-red-100 text-red-600 dark:bg-red-950/50 dark:text-red-400" : "bg-amber-100 text-amber-600 dark:bg-amber-950/50 dark:text-amber-400"].join(" ")}>
             <svg className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor" aria-hidden>
@@ -40,7 +45,7 @@ export default function ConfirmationDialog({
             </svg>
           </div>
           <div>
-            <h3 className="text-base font-semibold text-slate-800 dark:text-slate-100">{title}</h3>
+            <h3 id="confirmation-dialog-title" className="text-base font-semibold text-slate-800 dark:text-slate-100">{title}</h3>
             <p className="mt-1 whitespace-pre-line text-sm text-slate-500 dark:text-slate-400">{message}</p>
           </div>
         </div>

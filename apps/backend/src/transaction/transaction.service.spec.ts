@@ -33,6 +33,9 @@ describe('TransactionService', () => {
   let prisma: {
     transactions: {
       findFirst: jest.Mock;
+      findMany: jest.Mock;
+      count: jest.Mock;
+      groupBy: jest.Mock;
     };
     transfers: {
       findFirst: jest.Mock;
@@ -60,6 +63,9 @@ describe('TransactionService', () => {
     prisma = {
       transactions: {
         findFirst: jest.fn(),
+        findMany: jest.fn(),
+        count: jest.fn(),
+        groupBy: jest.fn(),
       },
       transfers: {
         findFirst: jest.fn(),
@@ -67,10 +73,15 @@ describe('TransactionService', () => {
       wallets: {
         findFirst: jest.fn(),
       },
-      $transaction: jest.fn(
-        (callback: (client: typeof transactionClient) => Promise<unknown>) =>
-          callback(transactionClient),
-      ),
+      $transaction: jest.fn((input: unknown) => {
+        if (Array.isArray(input)) {
+          return Promise.all(input);
+        }
+
+        return (
+          input as (client: typeof transactionClient) => Promise<unknown>
+        )(transactionClient);
+      }),
     };
     service = new TransactionService(prisma as unknown as PrismaService);
     applyBalanceDelta = jest
@@ -318,5 +329,130 @@ describe('TransactionService', () => {
         is_active: true,
       },
     });
+  });
+
+  it('rejects future transaction dates before creating or updating records', async () => {
+    jest.useFakeTimers();
+    jest.setSystemTime(Date.parse('2026-07-30T12:00:00.000Z'));
+
+    try {
+      await expect(
+        service.create(
+          {
+            wallet_id: SOURCE_WALLET_ID,
+            name: 'Future income',
+            amount: 100,
+            type: 'income',
+            transaction_date: '2026-07-31',
+          },
+          USER_ID,
+        ),
+      ).rejects.toBeInstanceOf(BadRequestException);
+
+      await expect(
+        service.update(
+          USER_ID,
+          { transaction_date: '2026-07-31' },
+          TRANSACTION_ID,
+        ),
+      ).rejects.toBeInstanceOf(BadRequestException);
+
+      expect(prisma.transactions.findFirst).not.toHaveBeenCalled();
+      expect(prisma.wallets.findFirst).not.toHaveBeenCalled();
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+
+  it('returns one filtered daily page while keeping the summary unfiltered', async () => {
+    prisma.wallets.findFirst.mockResolvedValue({ id: SOURCE_WALLET_ID });
+    prisma.transactions.groupBy.mockResolvedValue([
+      { type: 'income', _sum: { amount: 200 } },
+      { type: 'expense', _sum: { amount: 75 } },
+    ]);
+    prisma.transactions.count.mockResolvedValue(51);
+    prisma.transactions.findMany.mockResolvedValue([
+      createTransaction({
+        type: 'expense',
+        amount: 75,
+        name: 'Coffee',
+        transfers_transfers_from_transaction_idTotransactions: {
+          allocation_id: null,
+        },
+        transfers_transfers_to_transaction_idTotransactions: null,
+      }),
+    ]);
+
+    const result = await service.findDaily(USER_ID, {
+      walletId: SOURCE_WALLET_ID,
+      date: '2026-07-01',
+      type: 'expense',
+      search: 'coffee',
+    });
+
+    expect(result).toMatchObject({
+      date: '2026-07-01',
+      summary: { income: '200.00', expense: '75.00', net: '125.00' },
+      page: 1,
+      has_more: true,
+    });
+    expect(result.items[0]?.management).toBe('transfer');
+
+    expect(prisma.transactions.groupBy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: {
+          wallet_id: SOURCE_WALLET_ID,
+          deleted_at: null,
+          transaction_date: new Date('2026-07-01T00:00:00.000Z'),
+        },
+      }),
+    );
+    const countCalls = prisma.transactions.count.mock.calls as unknown as Array<
+      [
+        {
+          where: {
+            type: string;
+            OR: unknown[];
+          };
+        },
+      ]
+    >;
+    const countOptions = countCalls[0]?.[0];
+
+    expect(countOptions?.where.type).toBe('expense');
+    expect(countOptions?.where.OR).toHaveLength(2);
+    expect(prisma.transactions.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        skip: 0,
+        take: 50,
+        orderBy: [{ created_at: 'desc' }, { id: 'desc' }],
+      }),
+    );
+  });
+
+  it('marks allocation transactions as managed by an allocation', async () => {
+    prisma.wallets.findFirst.mockResolvedValue({ id: SOURCE_WALLET_ID });
+    prisma.transactions.groupBy.mockResolvedValue([]);
+    prisma.transactions.count.mockResolvedValue(1);
+    prisma.transactions.findMany.mockResolvedValue([
+      createTransaction({
+        transfers_transfers_from_transaction_idTotransactions: null,
+        transfers_transfers_to_transaction_idTotransactions: {
+          allocation_id: 'allocation-1',
+        },
+      }),
+    ]);
+
+    const result = await service.findDaily(USER_ID, {
+      walletId: SOURCE_WALLET_ID,
+      date: '2026-07-01',
+      page: 2,
+    });
+
+    expect(result.items[0]?.management).toBe('allocation');
+    expect(result.has_more).toBe(false);
+    expect(prisma.transactions.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({ skip: 50, take: 50 }),
+    );
   });
 });

@@ -11,6 +11,8 @@ const secondaryEmail =
 const defaultSummaryEmail =
   process.env.PLAYWRIGHT_E2E_DEFAULT_SUMMARY_EMAIL ??
   "playwright-dashboard-summary@walpaca.test";
+const dailyEmail =
+  process.env.PLAYWRIGHT_E2E_DAILY_EMAIL ?? "playwright-e2e-daily@walpaca.test";
 
 async function signInAndStore(
   page: Page,
@@ -18,16 +20,23 @@ async function signInAndStore(
   storageStatePath: string,
 ) {
   await page.goto("/login");
-  await page.getByLabel("อีเมล").fill(email);
-  await page
-    .getByRole("textbox", { name: "รหัสผ่าน", exact: true })
-    .fill(password);
-  await page.getByRole("button", { name: "เข้าสู่ระบบ" }).click();
+  const emailInput = page.getByLabel("อีเมล");
+  const passwordInput = page.getByRole("textbox", {
+    name: "รหัสผ่าน",
+    exact: true,
+  });
+  const submitButton = page.getByRole("button", { name: "เข้าสู่ระบบ" });
+
+  await emailInput.click();
+  await emailInput.pressSequentially(email);
+  await passwordInput.click();
+  await passwordInput.pressSequentially(password);
+  await passwordInput.press("Tab");
+  await expect(submitButton).toBeEnabled();
+  await submitButton.click();
 
   await page.waitForURL("**/dashboard", { timeout: 10_000 });
-  await expect(
-    page.getByRole("heading", { name: "งบใช้จ่าย" }),
-  ).toBeVisible();
+  await expect(page.getByRole("heading", { name: "งบใช้จ่าย" })).toBeVisible();
   mkdirSync(dirname(storageStatePath), { recursive: true });
   await page.context().storageState({ path: storageStatePath });
 }
@@ -46,4 +55,10 @@ test("signs in User C through the login page", async ({ page }) => {
     defaultSummaryEmail,
     "playwright/.auth/user-c.json",
   );
+});
+
+test("signs in Daily Transaction View user through the login page", async ({
+  page,
+}) => {
+  await signInAndStore(page, dailyEmail, "playwright/.auth/user-daily.json");
 });
