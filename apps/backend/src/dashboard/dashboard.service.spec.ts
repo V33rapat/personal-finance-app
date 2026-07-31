@@ -8,7 +8,7 @@ describe('DashboardService', () => {
   let prisma: {
     $transaction: jest.Mock;
     transactions: { groupBy: jest.Mock; aggregate: jest.Mock };
-    wallets: { count: jest.Mock };
+    wallets: { count: jest.Mock; findMany: jest.Mock };
     categories: { findMany: jest.Mock };
     dashboard_preferences: {
       findUnique: jest.Mock;
@@ -16,6 +16,14 @@ describe('DashboardService', () => {
       upsert: jest.Mock;
     };
     dashboard_hidden_categories: {
+      deleteMany: jest.Mock;
+      createMany: jest.Mock;
+    };
+    dashboard_wallet_summary_preferences: {
+      findUnique: jest.Mock;
+      upsert: jest.Mock;
+    };
+    dashboard_wallet_summary_wallets: {
       deleteMany: jest.Mock;
       createMany: jest.Mock;
     };
@@ -28,7 +36,7 @@ describe('DashboardService', () => {
         groupBy: jest.fn(),
         aggregate: jest.fn(),
       },
-      wallets: { count: jest.fn() },
+      wallets: { count: jest.fn(), findMany: jest.fn() },
       categories: { findMany: jest.fn() },
       dashboard_preferences: {
         findUnique: jest.fn(),
@@ -39,12 +47,46 @@ describe('DashboardService', () => {
         deleteMany: jest.fn(),
         createMany: jest.fn(),
       },
+      dashboard_wallet_summary_preferences: {
+        findUnique: jest.fn(),
+        upsert: jest.fn(),
+      },
+      dashboard_wallet_summary_wallets: {
+        deleteMany: jest.fn(),
+        createMany: jest.fn(),
+      },
     };
     service = new DashboardService(prisma as unknown as PrismaService);
   });
 
   afterEach(() => {
     jest.useRealTimers();
+  });
+
+  const createWalletSummaryWallet = (
+    id: string,
+    balance: string,
+    options: {
+      name?: string;
+      wallet_type?: 'normal' | 'investment';
+      created_at?: string;
+      latest_transaction_at?: string | null;
+      parent_name?: string | null;
+    } = {},
+  ) => ({
+    id,
+    name: options.name ?? id,
+    wallet_type: options.wallet_type ?? 'normal',
+    balance: new Prisma.Decimal(balance),
+    color: '#7C3AED',
+    icon: 'wallet',
+    is_active: true,
+    deleted_at: null,
+    created_at: new Date(options.created_at ?? '2026-07-01T00:00:00.000Z'),
+    wallets: options.parent_name ? { name: options.parent_name } : null,
+    transactions: options.latest_transaction_at
+      ? [{ created_at: new Date(options.latest_transaction_at) }]
+      : [],
   });
 
   it('returns a user-scoped summary for the selected reporting month', async () => {
@@ -497,5 +539,151 @@ describe('DashboardService', () => {
     await expect(
       service.getOverview('user-1', '2099-01-01', '2099-01-01'),
     ).rejects.toBeInstanceOf(BadRequestException);
+  });
+
+  it('defaults to four recently active eligible wallets and sorts cards by balance', async () => {
+    prisma.dashboard_wallet_summary_preferences.findUnique.mockResolvedValue(
+      null,
+    );
+    prisma.wallets.findMany.mockResolvedValue([
+      createWalletSummaryWallet('weekly-spending', '720.00', {
+        latest_transaction_at: '2026-07-20T03:00:00.000Z',
+      }),
+      createWalletSummaryWallet('emergency-fund', '12500.00', {
+        latest_transaction_at: '2026-07-21T03:00:00.000Z',
+        parent_name: 'Savings',
+      }),
+      createWalletSummaryWallet('investment', '4500.00', {
+        wallet_type: 'investment',
+        latest_transaction_at: '2026-07-19T03:00:00.000Z',
+      }),
+      createWalletSummaryWallet('travel', '1800.00', {
+        created_at: '2026-07-18T03:00:00.000Z',
+      }),
+      createWalletSummaryWallet('not-shown', '99999.00', {
+        latest_transaction_at: '2026-07-01T03:00:00.000Z',
+      }),
+    ]);
+
+    const walletSummary = await service.getWalletSummary('user-1');
+
+    expect(walletSummary).toMatchObject({
+      is_configured: false,
+      displayed_wallets: [
+        expect.objectContaining({ id: 'emergency-fund', balance: '12500.00' }),
+        expect.objectContaining({ id: 'investment', balance: '4500.00' }),
+        expect.objectContaining({ id: 'travel', balance: '1800.00' }),
+        expect.objectContaining({ id: 'weekly-spending', balance: '720.00' }),
+      ],
+      selected_wallets: [],
+    });
+    expect(walletSummary.eligible_wallets).toHaveLength(5);
+    expect(prisma.wallets.findMany).toHaveBeenCalledTimes(1);
+  });
+
+  it('hides unavailable selected wallets while retaining them in settings', async () => {
+    const availableWallet = createWalletSummaryWallet('available', '300.00');
+    const unavailableWallet = {
+      ...createWalletSummaryWallet('inactive', '400.00'),
+      is_active: false,
+    };
+    prisma.dashboard_wallet_summary_preferences.findUnique.mockResolvedValue({
+      is_configured: true,
+      dashboard_wallet_summary_wallets: [
+        { wallet_id: 'available', wallets: availableWallet },
+        { wallet_id: 'inactive', wallets: unavailableWallet },
+      ],
+    });
+    prisma.wallets.findMany.mockResolvedValue([availableWallet]);
+
+    await expect(service.getWalletSummary('user-1')).resolves.toMatchObject({
+      is_configured: true,
+      displayed_wallets: [
+        expect.objectContaining({ id: 'available', is_available: true }),
+      ],
+      selected_wallets: [
+        expect.objectContaining({ id: 'available', is_available: true }),
+        expect.objectContaining({ id: 'inactive', is_available: false }),
+      ],
+    });
+  });
+
+  it('rejects a newly selected wallet that is not eligible for the user', async () => {
+    prisma.dashboard_wallet_summary_preferences.findUnique.mockResolvedValue({
+      dashboard_wallet_summary_wallets: [],
+    });
+    prisma.wallets.count.mockResolvedValue(0);
+
+    await expect(
+      service.updateWalletSummary('user-1', {
+        wallet_ids: ['a8a1e64b-3e93-48c5-8311-5eae6544f8d5'],
+      }),
+    ).rejects.toBeInstanceOf(BadRequestException);
+
+    expect(prisma.wallets.count).toHaveBeenCalledWith({
+      where: {
+        user_id: 'user-1',
+        is_active: true,
+        deleted_at: null,
+        other_wallets: {
+          none: { is_active: true, deleted_at: null },
+        },
+        id: { in: ['a8a1e64b-3e93-48c5-8311-5eae6544f8d5'] },
+      },
+    });
+  });
+
+  it('persists a user selection and allows zero wallets', async () => {
+    const selectedWallet = createWalletSummaryWallet('wallet-1', '250.00');
+    const transaction = {
+      dashboard_wallet_summary_preferences: { upsert: jest.fn() },
+      dashboard_wallet_summary_wallets: {
+        deleteMany: jest.fn(),
+        createMany: jest.fn(),
+      },
+    };
+    prisma.dashboard_wallet_summary_preferences.findUnique
+      .mockResolvedValueOnce({ dashboard_wallet_summary_wallets: [] })
+      .mockResolvedValueOnce({
+        is_configured: true,
+        dashboard_wallet_summary_wallets: [
+          { wallet_id: 'wallet-1', wallets: selectedWallet },
+        ],
+      });
+    prisma.wallets.count.mockResolvedValue(1);
+    prisma.wallets.findMany.mockResolvedValue([selectedWallet]);
+    prisma.$transaction.mockImplementation(
+      async (callback: (tx: typeof transaction) => Promise<void>) =>
+        callback(transaction),
+    );
+
+    await expect(
+      service.updateWalletSummary('user-1', { wallet_ids: ['wallet-1'] }),
+    ).resolves.toMatchObject({
+      is_configured: true,
+      displayed_wallets: [expect.objectContaining({ id: 'wallet-1' })],
+    });
+    expect(
+      transaction.dashboard_wallet_summary_wallets.createMany,
+    ).toHaveBeenCalledWith({
+      data: [{ user_id: 'user-1', wallet_id: 'wallet-1' }],
+    });
+
+    prisma.dashboard_wallet_summary_preferences.findUnique
+      .mockResolvedValueOnce({
+        dashboard_wallet_summary_wallets: [{ wallet_id: 'wallet-1' }],
+      })
+      .mockResolvedValueOnce({
+        is_configured: true,
+        dashboard_wallet_summary_wallets: [],
+      });
+    prisma.wallets.findMany.mockResolvedValue([selectedWallet]);
+
+    await expect(
+      service.updateWalletSummary('user-1', { wallet_ids: [] }),
+    ).resolves.toMatchObject({
+      is_configured: true,
+      displayed_wallets: [],
+    });
   });
 });

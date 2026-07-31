@@ -12,6 +12,7 @@ import type { AuthenticatedRequest } from '../auth/types/authenticated-request';
 import { DashboardService } from './dashboard.service';
 import { FindDashboardOverviewDto } from './dto/find-dashboard-overview.dto';
 import { UpdateDashboardPreferencesDto } from './dto/update-dashboard-preferences.dto';
+import { UpdateDashboardWalletSummaryDto } from './dto/update-dashboard-wallet-summary.dto';
 
 @Controller('dashboard')
 @UseGuards(JwtAuthGuard)
@@ -46,5 +47,18 @@ export class DashboardController {
     @Body() dto: UpdateDashboardPreferencesDto,
   ) {
     return this.dashboardService.updatePreferences(req.user.sub, dto);
+  }
+
+  @Get('wallet-summary')
+  getWalletSummary(@Req() req: AuthenticatedRequest) {
+    return this.dashboardService.getWalletSummary(req.user.sub);
+  }
+
+  @Patch('wallet-summary')
+  updateWalletSummary(
+    @Req() req: AuthenticatedRequest,
+    @Body() dto: UpdateDashboardWalletSummaryDto,
+  ) {
+    return this.dashboardService.updateWalletSummary(req.user.sub, dto);
   }
 }

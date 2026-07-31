@@ -2,6 +2,7 @@ import { BadRequestException, Injectable } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { UpdateDashboardPreferencesDto } from './dto/update-dashboard-preferences.dto';
+import { UpdateDashboardWalletSummaryDto } from './dto/update-dashboard-wallet-summary.dto';
 
 const BANGKOK_TIME_ZONE = 'Asia/Bangkok';
 const MONTH_PATTERN = /^\d{4}-(0[1-9]|1[0-2])$/;
@@ -38,6 +39,26 @@ interface DashboardPreferencesRecord {
   period_end: Date;
   is_category_breakdown_enabled: boolean;
   dashboard_hidden_categories: Array<{ category_id: string }>;
+}
+
+interface DashboardWalletSummaryWalletRecord {
+  id: string;
+  name: string;
+  wallet_type: 'normal' | 'investment';
+  balance: Prisma.Decimal;
+  color: string | null;
+  icon: string | null;
+  created_at: Date;
+  wallets: { name: string } | null;
+  transactions: Array<{ created_at: Date }>;
+}
+
+interface DashboardWalletSummaryPreferenceRecord {
+  is_configured: boolean;
+  dashboard_wallet_summary_wallets: Array<{
+    wallet_id: string;
+    wallets: DashboardWalletSummaryWalletRecord;
+  }>;
 }
 
 @Injectable()
@@ -260,6 +281,106 @@ export class DashboardService {
     return this.toPreferencesResponse(preferences);
   }
 
+  async getWalletSummary(userId: string) {
+    const [preferences, eligibleWallets] = await Promise.all([
+      this.prisma.dashboard_wallet_summary_preferences.findUnique({
+        where: { user_id: userId },
+        include: {
+          dashboard_wallet_summary_wallets: {
+            include: { wallets: this.walletSummaryWalletArgs },
+          },
+        },
+      }),
+      this.prisma.wallets.findMany({
+        where: this.getEligibleWalletWhere(userId),
+        ...this.walletSummaryWalletArgs,
+      }),
+    ]);
+    const eligibleWalletById = new Map(
+      eligibleWallets.map((wallet) => [wallet.id, wallet]),
+    );
+    const configuredPreferences =
+      preferences as DashboardWalletSummaryPreferenceRecord | null;
+    const selectedWallets =
+      configuredPreferences?.dashboard_wallet_summary_wallets.map(
+        ({ wallets }) =>
+          this.toWalletSummaryWallet(
+            wallets,
+            eligibleWalletById.has(wallets.id),
+          ),
+      ) ?? [];
+    const displayedWallets = configuredPreferences?.is_configured
+      ? selectedWallets.filter((wallet) => wallet.is_available)
+      : this.getDefaultWalletSummaryWallets(eligibleWallets);
+
+    return {
+      is_configured: configuredPreferences?.is_configured ?? false,
+      displayed_wallets: this.sortWalletSummaryWallets(displayedWallets),
+      selected_wallets: selectedWallets,
+      eligible_wallets: this.sortWalletSummaryWallets(
+        eligibleWallets.map((wallet) =>
+          this.toWalletSummaryWallet(wallet, true),
+        ),
+      ),
+    };
+  }
+
+  async updateWalletSummary(
+    userId: string,
+    dto: UpdateDashboardWalletSummaryDto,
+  ) {
+    const preferences =
+      await this.prisma.dashboard_wallet_summary_preferences.findUnique({
+        where: { user_id: userId },
+        include: { dashboard_wallet_summary_wallets: true },
+      });
+    const existingWalletIds = new Set(
+      preferences?.dashboard_wallet_summary_wallets.map(
+        ({ wallet_id }) => wallet_id,
+      ) ?? [],
+    );
+    const newlySelectedWalletIds = dto.wallet_ids.filter(
+      (walletId) => !existingWalletIds.has(walletId),
+    );
+
+    if (newlySelectedWalletIds.length > 0) {
+      const eligibleWalletCount = await this.prisma.wallets.count({
+        where: {
+          ...this.getEligibleWalletWhere(userId),
+          id: { in: newlySelectedWalletIds },
+        },
+      });
+
+      if (eligibleWalletCount !== newlySelectedWalletIds.length) {
+        throw new BadRequestException(
+          'Selected wallets must be available to the user',
+        );
+      }
+    }
+
+    await this.prisma.$transaction(async (tx) => {
+      await tx.dashboard_wallet_summary_preferences.upsert({
+        where: { user_id: userId },
+        create: { user_id: userId, is_configured: true },
+        update: { is_configured: true, updated_at: new Date() },
+      });
+      await tx.dashboard_wallet_summary_wallets.deleteMany({
+        where: { user_id: userId },
+      });
+
+      if (dto.wallet_ids.length > 0) {
+        await tx.dashboard_wallet_summary_wallets.createMany({
+          data: dto.wallet_ids.map((walletId) => ({
+            user_id: userId,
+            wallet_id: walletId,
+          })),
+        });
+      }
+    });
+
+    return this.getWalletSummary(userId);
+  }
+
   private getReportingPeriod(monthValue?: string): ReportingPeriod {
     const month = monthValue ?? this.getCurrentBangkokMonth();
 
@@ -316,6 +437,73 @@ export class DashboardService {
       deleted_at: null,
       created_at: { lt: periodEnd },
     } satisfies Prisma.walletsWhereInput;
+  }
+
+  private getEligibleWalletWhere(userId: string) {
+    return {
+      user_id: userId,
+      is_active: true,
+      deleted_at: null,
+      other_wallets: {
+        none: { is_active: true, deleted_at: null },
+      },
+    } satisfies Prisma.walletsWhereInput;
+  }
+
+  private readonly walletSummaryWalletArgs = {
+    include: {
+      wallets: { select: { name: true } },
+      transactions: {
+        where: { deleted_at: null },
+        select: { created_at: true },
+        orderBy: { created_at: 'desc' as const },
+        take: 1,
+      },
+    },
+  } satisfies Prisma.walletsDefaultArgs;
+
+  private toWalletSummaryWallet(
+    wallet: DashboardWalletSummaryWalletRecord,
+    isAvailable: boolean,
+  ) {
+    return {
+      id: wallet.id,
+      name: wallet.name,
+      parent_name: wallet.wallets?.name ?? null,
+      wallet_type: wallet.wallet_type,
+      balance: new Prisma.Decimal(wallet.balance).toFixed(2),
+      color: wallet.color,
+      icon: wallet.icon,
+      is_available: isAvailable,
+    };
+  }
+
+  private getDefaultWalletSummaryWallets(
+    wallets: DashboardWalletSummaryWalletRecord[],
+  ) {
+    return [...wallets]
+      .sort((first, second) => {
+        const firstActivity =
+          first.transactions[0]?.created_at ?? first.created_at;
+        const secondActivity =
+          second.transactions[0]?.created_at ?? second.created_at;
+
+        return secondActivity.getTime() - firstActivity.getTime();
+      })
+      .slice(0, 4)
+      .map((wallet) => this.toWalletSummaryWallet(wallet, true));
+  }
+
+  private sortWalletSummaryWallets<T extends { balance: string; name: string }>(
+    wallets: T[],
+  ) {
+    return [...wallets].sort((first, second) => {
+      const balanceDifference = new Prisma.Decimal(second.balance)
+        .minus(first.balance)
+        .toNumber();
+
+      return balanceDifference || first.name.localeCompare(second.name, 'th');
+    });
   }
 
   private getDatesInRange(period: DateRange) {
