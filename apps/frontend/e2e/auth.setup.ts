@@ -8,6 +8,9 @@ const primaryEmail =
 const secondaryEmail =
   process.env.PLAYWRIGHT_E2E_SECONDARY_EMAIL ??
   "playwright-e2e-secondary@walpaca.test";
+const defaultSummaryEmail =
+  process.env.PLAYWRIGHT_E2E_DEFAULT_SUMMARY_EMAIL ??
+  "playwright-dashboard-summary@walpaca.test";
 
 async function signInAndStore(
   page: Page,
@@ -35,4 +38,12 @@ test("signs in User A through the login page", async ({ page }) => {
 
 test("signs in User B through the login page", async ({ page }) => {
   await signInAndStore(page, secondaryEmail, "playwright/.auth/user-b.json");
+});
+
+test("signs in User C through the login page", async ({ page }) => {
+  await signInAndStore(
+    page,
+    defaultSummaryEmail,
+    "playwright/.auth/user-c.json",
+  );
 });
