@@ -35,6 +35,7 @@ export default defineConfig({
       testIgnore: [
         /.*\.mobile\.spec\.ts/,
         /.*\.user-b\.spec\.ts/,
+        /.*wallet-summary-default\.spec\.ts/,
         /wallet-daily-(navigation|mutations|wallet-state)\.spec\.ts/,
       ],
     },
@@ -46,6 +47,15 @@ export default defineConfig({
       },
       dependencies: ["setup"],
       testMatch: /.*\.user-b\.spec\.ts/,
+    },
+    {
+      name: "chromium-desktop-user-c",
+      use: {
+        ...devices["Desktop Chrome"],
+        storageState: "playwright/.auth/user-c.json",
+      },
+      dependencies: ["setup"],
+      testMatch: /.*wallet-summary-default\.spec\.ts/,
     },
     {
       name: "chromium-mobile",

@@ -93,6 +93,26 @@ model dashboard_hidden_categories {
   @@index([category_id], map: "idx_dashboard_hidden_categories_category_id")
 }
 
+model dashboard_wallet_summary_preferences {
+  user_id                          String                             @id @db.Uuid
+  is_configured                    Boolean                            @default(false)
+  created_at                       DateTime                           @default(now()) @db.Timestamptz(6)
+  updated_at                       DateTime                           @default(now()) @db.Timestamptz(6)
+  users                            users                              @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  dashboard_wallet_summary_wallets dashboard_wallet_summary_wallets[]
+}
+
+model dashboard_wallet_summary_wallets {
+  user_id                              String                               @db.Uuid
+  wallet_id                            String                               @db.Uuid
+  created_at                           DateTime                             @default(now()) @db.Timestamptz(6)
+  dashboard_wallet_summary_preferences dashboard_wallet_summary_preferences @relation(fields: [user_id], references: [user_id], onDelete: Cascade, onUpdate: NoAction)
+  wallets                              wallets                              @relation(fields: [wallet_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@id([user_id, wallet_id])
+  @@index([wallet_id], map: "idx_dashboard_wallet_summary_wallets_wallet_id")
+}
+
 /// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
 /// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
 model refresh_tokens {
@@ -224,7 +244,8 @@ model users {
   updated_at            DateTime                @default(now()) @db.Timestamptz(6)
   deleted_at            DateTime?               @db.Timestamptz(6)
   categories            categories[]
-  dashboard_preferences dashboard_preferences?
+  dashboard_preferences                dashboard_preferences?
+  dashboard_wallet_summary_preferences dashboard_wallet_summary_preferences?
   refresh_tokens        refresh_tokens[]
   transaction_templates transaction_templates[]
   money_allocations     money_allocations[]
@@ -256,6 +277,7 @@ model wallets {
   transfers_transfers_from_wallet_idTowallets                   transfers[]               @relation("transfers_from_wallet_idTowallets")
   transfers_transfers_to_wallet_idTowallets                     transfers[]               @relation("transfers_to_wallet_idTowallets")
   money_allocations_money_allocations_source_wallet_idTowallets money_allocations[]       @relation("money_allocations_source_wallet_idTowallets")
+  dashboard_wallet_summary_wallets                              dashboard_wallet_summary_wallets[]
   spending_budget_wallets                                       spending_budget_wallets[]
   wallets                                                       wallets?                  @relation("walletsTowallets", fields: [parent_wallet_id], references: [id], onUpdate: NoAction)
   other_wallets                                                 wallets[]                 @relation("walletsTowallets")

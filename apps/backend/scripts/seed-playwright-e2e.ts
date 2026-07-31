@@ -13,6 +13,9 @@ const primaryEmail =
 const secondaryEmail =
   process.env.PLAYWRIGHT_E2E_SECONDARY_EMAIL ??
   'playwright-e2e-secondary@walpaca.test';
+const defaultSummaryEmail =
+  process.env.PLAYWRIGHT_E2E_DEFAULT_SUMMARY_EMAIL ??
+  'playwright-dashboard-summary@walpaca.test';
 const dailyEmail =
   process.env.PLAYWRIGHT_E2E_DAILY_EMAIL ?? 'playwright-e2e-daily@walpaca.test';
 const password = process.env.PLAYWRIGHT_E2E_PASSWORD ?? 'PlaywrightE2E!123';
@@ -29,6 +32,9 @@ async function resetUserData(userId: string) {
 
   await prisma.refresh_tokens.deleteMany({ where: { user_id: userId } });
   await prisma.dashboard_preferences.deleteMany({ where: { user_id: userId } });
+  await prisma.dashboard_wallet_summary_preferences.deleteMany({
+    where: { user_id: userId },
+  });
   await prisma.spending_budgets.deleteMany({ where: { user_id: userId } });
 
   if (walletIds.length > 0) {
@@ -111,6 +117,24 @@ async function seedPrimaryUser() {
       name: 'E2E เงินสด',
       wallet_type: wallet_type.normal,
       balance: 5_000,
+      created_at: seededWalletCreatedAt,
+    },
+  });
+  const selectionOne = await prisma.wallets.create({
+    data: {
+      user_id: user.id,
+      name: 'E2E Wallet Summary Extra One',
+      wallet_type: wallet_type.normal,
+      balance: 100,
+      created_at: seededWalletCreatedAt,
+    },
+  });
+  const selectionTwo = await prisma.wallets.create({
+    data: {
+      user_id: user.id,
+      name: 'E2E Wallet Summary Extra Two',
+      wallet_type: wallet_type.normal,
+      balance: 200,
       created_at: seededWalletCreatedAt,
     },
   });
@@ -278,6 +302,8 @@ async function seedPrimaryUser() {
   return {
     user,
     cash,
+    selectionOne,
+    selectionTwo,
     savingsChild,
     food,
     travel,
@@ -533,15 +559,102 @@ async function seedSecondaryUser() {
   return { user, wallet, category };
 }
 
+async function seedDefaultSummaryUser() {
+  const user = await upsertUser(
+    defaultSummaryEmail,
+    'Playwright Dashboard Summary User',
+  );
+  const [expenseCategory, incomeCategory] = await Promise.all([
+    prisma.categories.create({
+      data: {
+        user_id: user.id,
+        name: 'E2E Summary Food',
+        type: transaction_type.expense,
+        color: '#f97316',
+      },
+    }),
+    prisma.categories.create({
+      data: {
+        user_id: user.id,
+        name: 'E2E Summary Income',
+        type: transaction_type.income,
+        color: '#059669',
+      },
+    }),
+  ]);
+  const walletCreatedAt = new Date('2026-07-01T00:00:00.000Z');
+  const [alpha, beta, gamma, delta, archived] = await Promise.all(
+    [
+      { name: 'E2E Summary Alpha', balance: 780 },
+      { name: 'E2E Summary Beta', balance: 1_240 },
+      { name: 'E2E Summary Gamma', balance: 1_240 },
+      { name: 'E2E Summary Delta', balance: 520 },
+      { name: 'E2E Summary Archived', balance: 3_000 },
+    ].map(({ name, balance }) =>
+      prisma.wallets.create({
+        data: {
+          user_id: user.id,
+          name,
+          wallet_type: wallet_type.normal,
+          balance,
+          created_at: walletCreatedAt,
+        },
+      }),
+    ),
+  );
+
+  const walletActivity = [
+    { wallet: alpha, balance: 780, createdAt: '2026-07-20T12:00:00.000Z' },
+    { wallet: beta, balance: 1_240, createdAt: '2026-07-20T11:00:00.000Z' },
+    { wallet: gamma, balance: 1_240, createdAt: '2026-07-20T10:00:00.000Z' },
+    { wallet: delta, balance: 520, createdAt: '2026-07-20T09:00:00.000Z' },
+    { wallet: archived, balance: 3_000, createdAt: '2026-07-20T08:00:00.000Z' },
+  ];
+
+  await prisma.transactions.createMany({
+    data: walletActivity.flatMap(({ wallet, balance, createdAt }) => [
+      {
+        wallet_id: wallet.id,
+        category_id: incomeCategory.id,
+        name: `E2E opening balance ${wallet.id}`,
+        type: transaction_type.income,
+        amount: balance + 1,
+        transaction_date: reportingDate,
+        created_at: new Date('2026-07-19T00:00:00.000Z'),
+      },
+      {
+        wallet_id: wallet.id,
+        category_id: expenseCategory.id,
+        name: `E2E activity ${wallet.id}`,
+        type: transaction_type.expense,
+        amount: 1,
+        transaction_date: reportingDate,
+        created_at: new Date(createdAt),
+      },
+    ]),
+  });
+
+  return {
+    user,
+    alpha,
+    beta,
+    gamma,
+    delta,
+    archived,
+    category: expenseCategory,
+  };
+}
+
 async function seed() {
-  const [primary, secondary, daily] = await Promise.all([
+  const [primary, secondary, daily, defaultSummary] = await Promise.all([
     seedPrimaryUser(),
     seedSecondaryUser(),
     seedDailyUser(),
+    seedDefaultSummaryUser(),
   ]);
 
   console.log(
-    `Seeded Playwright accounts: ${primary.user.email}, ${secondary.user.email}, ${daily.user.email}`,
+    `Seeded Playwright accounts: ${primary.user.email}, ${secondary.user.email}, ${daily.user.email}, ${defaultSummary.user.email}`,
   );
 }
 

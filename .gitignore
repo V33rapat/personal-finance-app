@@ -5,3 +5,6 @@ node_modules
 docker-compose.yml
 /docker
 .pnpm-store/
+
+apps/frontend/playwright-report/
+apps/frontend/test-results/

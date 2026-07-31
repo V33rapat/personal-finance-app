@@ -1,5 +1,7 @@
 "use client";
 
+import { useEffect } from "react";
+import { useSearchParams } from "next/navigation";
 import Button from "@/components/ui/Button";
 import { TH_TEXT } from "@/constants/th";
 import { useWallet } from "../hooks/useWallet";
@@ -8,6 +10,8 @@ import WalletFormModal from "./WalletFormModal";
 import WalletSidebar from "./WalletSidebar";
 
 export default function WalletPage() {
+  const searchParams = useSearchParams();
+  const requestedWalletId = searchParams.get("walletId");
   const {
     wallets,
     walletTree,
@@ -28,6 +32,18 @@ export default function WalletPage() {
     saveWallet,
     deleteWallet,
   } = useWallet();
+
+  useEffect(() => {
+    if (
+      !requestedWalletId ||
+      isLoading ||
+      !wallets.some((wallet) => wallet.id === requestedWalletId)
+    ) {
+      return;
+    }
+
+    selectWallet(requestedWalletId);
+  }, [isLoading, requestedWalletId, selectWallet, wallets]);
 
   return (
     <div className="flex flex-col gap-6">

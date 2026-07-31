@@ -154,6 +154,10 @@ _Avoid_: Date filter, range
 A summary scoped to one Wallet or a Parent Wallet with its Sub-wallets.
 _Avoid_: Global summary, account report
 
+**Dashboard Wallet Summary**:
+A user-selected Dashboard section that shows the current balances of up to four eligible Wallets.
+_Avoid_: Wallet Summary, global balance
+
 **Daily Transaction View**:
 A Wallet-scoped view of Transactions for one calendar day. Its summary includes every money movement recorded in that Wallet on the selected day, while filters only change the visible list. Transfers and Money Allocation Transactions remain visible but are managed from their own workflows.
 _Avoid_: Transaction history, date-range filter, wallet statement
