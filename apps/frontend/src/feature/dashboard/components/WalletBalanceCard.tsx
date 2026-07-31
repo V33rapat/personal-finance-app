@@ -30,7 +30,7 @@ export default function WalletBalanceCard({
     <Link
       href={`/wallet?walletId=${encodeURIComponent(wallet.id)}`}
       aria-label={`${getWalletSummaryLabel(wallet)} ${formatCurrency(wallet.balance)}`}
-      className="group min-h-[146px] border border-slate-200/80 bg-white/85 p-5 shadow-xl shadow-slate-200/50 backdrop-blur-xl transition hover:-translate-y-0.5 hover:border-violet-300 hover:shadow-violet-500/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-violet-500 dark:border-slate-800 dark:bg-slate-900/80 dark:shadow-slate-950/40 dark:hover:border-violet-700"
+      className="group min-h-[146px] rounded-2xl border border-slate-200/80 bg-white/85 p-5 shadow-xl shadow-slate-200/50 backdrop-blur-xl transition hover:-translate-y-0.5 hover:border-violet-300 hover:shadow-violet-500/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-violet-500 dark:border-slate-800 dark:bg-slate-900/80 dark:shadow-slate-950/40 dark:hover:border-violet-700"
     >
       <div className="flex items-start justify-between gap-4">
         <div className="flex min-w-0 items-center gap-3">

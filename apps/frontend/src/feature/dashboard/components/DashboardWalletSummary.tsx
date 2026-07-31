@@ -9,7 +9,7 @@ import WalletBalanceCard from "./WalletBalanceCard";
 
 function WalletCardSkeleton() {
   return (
-    <div className="min-h-[146px] animate-pulse border border-slate-200 bg-slate-100 p-5 dark:border-slate-800 dark:bg-slate-800/70">
+    <div className="min-h-[146px] animate-pulse rounded-2xl border border-slate-200 bg-slate-100 p-5 dark:border-slate-800 dark:bg-slate-800/70">
       <div className="h-10 w-10 rounded-lg bg-slate-200 dark:bg-slate-700" />
       <div className="mt-6 h-7 w-36 rounded bg-slate-200 dark:bg-slate-700" />
     </div>
