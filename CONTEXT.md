@@ -154,6 +154,10 @@ _Avoid_: Date filter, range
 A summary scoped to one Wallet or a Parent Wallet with its Sub-wallets.
 _Avoid_: Global summary, account report
 
+**Dashboard Wallet Summary**:
+A user-selected Dashboard section that shows the current balances of up to four eligible Wallets.
+_Avoid_: Wallet Summary, global balance
+
 **Spending Analysis**:
 The comparison of Expenses by Transaction Category to understand where money is used most and least.
 _Avoid_: Chart, graph
