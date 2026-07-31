@@ -100,6 +100,12 @@ function getResetLabel(period: SpendingBudgetPeriodSelection["period"]) {
   return TH_TEXT.budget.resetCurrentYear;
 }
 
+const calendarLabels = {
+  labelDayButton: (date: Date) => `เลือกวันที่ ${toDateString(date)}`,
+  labelNext: () => "แสดงเดือนถัดไป",
+  labelPrevious: () => "แสดงเดือนก่อนหน้า",
+};
+
 export default function SpendingBudgetPeriodPicker({
   selection,
   disabled = false,
@@ -206,6 +212,7 @@ export default function SpendingBudgetPeriodPicker({
         disabled={disabled}
         aria-expanded={isOpen}
         aria-haspopup="dialog"
+        aria-label={`${getPickerLabel(selection.period)}: ${formatSpendingBudgetPeriodSelection(selection)}`}
         className="flex min-h-[42px] w-full items-center justify-between gap-3 rounded-xl border border-slate-200 bg-white px-3 text-left text-sm font-semibold text-slate-700 transition hover:border-violet-300 disabled:cursor-not-allowed disabled:opacity-60 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:hover:border-violet-600 sm:min-w-60"
       >
         <span className="min-w-0 truncate">
@@ -235,6 +242,7 @@ export default function SpendingBudgetPeriodPicker({
               weekStartsOn={1}
               defaultMonth={draftDate ?? getSelectionDate(selection)}
               showOutsideDays
+              labels={calendarLabels}
               className="dashboard-day-picker mx-auto"
             />
           )}
@@ -254,6 +262,7 @@ export default function SpendingBudgetPeriodPicker({
               excludeDisabled
               defaultMonth={draftRange?.from ?? getSelectionDate(selection)}
               showOutsideDays
+              labels={calendarLabels}
               className="dashboard-day-picker mx-auto"
             />
           )}
@@ -266,6 +275,7 @@ export default function SpendingBudgetPeriodPicker({
                   title="ปีก่อนหน้า"
                   aria-label="ปีก่อนหน้า"
                   onClick={() => setVisibleYear((current) => current - 1)}
+                  data-testid="period-picker-previous-year"
                   className="inline-flex h-9 w-9 items-center justify-center text-slate-600 transition hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800"
                 >
                   <ChevronLeft className="h-4 w-4" aria-hidden />
@@ -278,6 +288,7 @@ export default function SpendingBudgetPeriodPicker({
                   title="ปีถัดไป"
                   aria-label="ปีถัดไป"
                   onClick={() => setVisibleYear((current) => current + 1)}
+                  data-testid="period-picker-next-year"
                   className="inline-flex h-9 w-9 items-center justify-center text-slate-600 transition hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800"
                 >
                   <ChevronRight className="h-4 w-4" aria-hidden />
@@ -288,6 +299,7 @@ export default function SpendingBudgetPeriodPicker({
                   <button
                     key={month.value}
                     type="button"
+                    aria-label={`Select month ${visibleYear}-${String(month.value).padStart(2, "0")}`}
                     onClick={() => selectMonth(month.value)}
                     className={[
                       "min-h-10 px-2 text-sm font-semibold transition",
@@ -311,6 +323,7 @@ export default function SpendingBudgetPeriodPicker({
                   title="แสดงปีก่อนหน้า"
                   aria-label="แสดงปีก่อนหน้า"
                   onClick={() => setVisibleYear((current) => current - 12)}
+                  data-testid="period-picker-previous-year"
                   className="inline-flex h-9 w-9 items-center justify-center text-slate-600 transition hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800"
                 >
                   <ChevronLeft className="h-4 w-4" aria-hidden />
@@ -324,6 +337,7 @@ export default function SpendingBudgetPeriodPicker({
                   title="แสดงปีถัดไป"
                   aria-label="แสดงปีถัดไป"
                   onClick={() => setVisibleYear((current) => current + 12)}
+                  data-testid="period-picker-next-year"
                   className="inline-flex h-9 w-9 items-center justify-center text-slate-600 transition hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800"
                 >
                   <ChevronRight className="h-4 w-4" aria-hidden />
@@ -334,6 +348,7 @@ export default function SpendingBudgetPeriodPicker({
                   <button
                     key={year}
                     type="button"
+                    aria-label={`Select year ${year}`}
                     onClick={() => selectYear(year)}
                     className={[
                       "min-h-10 px-2 text-sm font-semibold transition",
@@ -350,7 +365,10 @@ export default function SpendingBudgetPeriodPicker({
           )}
 
           {selectionError && (
-            <p className="mt-3 text-sm text-red-600 dark:text-red-400">
+            <p
+              role="alert"
+              className="mt-3 text-sm text-red-600 dark:text-red-400"
+            >
               {selectionError}
             </p>
           )}
