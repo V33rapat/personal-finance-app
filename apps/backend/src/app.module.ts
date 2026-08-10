@@ -11,6 +11,7 @@ import { StorageModule } from './storage/storage.module';
 import { DashboardModule } from './dashboard/dashboard.module';
 import { AllocationModule } from './allocation/allocation.module';
 import { SpendingBudgetModule } from './spending-budget/spending-budget.module';
+import { SpendingPlanModule } from './spending-plan/spending-plan.module';
 
 @Module({
   controllers: [AppController],
@@ -26,6 +27,7 @@ import { SpendingBudgetModule } from './spending-budget/spending-budget.module';
     DashboardModule,
     AllocationModule,
     SpendingBudgetModule,
+    SpendingPlanModule,
   ],
 })
 export class AppModule {}

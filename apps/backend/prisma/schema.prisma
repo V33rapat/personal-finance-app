@@ -11,20 +11,21 @@ datasource db {
 /// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
 /// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
 model categories {
-  id                          String                        @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
-  user_id                     String?                       @db.Uuid
-  name                        String                        @db.VarChar(100)
-  type                        transaction_type
-  color                       String?                       @db.VarChar(7)
-  icon                        String?                       @db.VarChar(100)
-  is_system                   Boolean                       @default(false)
-  created_at                  DateTime                      @default(now()) @db.Timestamptz(6)
-  updated_at                  DateTime                      @default(now()) @db.Timestamptz(6)
-  users                       users?                        @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
-  transaction_templates       transaction_templates[]
-  transactions                transactions[]
-  dashboard_hidden_categories dashboard_hidden_categories[]
-  spending_budget_categories  spending_budget_categories[]
+  id                                        String                                      @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  user_id                                   String?                                     @db.Uuid
+  name                                      String                                      @db.VarChar(100)
+  type                                      transaction_type
+  color                                     String?                                     @db.VarChar(7)
+  icon                                      String?                                     @db.VarChar(100)
+  is_system                                 Boolean                                     @default(false)
+  created_at                                DateTime                                    @default(now()) @db.Timestamptz(6)
+  updated_at                                DateTime                                    @default(now()) @db.Timestamptz(6)
+  users                                     users?                                      @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  transaction_templates                     transaction_templates[]
+  transactions                              transactions[]
+  dashboard_hidden_categories               dashboard_hidden_categories[]
+  spending_budget_categories                spending_budget_categories[]
+  spending_plan_revision_purpose_categories spending_plan_revision_purpose_categories[]
 
   @@unique([user_id, name, type], map: "uq_category_user_name")
   @@index([user_id, type], map: "idx_categories_type")
@@ -69,6 +70,92 @@ model spending_budget_categories {
 
   @@id([budget_id, category_id])
   @@index([category_id], map: "idx_spending_budget_categories_category_id")
+}
+
+model spending_plans {
+  id                             String                          @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  user_id                        String                          @db.Uuid
+  name                           String                          @db.VarChar(100)
+  amount                         Decimal                         @db.Decimal(20, 2)
+  start_date                     DateTime                        @db.Date
+  end_date                       DateTime                        @db.Date
+  cancelled_at                   DateTime?                       @db.Timestamptz(6)
+  created_at                     DateTime                        @default(now()) @db.Timestamptz(6)
+  updated_at                     DateTime                        @default(now()) @db.Timestamptz(6)
+  users                          users                           @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  spending_plan_revisions        spending_plan_revisions[]
+  spending_plan_view_preferences spending_plan_view_preferences?
+
+  @@index([user_id, start_date, end_date], map: "idx_spending_plans_user_dates")
+  @@index([user_id, cancelled_at], map: "idx_spending_plans_user_cancelled")
+}
+
+model spending_plan_revisions {
+  id                              String                            @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  plan_id                         String                            @db.Uuid
+  effective_date                  DateTime                          @db.Date
+  created_at                      DateTime                          @default(now()) @db.Timestamptz(6)
+  spending_plans                  spending_plans                    @relation(fields: [plan_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  spending_plan_revision_wallets  spending_plan_revision_wallets[]
+  spending_plan_revision_purposes spending_plan_revision_purposes[]
+
+  @@index([plan_id, effective_date(sort: Desc), created_at(sort: Desc)], map: "idx_spending_plan_revisions_plan_date")
+}
+
+model spending_plan_revision_wallets {
+  revision_id             String                  @db.Uuid
+  wallet_id               String                  @db.Uuid
+  created_at              DateTime                @default(now()) @db.Timestamptz(6)
+  spending_plan_revisions spending_plan_revisions @relation(fields: [revision_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  wallets                 wallets                 @relation(fields: [wallet_id], references: [id], onUpdate: NoAction)
+
+  @@id([revision_id, wallet_id])
+  @@index([wallet_id], map: "idx_spending_plan_revision_wallets_wallet")
+}
+
+model spending_plan_revision_purposes {
+  id                                        String                                      @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  revision_id                               String                                      @db.Uuid
+  name                                      String                                      @db.VarChar(100)
+  sort_order                                Int
+  spending_plan_revisions                   spending_plan_revisions                     @relation(fields: [revision_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  spending_plan_revision_purpose_categories spending_plan_revision_purpose_categories[]
+  spending_plan_revision_allocations        spending_plan_revision_allocations[]
+
+  @@unique([revision_id, name], map: "uq_spending_plan_revision_purpose_name")
+  @@index([revision_id, sort_order], map: "idx_spending_plan_revision_purposes_order")
+}
+
+model spending_plan_revision_purpose_categories {
+  purpose_id                      String                          @db.Uuid
+  category_id                     String                          @db.Uuid
+  created_at                      DateTime                        @default(now()) @db.Timestamptz(6)
+  spending_plan_revision_purposes spending_plan_revision_purposes @relation(fields: [purpose_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  categories                      categories                      @relation(fields: [category_id], references: [id], onUpdate: NoAction)
+
+  @@id([purpose_id, category_id])
+  @@index([category_id], map: "idx_spending_plan_purpose_categories_category")
+}
+
+model spending_plan_revision_allocations {
+  purpose_id                      String                          @db.Uuid
+  allocation_date                 DateTime                        @db.Date
+  amount                          Decimal                         @db.Decimal(20, 2)
+  created_at                      DateTime                        @default(now()) @db.Timestamptz(6)
+  spending_plan_revision_purposes spending_plan_revision_purposes @relation(fields: [purpose_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@id([purpose_id, allocation_date])
+  @@index([allocation_date], map: "idx_spending_plan_allocations_date")
+}
+
+model spending_plan_view_preferences {
+  plan_id               String             @id @db.Uuid
+  last_view             spending_plan_view @default(monthly)
+  show_daily_balance    Boolean            @default(true)
+  visible_purpose_names String[]           @default([]) @db.VarChar(100)
+  created_at            DateTime           @default(now()) @db.Timestamptz(6)
+  updated_at            DateTime           @default(now()) @db.Timestamptz(6)
+  spending_plans        spending_plans     @relation(fields: [plan_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
 }
 
 model dashboard_preferences {
@@ -228,58 +315,60 @@ model money_allocations {
 /// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
 /// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
 model users {
-  id                    String                  @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
-  email                 String                  @unique @db.VarChar(255)
-  password_hash         String                  @db.VarChar(255)
-  full_name             String                  @db.VarChar(150)
-  avatar_url            String?                 @db.VarChar(500)
-  avatar_path           String?                 @db.VarChar(500)
-  role                  user_role               @default(user)
-  is_active             Boolean                 @default(true)
-  session_version       Int                     @default(0)
-  email_verified_at     DateTime?               @db.Timestamptz(6)
-  created_at            DateTime                @default(now()) @db.Timestamptz(6)
-  updated_at            DateTime                @default(now()) @db.Timestamptz(6)
-  deleted_at            DateTime?               @db.Timestamptz(6)
-  categories            categories[]
+  id                                   String                                @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  email                                String                                @unique @db.VarChar(255)
+  password_hash                        String                                @db.VarChar(255)
+  full_name                            String                                @db.VarChar(150)
+  avatar_url                           String?                               @db.VarChar(500)
+  avatar_path                          String?                               @db.VarChar(500)
+  role                                 user_role                             @default(user)
+  is_active                            Boolean                               @default(true)
+  session_version                      Int                                   @default(0)
+  email_verified_at                    DateTime?                             @db.Timestamptz(6)
+  created_at                           DateTime                              @default(now()) @db.Timestamptz(6)
+  updated_at                           DateTime                              @default(now()) @db.Timestamptz(6)
+  deleted_at                           DateTime?                             @db.Timestamptz(6)
+  categories                           categories[]
   dashboard_preferences                dashboard_preferences?
   dashboard_wallet_summary_preferences dashboard_wallet_summary_preferences?
-  refresh_tokens        refresh_tokens[]
-  transaction_templates transaction_templates[]
-  money_allocations     money_allocations[]
-  spending_budgets      spending_budgets[]
-  wallets               wallets[]
+  refresh_tokens                       refresh_tokens[]
+  transaction_templates                transaction_templates[]
+  money_allocations                    money_allocations[]
+  spending_budgets                     spending_budgets[]
+  spending_plans                       spending_plans[]
+  wallets                              wallets[]
 }
 
 /// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
 /// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
 /// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
 model wallets {
-  id                                                            String                    @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
-  user_id                                                       String                    @db.Uuid
-  parent_wallet_id                                              String?                   @db.Uuid
-  name                                                          String                    @db.VarChar(150)
+  id                                                            String                             @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  user_id                                                       String                             @db.Uuid
+  parent_wallet_id                                              String?                            @db.Uuid
+  name                                                          String                             @db.VarChar(150)
   description                                                   String?
-  wallet_type                                                   wallet_type               @default(normal)
-  balance                                                       Decimal                   @default(0.00) @db.Decimal(20, 2)
-  currency                                                      String                    @default("THB") @db.Char(3)
-  color                                                         String?                   @db.VarChar(7)
-  icon                                                          String?                   @db.VarChar(100)
-  sort_order                                                    Int                       @default(0)
-  is_active                                                     Boolean                   @default(true)
-  created_at                                                    DateTime                  @default(now()) @db.Timestamptz(6)
-  updated_at                                                    DateTime                  @default(now()) @db.Timestamptz(6)
-  deleted_at                                                    DateTime?                 @db.Timestamptz(6)
+  wallet_type                                                   wallet_type                        @default(normal)
+  balance                                                       Decimal                            @default(0.00) @db.Decimal(20, 2)
+  currency                                                      String                             @default("THB") @db.Char(3)
+  color                                                         String?                            @db.VarChar(7)
+  icon                                                          String?                            @db.VarChar(100)
+  sort_order                                                    Int                                @default(0)
+  is_active                                                     Boolean                            @default(true)
+  created_at                                                    DateTime                           @default(now()) @db.Timestamptz(6)
+  updated_at                                                    DateTime                           @default(now()) @db.Timestamptz(6)
+  deleted_at                                                    DateTime?                          @db.Timestamptz(6)
   transaction_templates                                         transaction_templates[]
   transactions                                                  transactions[]
-  transfers_transfers_from_wallet_idTowallets                   transfers[]               @relation("transfers_from_wallet_idTowallets")
-  transfers_transfers_to_wallet_idTowallets                     transfers[]               @relation("transfers_to_wallet_idTowallets")
-  money_allocations_money_allocations_source_wallet_idTowallets money_allocations[]       @relation("money_allocations_source_wallet_idTowallets")
+  transfers_transfers_from_wallet_idTowallets                   transfers[]                        @relation("transfers_from_wallet_idTowallets")
+  transfers_transfers_to_wallet_idTowallets                     transfers[]                        @relation("transfers_to_wallet_idTowallets")
+  money_allocations_money_allocations_source_wallet_idTowallets money_allocations[]                @relation("money_allocations_source_wallet_idTowallets")
   dashboard_wallet_summary_wallets                              dashboard_wallet_summary_wallets[]
   spending_budget_wallets                                       spending_budget_wallets[]
-  wallets                                                       wallets?                  @relation("walletsTowallets", fields: [parent_wallet_id], references: [id], onUpdate: NoAction)
-  other_wallets                                                 wallets[]                 @relation("walletsTowallets")
-  users                                                         users                     @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  spending_plan_revision_wallets                                spending_plan_revision_wallets[]
+  wallets                                                       wallets?                           @relation("walletsTowallets", fields: [parent_wallet_id], references: [id], onUpdate: NoAction)
+  other_wallets                                                 wallets[]                          @relation("walletsTowallets")
+  users                                                         users                              @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
 }
 
 enum transaction_type {
@@ -297,6 +386,12 @@ enum spending_budget_period {
 enum spending_budget_wallet_scope {
   all
   selected
+}
+
+enum spending_plan_view {
+  monthly
+  range
+  daily
 }
 
 enum user_role {
