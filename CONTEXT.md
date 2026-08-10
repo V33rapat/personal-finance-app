@@ -170,6 +170,18 @@ _Avoid_: Savings goal, wallet balance, transfer limit
 A view of a Spending Budget for a selected daily, weekly, monthly, or yearly Reporting Period. It may show past or future periods, and always compares recorded Expenses with the Budget's current amount.
 _Avoid_: Budget history, forecasted expense
 
+**Spending Plan**:
+An explicit, user-created plan that distributes one total amount across one to 31 future calendar days and one or more Plan Purposes. It tracks Expenses without reserving money or changing Wallet Balances.
+_Avoid_: Spending Budget, transfer, reserved balance
+
+**Plan Purpose**:
+A named part of a Spending Plan that maps one or more expense Transaction Categories and has a daily planned amount.
+_Avoid_: Transaction Category, wallet purpose
+
+**Plan Revision**:
+An immutable snapshot of a Spending Plan's Wallet Scope, Plan Purposes, category mappings, and daily allocations that becomes effective on a specific calendar date. Earlier recorded days continue to use the Revision that was effective on those days.
+_Avoid_: Edited history, overwritten plan
+
 **Dashboard Layout**:
 The user's chosen arrangement of Dashboard content.
 _Avoid_: Theme, page design
