@@ -318,7 +318,30 @@ export default function SpendingPlanDetailPage() {
       {view === "range" && <Card className="overflow-hidden"><header className="border-b border-slate-100 p-5 dark:border-slate-800"><h2 className="text-lg font-bold text-slate-900 dark:text-slate-50">ตารางตามช่วงเวลา</h2><p className="mt-1 text-sm text-slate-500 dark:text-slate-400">ติดตามยอดตามวันและวัตถุประสงค์ตลอดทั้งแผน</p></header><PlanRangeTable days={detail.view.range_days} /></Card>}
       {view === "daily" && <div className="space-y-4"><div className="flex flex-wrap gap-2">{detail.view.range_days.map((day) => <button key={day.date} type="button" onClick={() => setSelectedDate(day.date)} className={`border px-3 py-2 text-sm font-semibold ${selectedDate === day.date ? "border-violet-600 bg-violet-600 text-white" : "border-slate-200 text-slate-600 dark:border-slate-700 dark:text-slate-300"}`}>{formatThaiDate(day.date)}</button>)}</div><DayDetail day={currentDay} /></div>}
 
-      <Card className="p-5"><h2 className="text-base font-bold text-slate-900 dark:text-slate-50">ประวัติ Revision</h2><ul className="mt-4 divide-y divide-slate-100 border-y border-slate-100 dark:divide-slate-800 dark:border-slate-800">{detail.revisions.map((revision) => <li key={revision.id} className="flex items-center justify-between gap-4 py-3 text-sm"><span className="font-medium text-slate-800 dark:text-slate-100">มีผลตั้งแต่ {formatThaiDate(revision.effective_date)}</span><span className="text-slate-500 dark:text-slate-400">{revision.purposes.length} วัตถุประสงค์</span></li>)}</ul></Card>
+      <Card className="p-5">
+        <h2 className="text-base font-bold text-slate-900 dark:text-slate-50">ประวัติ Revision</h2>
+        <ul className="mt-4 divide-y divide-slate-100 border-y border-slate-100 dark:divide-slate-800 dark:border-slate-800">
+          {detail.revisions.map((revision) => (
+            <li key={revision.id} className="py-3 text-sm">
+              <details>
+                <summary className="flex cursor-pointer list-none items-center justify-between gap-4 font-medium text-slate-800 marker:hidden dark:text-slate-100">
+                  <span>มีผลตั้งแต่ {formatThaiDate(revision.effective_date)}</span>
+                  <span className="text-slate-500 dark:text-slate-400">{revision.purposes.length} วัตถุประสงค์</span>
+                </summary>
+                <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                  {revision.purposes.map((purpose) => (
+                    <div key={purpose.name} className="border border-slate-200 p-3 dark:border-slate-700">
+                      <p className="font-semibold text-slate-900 dark:text-slate-50">{purpose.name}</p>
+                      <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">{purpose.categories.map((category) => category.name).join(", ")}</p>
+                      <p className="mt-3 text-sm font-medium text-slate-700 dark:text-slate-200">{purpose.allocations.map((allocation) => `${formatThaiDate(allocation.date)} ${formatCurrency(allocation.amount)}`).join(" · ")}</p>
+                    </div>
+                  ))}
+                </div>
+              </details>
+            </li>
+          ))}
+        </ul>
+      </Card>
 
       <ConfirmationDialog isOpen={isCancelOpen} title="ยกเลิกแผนการใช้เงิน?" message="แผนจะหยุดติดตามรายจ่ายใหม่ แต่ข้อมูลและประวัติทั้งหมดจะยังเก็บไว้" confirmText="ยกเลิกแผน" onConfirm={() => void cancelPlan(detail.id).then((success) => { if (success) { setIsCancelOpen(false); void load(month); } })} onCancel={() => setIsCancelOpen(false)} isLoading={isSaving} />
     </div>
