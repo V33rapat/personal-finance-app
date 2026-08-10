@@ -7,6 +7,7 @@ import { useDashboardSummary } from "../hooks/useDashboardSummary";
 import DashboardWalletSummary from "./DashboardWalletSummary";
 import SpendingBudgetOverview from "./SpendingBudgetOverview";
 import DashboardWeeklyOverview from "./DashboardWeeklyOverview";
+import DashboardSpendingPlans from "@/feature/spending-plan/components/DashboardSpendingPlans";
 
 function formatMonth(month: string) {
   const [year, monthNumber] = month.split("-").map(Number);
@@ -130,6 +131,7 @@ export default function DashboardPageContent() {
       </div>
 
       <DashboardWalletSummary />
+      <DashboardSpendingPlans />
       <DashboardWeeklyOverview />
       <SpendingBudgetOverview />
     </div>
