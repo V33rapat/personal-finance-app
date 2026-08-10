@@ -9,6 +9,7 @@ export {
 } from "../_lib/bff";
 
 export interface SpendingPlanRequestBody {
+  [key: string]: unknown;
   name?: unknown;
   amount?: unknown;
   startDate?: unknown;
