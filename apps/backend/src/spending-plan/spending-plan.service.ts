@@ -107,7 +107,16 @@ export class SpendingPlanService {
         date >= this.toUtcDate(plan.start_date) &&
         date <= this.toUtcDate(plan.end_date),
     );
-    const daily = await this.getDailyOverview(plan, days);
+    const [daily, rangeDays] = await Promise.all([
+      this.getDailyOverview(plan, days),
+      this.getDailyOverview(
+        plan,
+        this.getDateRange(
+          this.toUtcDate(plan.start_date),
+          this.toUtcDate(plan.end_date),
+        ),
+      ),
+    ]);
 
     return {
       ...this.toPlanSummary(plan),
@@ -116,6 +125,7 @@ export class SpendingPlanService {
         calendar_start: this.toDateString(month.start),
         calendar_end: this.toDateString(month.end),
         days: daily,
+        range_days: rangeDays,
       },
       revisions: plan.spending_plan_revisions
         .slice()
