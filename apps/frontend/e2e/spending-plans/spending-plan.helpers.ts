@@ -22,6 +22,10 @@ export function addDays(date: string, days: number) {
   return next.toISOString().slice(0, 10);
 }
 
+export function getPlanTestStartDate(baseOffset: number, retry: number) {
+  return addDays(getBangkokToday(), baseOffset + retry * 40);
+}
+
 export function createPlanName(suffix: string) {
   return `E2E Spending Plan ${suffix} ${Date.now()}`;
 }

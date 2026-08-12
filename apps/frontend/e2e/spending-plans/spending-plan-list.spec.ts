@@ -1,18 +1,17 @@
 import { expect, test } from "@playwright/test";
 import {
-  addDays,
   createPlanName,
   createPlanThroughUi,
-  getBangkokToday,
+  getPlanTestStartDate,
   openPlans,
 } from "./spending-plan.helpers";
 
 test.describe("Spending Plan list", () => {
-  test("lists a newly created plan and opens its detail page", async ({ page }) => {
+  test("lists a newly created plan and opens its detail page", async ({ page }, testInfo) => {
     const name = createPlanName("list");
     await createPlanThroughUi(page, {
       name,
-      startDate: addDays(getBangkokToday(), 2),
+      startDate: getPlanTestStartDate(23, testInfo.retry),
     });
 
     await openPlans(page);

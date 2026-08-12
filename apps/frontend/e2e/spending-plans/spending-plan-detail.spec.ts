@@ -1,16 +1,15 @@
 import { expect, test } from "@playwright/test";
 import {
-  addDays,
   createPlanName,
   createPlanThroughUi,
-  getBangkokToday,
+  getPlanTestStartDate,
 } from "./spending-plan.helpers";
 
 test.describe("Spending Plan detail views", () => {
-  test("switches between monthly, range, and daily views", async ({ page }) => {
+  test("switches between monthly, range, and daily views", async ({ page }, testInfo) => {
     await createPlanThroughUi(page, {
       name: createPlanName("detail"),
-      startDate: addDays(getBangkokToday(), 3),
+      startDate: getPlanTestStartDate(15, testInfo.retry),
     });
 
     await page
@@ -34,10 +33,10 @@ test.describe("Spending Plan detail views", () => {
     ).toBeVisible();
   });
 
-  test("stores the selected detail view for the plan", async ({ page }) => {
+  test("stores the selected detail view for the plan", async ({ page }, testInfo) => {
     await createPlanThroughUi(page, {
       name: createPlanName("preferences"),
-      startDate: addDays(getBangkokToday(), 4),
+      startDate: getPlanTestStartDate(17, testInfo.retry),
     });
 
     await page

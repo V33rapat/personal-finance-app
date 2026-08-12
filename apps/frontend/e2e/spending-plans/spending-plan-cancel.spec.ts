@@ -1,18 +1,17 @@
 import { expect, test } from "@playwright/test";
 import {
-  addDays,
   createPlanName,
   createPlanThroughUi,
-  getBangkokToday,
+  getPlanTestStartDate,
   openPlans,
 } from "./spending-plan.helpers";
 
 test.describe("Spending Plan cancellation", () => {
-  test("confirms cancellation and makes the plan read-only", async ({ page }) => {
+  test("confirms cancellation and makes the plan read-only", async ({ page }, testInfo) => {
     const name = createPlanName("cancel");
     await createPlanThroughUi(page, {
       name,
-      startDate: addDays(getBangkokToday(), 8),
+      startDate: getPlanTestStartDate(1, testInfo.retry),
     });
 
     await page.getByRole("button", { name: "ยกเลิกแผน", exact: true }).click();

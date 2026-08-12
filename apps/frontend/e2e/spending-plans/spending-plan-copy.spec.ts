@@ -3,19 +3,20 @@ import {
   addDays,
   createPlanName,
   createPlanThroughUi,
-  getBangkokToday,
+  getPlanTestStartDate,
 } from "./spending-plan.helpers";
 
 test.describe("Spending Plan copy", () => {
-  test("copies a plan to another valid one-day period", async ({ page }) => {
+  test("copies a plan to another valid one-day period", async ({ page }, testInfo) => {
+    const sourceStartDate = getPlanTestStartDate(3, testInfo.retry);
     const sourceName = createPlanName("copy-source");
     await createPlanThroughUi(page, {
       name: sourceName,
-      startDate: addDays(getBangkokToday(), 7),
+      startDate: sourceStartDate,
     });
 
     await page.getByRole("button", { name: "คัดลอกแผน", exact: true }).click();
-    const copiedStartDate = addDays(getBangkokToday(), 14);
+    const copiedStartDate = addDays(sourceStartDate, 7);
     await page
       .getByLabel("วันเริ่มต้นของแผนใหม่", { exact: true })
       .fill(copiedStartDate);

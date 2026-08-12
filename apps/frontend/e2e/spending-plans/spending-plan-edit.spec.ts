@@ -1,14 +1,13 @@
 import { expect, test } from "@playwright/test";
 import {
-  addDays,
   createPlanName,
   createPlanThroughUi,
-  getBangkokToday,
+  getPlanTestStartDate,
 } from "./spending-plan.helpers";
 
 test.describe("Spending Plan revisions", () => {
-  test("saves an edit as a new revision", async ({ page }) => {
-    const startDate = addDays(getBangkokToday(), 5);
+  test("saves an edit as a new revision", async ({ page }, testInfo) => {
+    const startDate = getPlanTestStartDate(19, testInfo.retry);
     const revisedName = createPlanName("revised");
     await createPlanThroughUi(page, {
       name: createPlanName("edit"),
@@ -31,11 +30,11 @@ test.describe("Spending Plan revisions", () => {
     await expect(page.locator("details")).toHaveCount(2);
   });
 
-  test("can leave edit mode without changing the plan", async ({ page }) => {
+  test("can leave edit mode without changing the plan", async ({ page }, testInfo) => {
     const name = createPlanName("edit-cancel");
     await createPlanThroughUi(page, {
       name,
-      startDate: addDays(getBangkokToday(), 6),
+      startDate: getPlanTestStartDate(21, testInfo.retry),
     });
 
     await page.getByRole("button", { name: "แก้ไขแผน", exact: true }).click();
