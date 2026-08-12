@@ -410,6 +410,18 @@ describe('SpendingBudgetService', () => {
       'user-1',
     );
 
+    const updateCalls = updateMany.mock.calls as unknown as Array<
+      [Prisma.spending_budgetsUpdateManyArgs]
+    >;
+    const updateArgument = updateCalls[0]?.[0];
+
+    expect(updateArgument?.where).toEqual({
+      user_id: 'user-1',
+      is_active: true,
+      includes_uncategorized: false,
+      spending_budget_categories: { none: {} },
+    });
+    expect(updateArgument?.data).toMatchObject({ is_active: false });
     expect(updateMany).toHaveBeenCalledTimes(1);
   });
 
@@ -429,6 +441,14 @@ describe('SpendingBudgetService', () => {
       }),
     );
 
+    const groupByCalls = prisma.transactions.groupBy.mock
+      .calls as unknown as Array<[Prisma.transactionsGroupByArgs]>;
+    const groupByArgument = groupByCalls[0]?.[0];
+
+    expect(groupByArgument.where?.transaction_date).toEqual({
+      gte: new Date('2026-08-15T00:00:00.000Z'),
+      lt: new Date('2026-08-16T00:00:00.000Z'),
+    });
     expect(prisma.transactions.groupBy).toHaveBeenCalledTimes(1);
   });
 

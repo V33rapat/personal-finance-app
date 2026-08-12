@@ -43,7 +43,9 @@ export default function DashboardWalletSummarySettings({
     }
 
     return summary.eligible_wallets.filter((wallet) =>
-      getWalletSummaryLabel(wallet).toLocaleLowerCase("th").includes(normalizedSearch),
+      getWalletSummaryLabel(wallet)
+        .toLocaleLowerCase("th")
+        .includes(normalizedSearch),
     );
   }, [search, summary.eligible_wallets]);
 
@@ -177,6 +179,7 @@ export default function DashboardWalletSummarySettings({
                     </span>
                     <input
                       type="checkbox"
+                      value={wallet.id}
                       checked={isChecked}
                       onChange={() => toggleWallet(wallet.id)}
                       disabled={isSaving}
@@ -222,13 +225,21 @@ export default function DashboardWalletSummarySettings({
           )}
 
           {(selectionError || error) && (
-            <p role="alert" className="mt-4 text-sm text-rose-700 dark:text-rose-300">
+            <p
+              role="alert"
+              className="mt-4 text-sm text-rose-700 dark:text-rose-300"
+            >
               {selectionError ?? error}
             </p>
           )}
 
           <div className="mt-5 flex justify-end gap-2">
-            <Button variant="secondary" size="sm" onClick={closeSettings} disabled={isSaving}>
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={closeSettings}
+              disabled={isSaving}
+            >
               {TH_TEXT.dashboard.walletSummaryCancel}
             </Button>
             <Button size="sm" onClick={() => void save()} disabled={isSaving}>
