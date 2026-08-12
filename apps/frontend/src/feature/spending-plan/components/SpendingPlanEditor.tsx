@@ -199,11 +199,15 @@ export default function SpendingPlanEditor({
             className="h-11 w-full border border-slate-200 bg-white pl-10 pr-3 text-sm text-slate-800 outline-none transition focus:border-violet-400 focus:ring-2 focus:ring-violet-400/20 disabled:cursor-not-allowed disabled:opacity-60 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
           />
         </div>
-        <div className="mt-3 max-h-52 overflow-y-auto border border-slate-200 dark:border-slate-700">
+        <div
+          data-testid="spending-plan-wallet-options"
+          className="mt-3 max-h-52 overflow-y-auto border border-slate-200 dark:border-slate-700"
+        >
           {visibleWallets.map((wallet) => (
             <label key={wallet.id} className="flex cursor-pointer items-center gap-3 px-3 py-2.5 text-sm text-slate-700 hover:bg-slate-50 dark:text-slate-200 dark:hover:bg-slate-800">
               <input
                 type="checkbox"
+                data-testid="spending-plan-wallet-checkbox"
                 checked={values.wallet_ids.includes(wallet.id)}
                 onChange={(event) => toggleWallet(wallet.id, event.target.checked)}
                 disabled={isSaving}
@@ -253,6 +257,7 @@ export default function SpendingPlanEditor({
                     <td className="py-4 pr-3">
                       <div className="flex gap-2">
                         <input
+                          data-testid="spending-plan-purpose-name"
                           value={purpose.name}
                           onChange={(event) => updatePurpose(purpose.id, (item) => ({ ...item, name: event.target.value }))}
                           placeholder="เช่น อาหาร"
@@ -279,7 +284,10 @@ export default function SpendingPlanEditor({
                           className="h-9 w-full border border-slate-200 bg-white pl-7 pr-2 text-xs text-slate-800 outline-none focus:border-violet-400 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
                         />
                       </div>
-                      <div className="mt-1 max-h-28 overflow-y-auto border border-slate-100 dark:border-slate-800">
+                      <div
+                        data-testid="spending-plan-category-options"
+                        className="mt-1 max-h-28 overflow-y-auto border border-slate-100 dark:border-slate-800"
+                      >
                         {visibleCategories.map((category) => {
                           const selectedElsewhere = values.purposes.some(
                             (item) => item.id !== purpose.id && item.category_ids.includes(category.id),
@@ -288,6 +296,7 @@ export default function SpendingPlanEditor({
                             <label key={category.id} className="flex cursor-pointer items-center gap-2 px-2 py-1.5 text-xs text-slate-600 hover:bg-slate-50 dark:text-slate-300 dark:hover:bg-slate-800">
                               <input
                                 type="checkbox"
+                                data-testid="spending-plan-category-checkbox"
                                 checked={purpose.category_ids.includes(category.id)}
                                 disabled={isSaving || selectedElsewhere}
                                 onChange={(event) => toggleCategory(purpose.id, category.id, event.target.checked)}
@@ -305,6 +314,7 @@ export default function SpendingPlanEditor({
                       <td key={allocation.date} className="px-1 py-4">
                         <input
                           type="number"
+                          data-testid="spending-plan-allocation"
                           min="0"
                           step="0.01"
                           inputMode="decimal"

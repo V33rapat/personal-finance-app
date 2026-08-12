@@ -1,97 +1,36 @@
-import { test, expect } from '../fixtures/base.fixture';
+import { expect, test } from "@playwright/test";
+import {
+  addDays,
+  createPlanName,
+  createPlanThroughUi,
+  getBangkokToday,
+  openPlans,
+} from "./spending-plan.helpers";
 
-test.describe('Spending Plan Cancellation', () => {
-  test.beforeEach(async ({ authHelper, testUser }) => {
-    await authHelper.login(testUser.email, testUser.password);
-  });
+test.describe("Spending Plan cancellation", () => {
+  test("confirms cancellation and makes the plan read-only", async ({ page }) => {
+    const name = createPlanName("cancel");
+    await createPlanThroughUi(page, {
+      name,
+      startDate: addDays(getBangkokToday(), 8),
+    });
 
-  test('SP-CANCEL-01: cancels active plan', async ({
-    page,
-    testUser,
-    apiHelper,
-  }) => {
-    const wallet = await apiHelper.createTestWallet(testUser.id);
-    const category = await apiHelper.createTestCategory(testUser.id);
+    await page.getByRole("button", { name: "ยกเลิกแผน", exact: true }).click();
+    await expect(page.getByText("ยกเลิกแผนการใช้เงิน?", { exact: true })).toBeVisible();
+    await page
+      .getByRole("button", { name: "ยกเลิกแผน", exact: true })
+      .last()
+      .click();
 
-    await page.goto('/spending-plans');
-    await page.waitForLoadState('networkidle');
-
-    const planCard = page.locator('[data-testid="plan-card"]').first();
-    if (await planCard.isVisible()) {
-      await planCard.click();
-      await page.waitForLoadState('networkidle');
-
-      const cancelBtn = page.locator('button:has-text("Cancel")').first();
-      if (await cancelBtn.isVisible()) {
-        await cancelBtn.click();
-
-        const confirmBtn = page.locator('button:has-text("Confirm")');
-        if (await confirmBtn.isVisible()) {
-          await confirmBtn.click();
-
-          await page.waitForLoadState('networkidle');
-
-          const cancelledBadge = page.locator('[data-testid="status-badge"]:has-text("cancelled")');
-          await expect(cancelledBadge).toBeVisible();
-        }
-      }
-    }
-  });
-
-  test('SP-CANCEL-02: shows confirmation dialog', async ({
-    page,
-    testUser,
-    apiHelper,
-  }) => {
-    const wallet = await apiHelper.createTestWallet(testUser.id);
-    const category = await apiHelper.createTestCategory(testUser.id);
-
-    await page.goto('/spending-plans');
-    await page.waitForLoadState('networkidle');
-
-    const planCard = page.locator('[data-testid="plan-card"]').first();
-    if (await planCard.isVisible()) {
-      await planCard.click();
-      await page.waitForLoadState('networkidle');
-
-      const cancelBtn = page.locator('button:has-text("Cancel")').first();
-      if (await cancelBtn.isVisible()) {
-        await cancelBtn.click();
-
-        await expect(page.getByText(/stop tracking/i)).toBeVisible();
-
-        const confirmBtn = page.locator('button:has-text("Confirm")');
-        if (await confirmBtn.isVisible()) {
-          await confirmBtn.click();
-        }
-      }
-    }
-  });
-
-  test('SP-CANCEL-05: cancelled plan is immutable', async ({
-    page,
-    testUser,
-    apiHelper,
-  }) => {
-    const wallet = await apiHelper.createTestWallet(testUser.id);
-    const category = await apiHelper.createTestCategory(testUser.id);
-
-    await page.goto('/spending-plans');
-    await page.waitForLoadState('networkidle');
-
-    const cancelledBadge = page.locator('[data-testid="status-badge"]:has-text("cancelled")').first();
-    if (await cancelledBadge.isVisible()) {
-      const planCard = cancelledBadge.locator('..');
-      await planCard.click();
-      await page.waitForLoadState('networkidle');
-
-      const editBtn = page.locator('button:has-text("Edit")').first();
-      const isEditVisible = await editBtn.isVisible().catch(() => false);
-      expect(isEditVisible).toBe(false);
-
-      const cancelBtn = page.locator('button:has-text("Cancel")').first();
-      const isCancelVisible = await cancelBtn.isVisible().catch(() => false);
-      expect(isCancelVisible).toBe(false);
-    }
+    await openPlans(page);
+    const planCard = page.getByRole("link", { name: new RegExp(name) });
+    await expect(planCard).toContainText("ยกเลิกแล้ว");
+    await planCard.click();
+    await expect(
+      page.getByRole("button", { name: "แก้ไขแผน", exact: true }),
+    ).toHaveCount(0);
+    await expect(
+      page.getByRole("button", { name: "ยกเลิกแผน", exact: true }),
+    ).toHaveCount(0);
   });
 });
