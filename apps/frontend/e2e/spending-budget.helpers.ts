@@ -132,30 +132,40 @@ export async function openPeriodPicker(page: Page, period: BudgetPeriod) {
   return dialog;
 }
 
-function getInitialCalendarDate(period: "daily" | "weekly") {
-  if (period === "daily") {
-    return getBangkokToday();
-  }
-
-  return getCurrentWeek().start;
-}
-
 async function showCalendarMonth(
   dialog: Locator,
-  initialDate: string,
   targetDate: string,
 ) {
-  const initial = toUtcDate(initialDate);
-  const target = toUtcDate(targetDate);
-  const offset =
-    (target.getUTCFullYear() - initial.getUTCFullYear()) * 12 +
-    target.getUTCMonth() -
-    initial.getUTCMonth();
-  const navigationLabel = offset >= 0 ? "แสดงเดือนถัดไป" : "แสดงเดือนก่อนหน้า";
+  const targetButton = dialog.getByRole("button", {
+    name: `เลือกวันที่ ${targetDate}`,
+  });
 
-  for (let index = 0; index < Math.abs(offset); index += 1) {
+  // DayPicker can initially render the preceding month when a range begins
+  // near a month boundary. Navigate from the calendar that is actually open.
+  for (let index = 0; index < 24; index += 1) {
+    if ((await targetButton.count()) > 0) {
+      return;
+    }
+
+    const visibleDates = await dialog
+      .getByRole("button")
+      .evaluateAll((buttons) =>
+        buttons
+          .map((button) => button.getAttribute("aria-label"))
+          .filter((label): label is string => Boolean(label))
+          .map((label) => label.match(/\d{4}-\d{2}-\d{2}/)?.[0])
+          .filter((date): date is string => Boolean(date)),
+      );
+    const lastVisibleDate = visibleDates.at(-1);
+    const navigationLabel =
+      lastVisibleDate && targetDate > lastVisibleDate
+        ? "แสดงเดือนถัดไป"
+        : "แสดงเดือนก่อนหน้า";
+
     await dialog.getByRole("button", { name: navigationLabel }).click();
   }
+
+  throw new Error(`Calendar date ${targetDate} was not reachable`);
 }
 
 export async function selectCalendarDate(
@@ -163,7 +173,7 @@ export async function selectCalendarDate(
   period: "daily" | "weekly",
   date: string,
 ) {
-  await showCalendarMonth(dialog, getInitialCalendarDate(period), date);
+  await showCalendarMonth(dialog, date);
   await dialog.getByRole("button", { name: `เลือกวันที่ ${date}` }).click();
 }
 
@@ -173,8 +183,9 @@ export async function selectCalendarRange(
   end: string,
 ) {
   const dialog = await openPeriodPicker(page, "weekly");
-  await showCalendarMonth(dialog, getInitialCalendarDate("weekly"), start);
+  await showCalendarMonth(dialog, start);
   await dialog.getByRole("button", { name: `เลือกวันที่ ${start}` }).click();
+  await showCalendarMonth(dialog, end);
   await dialog.getByRole("button", { name: `เลือกวันที่ ${end}` }).click();
   return dialog;
 }

@@ -1,0 +1,49 @@
+import { expect, test } from "@playwright/test";
+import {
+  createPlanName,
+  createPlanThroughUi,
+  getPlanTestStartDate,
+} from "./spending-plan.helpers";
+
+test.describe("Spending Plan detail views", () => {
+  test("switches between monthly, range, and daily views", async ({ page }, testInfo) => {
+    await createPlanThroughUi(page, {
+      name: createPlanName("detail"),
+      startDate: getPlanTestStartDate(15, testInfo.retry),
+    });
+
+    await page
+      .getByRole("button", { name: "ตารางตามช่วงเวลา", exact: true })
+      .click();
+    await expect(
+      page.getByRole("heading", { name: "ตารางตามช่วงเวลา", exact: true }),
+    ).toBeVisible();
+    await expect(page.getByRole("table")).toBeVisible();
+
+    await page
+      .getByRole("button", { name: "ภาพรวมต่อวัน", exact: true })
+      .click();
+    await expect(page.getByText("ภาพรวมต่อวัน:", { exact: false })).toBeVisible();
+
+    await page
+      .getByRole("button", { name: "ภาพรวมรายเดือน", exact: true })
+      .click();
+    await expect(
+      page.getByRole("heading", { name: "ภาพรวมรายเดือน", exact: true }),
+    ).toBeVisible();
+  });
+
+  test("stores the selected detail view for the plan", async ({ page }, testInfo) => {
+    await createPlanThroughUi(page, {
+      name: createPlanName("preferences"),
+      startDate: getPlanTestStartDate(17, testInfo.retry),
+    });
+
+    await page
+      .getByRole("button", { name: "ตารางตามช่วงเวลา", exact: true })
+      .click();
+    await expect(page.getByRole("table")).toBeVisible();
+    await page.reload();
+    await expect(page.getByRole("table")).toBeVisible();
+  });
+});

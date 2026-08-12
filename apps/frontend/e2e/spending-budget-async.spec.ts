@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test";
+import { expect, test, type Route } from "@playwright/test";
 import {
   applyCalendarSelection,
   expectPeriodLabel,
@@ -36,25 +36,21 @@ function overviewResponse(start: string, end: string, name: string) {
 }
 
 test.describe("Spending Budget asynchronous overview states", () => {
-  test("keeps the latest range when an older response is delayed", async ({
-    page,
-  }) => {
+  test("keeps the latest range when an older response is delayed", async ({ page }) => {
     await openDashboard(page);
     await selectBudgetPeriod(page, "weekly");
 
     const firstRange = { start: "2026-07-06", end: "2026-07-12" };
     const secondRange = { start: "2026-07-20", end: "2026-07-26" };
+    let resolveDelayedRoute: (route: Route) => void;
+    const delayedRoute = new Promise<Route>((resolve) => {
+      resolveDelayedRoute = resolve;
+    });
     await page.route("**/api/spending-budget/overview?*", async (route) => {
       const url = new URL(route.request().url());
 
       if (url.searchParams.get("start") === firstRange.start) {
-        await page.waitForTimeout(700);
-        await route.fulfill({
-          contentType: "application/json",
-          body: JSON.stringify(
-            overviewResponse(firstRange.start, firstRange.end, "Delayed budget"),
-          ),
-        });
+        resolveDelayedRoute(route);
         return;
       }
 
@@ -78,6 +74,7 @@ test.describe("Spending Budget asynchronous overview states", () => {
         firstRange.end,
       );
       await applyCalendarSelection(firstDialog);
+      const firstRoute = await delayedRoute;
 
       const secondDialog = await selectCalendarRange(
         page,
@@ -91,13 +88,20 @@ test.describe("Spending Budget asynchronous overview states", () => {
         formatThaiDateRange(secondRange.start, secondRange.end),
       );
       await expect(page.getByRole("heading", { name: "Latest budget" })).toBeVisible();
-      await page.waitForTimeout(800);
+      await firstRoute.fulfill({
+        contentType: "application/json",
+        body: JSON.stringify(
+          overviewResponse(firstRange.start, firstRange.end, "Delayed budget"),
+        ),
+      }).catch(() => undefined);
       await expect(page.getByRole("heading", { name: "Latest budget" })).toBeVisible();
       await expect(
         page.getByRole("heading", { name: "Delayed budget" }),
       ).toHaveCount(0);
     } finally {
-      await page.unroute("**/api/spending-budget/overview?*");
+      if (!page.isClosed()) {
+        await page.unroute("**/api/spending-budget/overview?*");
+      }
     }
   });
 
@@ -161,7 +165,9 @@ test.describe("Spending Budget asynchronous overview states", () => {
       await expect(section.getByRole("alert")).toHaveCount(0);
       expect(attemptCount).toBe(2);
     } finally {
-      await page.unroute("**/api/spending-budget/overview?*");
+      if (!page.isClosed()) {
+        await page.unroute("**/api/spending-budget/overview?*");
+      }
     }
   });
 });

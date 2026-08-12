@@ -15,6 +15,7 @@ export const TH_TEXT = {
     transactionTemplates: "รายการประจำ",
     transfer: "โอนเงิน",
     allocation: "จัดสรรเงิน",
+    spendingPlans: "แผนการใช้เงิน",
     profile: "โปรไฟล์",
   },
   common: {
