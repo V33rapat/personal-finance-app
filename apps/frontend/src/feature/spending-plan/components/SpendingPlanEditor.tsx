@@ -8,7 +8,6 @@ import FormField from "@/components/ui/FormField";
 import { useCategory } from "@/feature/transaction/hooks/useCategory";
 import { getTransactionWalletOptions } from "@/feature/transaction/lib/transactionWallet";
 import { useWallet } from "@/feature/wallet/hooks/useWallet";
-import { getBangkokToday } from "@/feature/dashboard/lib/date";
 import {
   createPurpose,
   getPlanDates,
@@ -27,6 +26,7 @@ interface SpendingPlanEditorProps {
   isSaving: boolean;
   submitLabel: string;
   effectiveDate?: string;
+  effectiveEndDate?: string;
   onSubmit: (values: SpendingPlanFormValues) => Promise<MutationResult>;
   onCancel: () => void;
 }
@@ -44,6 +44,7 @@ export default function SpendingPlanEditor({
   isSaving,
   submitLabel,
   effectiveDate,
+  effectiveEndDate,
   onSubmit,
   onCancel,
 }: SpendingPlanEditorProps) {
@@ -81,6 +82,7 @@ export default function SpendingPlanEditor({
     0,
   );
   const planAmount = Number(values.amount || 0);
+  const isRevision = Boolean(effectiveDate);
 
   const update = (next: SpendingPlanFormValues) => {
     setValues(next);
@@ -153,12 +155,11 @@ export default function SpendingPlanEditor({
             value={values.amount}
             onChange={(event) => update({ ...values, amount: event.target.value })}
             error={errors.amount}
-            disabled={isSaving}
+            disabled={isSaving || isRevision}
           />
           <FormField
             label="วันเริ่มต้น"
             type="date"
-            min={getBangkokToday()}
             value={values.start_date}
             onChange={(event) => updateDates("start_date", event.target.value)}
             error={errors.dates}
@@ -167,7 +168,7 @@ export default function SpendingPlanEditor({
           <FormField
             label="วันสิ้นสุด"
             type="date"
-            min={values.start_date || getBangkokToday()}
+            min={values.start_date}
             value={values.end_date}
             onChange={(event) => updateDates("end_date", event.target.value)}
             error={errors.dates}
@@ -176,7 +177,7 @@ export default function SpendingPlanEditor({
         </div>
         {effectiveDate && (
           <p className="mt-4 border-l-2 border-violet-500 pl-3 text-sm text-slate-600 dark:text-slate-300">
-            การแก้ไขนี้จะเริ่มมีผลตั้งแต่ {formatShortDate(effectiveDate)} โดยข้อมูลก่อนหน้านั้นยังคงอยู่ในประวัติ
+            การแก้ไขนี้มีผลตั้งแต่ {formatShortDate(effectiveDate)} ถึง {formatShortDate(effectiveEndDate ?? values.end_date)} ข้อมูลนอกช่วงยังคงเป็น Revision เดิม
           </p>
         )}
       </Card>
@@ -315,7 +316,7 @@ export default function SpendingPlanEditor({
                               cell.date === allocation.date ? { ...cell, amount: event.target.value } : cell,
                             ),
                           }))}
-                          disabled={isSaving}
+                          disabled={isSaving || Boolean(effectiveDate && (allocation.date < effectiveDate || allocation.date > (effectiveEndDate ?? values.end_date)))}
                           aria-label={`${purpose.name || "วัตถุประสงค์"} ${allocation.date}`}
                           className="h-9 w-full border border-slate-200 bg-white px-2 text-right text-sm text-slate-800 outline-none focus:border-violet-400 focus:ring-2 focus:ring-violet-400/20 disabled:opacity-60 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
                         />
@@ -331,7 +332,7 @@ export default function SpendingPlanEditor({
 
         <footer className="flex flex-col gap-3 border-t border-slate-200 bg-slate-50/70 p-5 dark:border-slate-800 dark:bg-slate-950/20 sm:flex-row sm:items-center sm:justify-between sm:px-6">
           <div>
-            <p className="text-sm font-semibold text-slate-900 dark:text-slate-50">จัดสรรแล้ว ฿{allocationTotal.toFixed(2)} / ฿{planAmount.toFixed(2)}</p>
+            <p className="text-sm font-semibold text-slate-900 dark:text-slate-50">{isRevision ? `ยอดรวมทั้งแผน ฿${planAmount.toFixed(2)} จะคำนวณใหม่จาก Revision ตามวันเมื่อบันทึก` : `จัดสรรแล้ว ฿${allocationTotal.toFixed(2)} / ฿${planAmount.toFixed(2)}`}</p>
             {errors.purposes && <p role="alert" className="mt-1 text-sm text-red-600 dark:text-red-400">{errors.purposes}</p>}
             {errors.allocations && <p role="alert" className="mt-1 text-sm text-red-600 dark:text-red-400">{errors.allocations}</p>}
           </div>

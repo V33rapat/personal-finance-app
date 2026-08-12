@@ -113,6 +113,7 @@ function isMoney(value: string, allowZero = false) {
 
 export function getSpendingPlanValidationErrors(
   values: SpendingPlanFormValues,
+  options: { skipPlanAmount?: boolean } = {},
 ): SpendingPlanValidationErrors {
   const errors: SpendingPlanValidationErrors = {};
   const dates = getPlanDates(values.start_date, values.end_date);
@@ -121,7 +122,7 @@ export function getSpendingPlanValidationErrors(
     errors.name = "กรุณากรอกชื่อแผน 3-100 ตัวอักษร";
   }
 
-  if (!isMoney(values.amount)) {
+  if (!options.skipPlanAmount && !isMoney(values.amount)) {
     errors.amount = "กรุณากรอกยอดรวมของแผนให้มากกว่า 0 บาท";
   }
 
@@ -171,6 +172,7 @@ export function getSpendingPlanValidationErrors(
   );
 
   if (
+    !options.skipPlanAmount &&
     isMoney(values.amount) &&
     Math.round(allocationTotal * 100) !== Math.round(Number(values.amount) * 100)
   ) {

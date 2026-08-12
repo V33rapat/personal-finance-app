@@ -137,10 +137,10 @@ function mapDetail(detail: SpendingPlanDetail): SpendingPlanDetail {
   };
 }
 
-function toPayload(values: SpendingPlanFormValues) {
+function toPayload(values: SpendingPlanFormValues, includeAmount = true) {
   return {
     name: values.name.trim(),
-    amount: Number(values.amount),
+    ...(includeAmount ? { amount: Number(values.amount) } : {}),
     start_date: values.start_date,
     end_date: values.end_date,
     wallet_ids: values.wallet_ids,
@@ -259,7 +259,9 @@ export function useSpendingPlan(autoLoad = true) {
       effectiveDate: string,
       values: SpendingPlanFormValues,
     ): Promise<MutationResult> => {
-      const validationErrors = getSpendingPlanValidationErrors(values);
+      const validationErrors = getSpendingPlanValidationErrors(values, {
+        skipPlanAmount: true,
+      });
 
       if (Object.keys(validationErrors).length || isSaving) {
         return { success: false, validationErrors };
@@ -273,7 +275,7 @@ export function useSpendingPlan(autoLoad = true) {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            ...toPayload(values),
+            ...toPayload(values, false),
             effective_date: effectiveDate,
           }),
         });
