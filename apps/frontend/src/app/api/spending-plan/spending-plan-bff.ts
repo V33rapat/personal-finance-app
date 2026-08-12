@@ -91,7 +91,6 @@ export function toBackendSpendingPlanCreateBody(body: SpendingPlanRequestBody) {
 export function toBackendSpendingPlanUpdateBody(body: SpendingPlanRequestBody) {
   return {
     name: trimString(body.name),
-    amount: toAmount(body.amount),
     effective_date: getValue(body, "effectiveDate", "effective_date"),
     wallet_ids: getValue(body, "walletIds", "wallet_ids"),
     purposes: toBackendPurposes(body.purposes),

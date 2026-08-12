@@ -157,7 +157,7 @@ export class SpendingPlanService {
         data: {
           user_id: userId,
           name: values.name,
-          amount: values.amount,
+          amount: values.amount ?? 0,
           start_date: values.start,
           end_date: values.end,
           spending_plan_view_preferences: {
@@ -185,39 +185,55 @@ export class SpendingPlanService {
 
   async update(userId: string, id: string, dto: UpdateSpendingPlanDto) {
     const plan = await this.findOwnedPlan(userId, id);
-    this.assertMutable(plan);
+    this.assertEditable(plan);
     const effectiveDate = this.parseDate(dto.effective_date);
-    const today = this.getTodayBangkok();
-    const minimumEffectiveDate =
-      this.toUtcDate(plan.start_date) > today
-        ? this.toUtcDate(plan.start_date)
-        : today;
 
     if (
-      effectiveDate < minimumEffectiveDate ||
+      effectiveDate < this.toUtcDate(plan.start_date) ||
       effectiveDate > this.toUtcDate(plan.end_date)
     ) {
       throw new BadRequestException(
-        'Revision effective date must be within the editable plan period',
+        'Revision effective date must be within the spending plan period',
       );
     }
 
     const values = await this.validateRevisionValues(userId, plan, dto);
-    await this.assertNoOverlap(userId, effectiveDate, values.end, values, id);
+    const revisionEnd = this.getRevisionEndDate(plan, effectiveDate);
+    await this.assertNoOverlap(userId, effectiveDate, revisionEnd, values, id);
 
     const updated = await this.prisma.$transaction(async (tx) => {
+      const existingRevision = plan.spending_plan_revisions.find(
+        (revision) =>
+          this.toUtcDate(revision.effective_date).getTime() ===
+          effectiveDate.getTime(),
+      );
+
+      if (existingRevision) {
+        await tx.spending_plan_revisions.delete({
+          where: { id: existingRevision.id },
+        });
+      }
+
       await tx.spending_plans.update({
         where: { id },
         data: {
           name: values.name,
-          amount: values.amount,
           updated_at: new Date(),
         },
       });
       await this.createRevision(tx, id, effectiveDate, values);
 
-      return tx.spending_plans.findUniqueOrThrow({
+      const withRevision = await tx.spending_plans.findUniqueOrThrow({
         where: { id },
+        include: planInclude,
+      });
+
+      return tx.spending_plans.update({
+        where: { id },
+        data: {
+          amount: this.getTimelineAllocationTotal(withRevision),
+          updated_at: new Date(),
+        },
         include: planInclude,
       });
     });
@@ -227,7 +243,7 @@ export class SpendingPlanService {
 
   async cancel(userId: string, id: string) {
     const plan = await this.findOwnedPlan(userId, id);
-    this.assertMutable(plan);
+    this.assertCancellable(plan);
 
     const cancelled = await this.prisma.spending_plans.update({
       where: { id },
@@ -381,12 +397,6 @@ export class SpendingPlanService {
   ) {
     const start = this.parseDate(dto.start_date);
     const end = this.parseDate(dto.end_date);
-    const today = this.getTodayBangkok();
-
-    if (start < today) {
-      throw new BadRequestException('Spending plan cannot start in the past');
-    }
-
     return this.validateValues(userId, {
       name: dto.name,
       amount: dto.amount,
@@ -402,26 +412,30 @@ export class SpendingPlanService {
     plan: SpendingPlanRecord,
     dto: UpdateSpendingPlanDto,
   ) {
-    return this.validateValues(userId, {
-      name: dto.name ?? plan.name,
-      amount: dto.amount ?? Number(plan.amount),
-      start: this.toUtcDate(plan.start_date),
-      end: this.toUtcDate(plan.end_date),
-      walletIds: dto.wallet_ids,
-      purposes: dto.purposes,
-    });
+    return this.validateValues(
+      userId,
+      {
+        name: dto.name ?? plan.name,
+        start: this.toUtcDate(plan.start_date),
+        end: this.toUtcDate(plan.end_date),
+        walletIds: dto.wallet_ids,
+        purposes: dto.purposes,
+      },
+      false,
+    );
   }
 
   private async validateValues(
     userId: string,
     values: {
       name: string;
-      amount: number;
+      amount?: number;
       start: Date;
       end: Date;
       walletIds: string[];
       purposes: SpendingPlanPurposeDto[];
     },
+    requireAllocationTotal = true,
   ) {
     const name = values.name.trim();
     if (name.length < 3 || name.length > 100) {
@@ -439,10 +453,12 @@ export class SpendingPlanService {
       );
     }
 
+    const amount = values.amount ?? 0;
     if (
-      !Number.isFinite(values.amount) ||
-      values.amount <= 0 ||
-      !Number.isInteger(values.amount * 100)
+      requireAllocationTotal &&
+      (!Number.isFinite(amount) ||
+        amount <= 0 ||
+        !Number.isInteger(amount * 100))
     ) {
       throw new BadRequestException(
         'Spending plan amount must have no more than two decimal places',
@@ -457,11 +473,13 @@ export class SpendingPlanService {
       values.end,
     );
     await this.validatePurposeCategories(userId, purposes);
-    this.assertAllocationTotal(values.amount, purposes);
+    if (requireAllocationTotal) {
+      this.assertAllocationTotal(amount, purposes);
+    }
 
     return {
       name,
-      amount: values.amount,
+      amount,
       start: values.start,
       end: values.end,
       walletIds,
@@ -943,13 +961,55 @@ export class SpendingPlanService {
     return 'active';
   }
 
-  private assertMutable(plan: SpendingPlanRecord) {
+  private assertEditable(plan: SpendingPlanRecord) {
+    const status = this.getPlanStatus(plan, this.getTodayBangkok());
+    if (status === 'cancelled') {
+      throw new BadRequestException('Cancelled plans cannot be changed');
+    }
+  }
+
+  private assertCancellable(plan: SpendingPlanRecord) {
     const status = this.getPlanStatus(plan, this.getTodayBangkok());
     if (status === 'completed' || status === 'cancelled') {
       throw new BadRequestException(
-        'Completed or cancelled plans cannot be changed',
+        'Only active or scheduled plans can be cancelled',
       );
     }
+  }
+
+  private getRevisionEndDate(plan: SpendingPlanRecord, effectiveDate: Date) {
+    const nextRevision = plan.spending_plan_revisions.find(
+      (revision) => this.toUtcDate(revision.effective_date) > effectiveDate,
+    );
+
+    return nextRevision
+      ? this.addDays(this.toUtcDate(nextRevision.effective_date), -1)
+      : this.toUtcDate(plan.end_date);
+  }
+
+  private getTimelineAllocationTotal(plan: SpendingPlanRecord) {
+    return this.getDateRange(
+      this.toUtcDate(plan.start_date),
+      this.toUtcDate(plan.end_date),
+    ).reduce((total, date) => {
+      const revision = this.getRevisionForDate(
+        plan.spending_plan_revisions,
+        date,
+      );
+      const dateKey = this.toDateString(date);
+      const dailyAmount = revision.spending_plan_revision_purposes.reduce(
+        (purposeTotal, purpose) => {
+          const allocation = purpose.spending_plan_revision_allocations.find(
+            (item) =>
+              this.toDateString(this.toUtcDate(item.allocation_date)) ===
+              dateKey,
+          );
+          return purposeTotal.plus(allocation?.amount ?? 0);
+        },
+        new Prisma.Decimal(0),
+      );
+      return total.plus(dailyAmount);
+    }, new Prisma.Decimal(0));
   }
 
   private isWalletAvailable(

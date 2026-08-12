@@ -41,4 +41,25 @@ describe("spending plan form helpers", () => {
       }).allocations,
     ).toBe("ยอดจัดสรรทุกช่องรวมกันต้องเท่ากับยอดรวมของแผน");
   });
+
+  it("does not require a client-supplied plan amount when saving a revision", () => {
+    const dates = getPlanDates("2026-08-01", "2026-08-02");
+    const purpose = createPurpose(dates, 1);
+    purpose.name = "Food";
+    purpose.category_ids = ["category-1"];
+
+    expect(
+      getSpendingPlanValidationErrors(
+        {
+          name: "August plan",
+          amount: "not-used-for-revision",
+          start_date: "2026-08-01",
+          end_date: "2026-08-02",
+          wallet_ids: ["wallet-1"],
+          purposes: [purpose],
+        },
+        { skipPlanAmount: true },
+      ),
+    ).not.toHaveProperty("amount");
+  });
 });

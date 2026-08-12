@@ -69,8 +69,12 @@ function dayClassName(day: SpendingPlanDay) {
   return "border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900";
 }
 
-function getEditorValues(detail: SpendingPlanDetail): SpendingPlanFormValues {
-  const revision = detail.revisions.find((item) => item.id === detail.current_revision_id) ?? detail.revisions[0];
+function getEditorValues(detail: SpendingPlanDetail, effectiveDate: string): SpendingPlanFormValues {
+  const revision = detail.revisions
+    .slice()
+    .sort((left, right) => left.effective_date.localeCompare(right.effective_date))
+    .filter((item) => item.effective_date <= effectiveDate)
+    .at(-1) ?? detail.revisions.at(-1);
   const dates = detail.view.range_days.map((day) => day.date);
 
   return {
@@ -238,9 +242,15 @@ export default function SpendingPlanDetailPage() {
   const nextMonth = getAdjacentMonth(month, 1);
   const canGoPrevious = previousMonth >= detail.start_date.slice(0, 7);
   const canGoNext = nextMonth <= detail.end_date.slice(0, 7);
-  const isEditable = detail.status === "active" || detail.status === "scheduled";
-  const minimumEffectiveDate = detail.start_date > getBangkokToday() ? detail.start_date : getBangkokToday();
+  const isEditable = detail.status !== "cancelled";
+  const canCancel = detail.status === "active" || detail.status === "scheduled";
+  const minimumEffectiveDate = detail.start_date;
   const effectiveDate = revisionEffectiveDate || minimumEffectiveDate;
+  const nextRevision = detail.revisions
+    .slice()
+    .sort((left, right) => left.effective_date.localeCompare(right.effective_date))
+    .find((revision) => revision.effective_date > effectiveDate);
+  const effectiveEndDate = nextRevision ? addDays(nextRevision.effective_date, -1) : detail.end_date;
   const copyEndDate = addDays(copyStartDate, getDayCount(detail.start_date, detail.end_date) - 1);
 
   const savePreference = async (changes: { last_view?: SpendingPlanView; show_daily_balance?: boolean; visible_purpose_names?: string[] }) => {
@@ -255,8 +265,10 @@ export default function SpendingPlanDetailPage() {
       <div className="flex flex-col gap-6">
         <header><p className="text-xs font-semibold uppercase tracking-widest text-violet-600 dark:text-violet-400">แผนการใช้เงิน</p><h1 className="mt-2 text-3xl font-bold text-slate-900 dark:text-slate-50">แก้ไข {detail.name}</h1><label className="mt-4 inline-flex flex-col gap-1 text-sm font-semibold text-slate-700 dark:text-slate-200">ให้ Revision มีผลตั้งแต่<input type="date" min={minimumEffectiveDate} max={detail.end_date} value={effectiveDate} onChange={(event) => setRevisionEffectiveDate(event.target.value)} className="h-10 border border-slate-200 bg-white px-3 text-sm text-slate-800 outline-none focus:border-violet-400 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100" /></label></header>
         <SpendingPlanEditor
-          initialValues={getEditorValues(detail)}
+          key={effectiveDate}
+          initialValues={getEditorValues(detail, effectiveDate)}
           effectiveDate={effectiveDate}
+          effectiveEndDate={effectiveEndDate}
           isSaving={isSaving}
           submitLabel="บันทึกเป็น Revision ใหม่"
           onSubmit={async (values) => {
@@ -284,11 +296,11 @@ export default function SpendingPlanDetailPage() {
         <div className="flex flex-wrap gap-2">
           {isEditable && <Button variant="secondary" onClick={() => { setRevisionEffectiveDate(minimumEffectiveDate); setIsEditing(true); }}><Pencil className="h-4 w-4" aria-hidden />แก้ไขแผน</Button>}
           <Button variant="secondary" onClick={() => setIsCopyOpen((current) => !current)}>คัดลอกแผน</Button>
-          {isEditable && <Button variant="danger" onClick={() => setIsCancelOpen(true)}>ยกเลิกแผน</Button>}
+          {canCancel && <Button variant="danger" onClick={() => setIsCancelOpen(true)}>ยกเลิกแผน</Button>}
         </div>
       </header>
 
-      {isCopyOpen && <Card className="p-5"><div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between"><label className="flex flex-col gap-1 text-sm font-semibold text-slate-700 dark:text-slate-200">วันเริ่มต้นของแผนใหม่<input type="date" min={getBangkokToday()} value={copyStartDate} onChange={(event) => setCopyStartDate(event.target.value)} disabled={isSaving} className="h-10 border border-slate-200 bg-white px-3 text-sm text-slate-800 outline-none focus:border-violet-400 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100" /></label><p className="text-sm text-slate-500 dark:text-slate-400">แผนใหม่จะสิ้นสุด {formatThaiDate(copyEndDate)}</p><Button disabled={isSaving || !copyStartDate} onClick={() => void copyPlan(detail.id, { start_date: copyStartDate, end_date: copyEndDate }).then((plan) => { if (plan) router.push(`/spending-plans/${plan.id}`); })}>สร้างสำเนา</Button></div></Card>}
+      {isCopyOpen && <Card className="p-5"><div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between"><label className="flex flex-col gap-1 text-sm font-semibold text-slate-700 dark:text-slate-200">วันเริ่มต้นของแผนใหม่<input type="date" value={copyStartDate} onChange={(event) => setCopyStartDate(event.target.value)} disabled={isSaving} className="h-10 border border-slate-200 bg-white px-3 text-sm text-slate-800 outline-none focus:border-violet-400 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100" /></label><p className="text-sm text-slate-500 dark:text-slate-400">แผนใหม่จะสิ้นสุด {formatThaiDate(copyEndDate)}</p><Button disabled={isSaving || !copyStartDate} onClick={() => void copyPlan(detail.id, { start_date: copyStartDate, end_date: copyEndDate }).then((plan) => { if (plan) router.push(`/spending-plans/${plan.id}`); })}>สร้างสำเนา</Button></div></Card>}
 
       {detail.unavailable_wallet_count > 0 && <div className="border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800 dark:border-amber-900/70 dark:bg-amber-950/30 dark:text-amber-200">มีกระเป๋าที่เลือกไว้ไม่พร้อมใช้งาน รายจ่ายใหม่จากกระเป๋านั้นจะไม่ถูกนับ แต่ข้อมูลเดิมยังอยู่ในประวัติ</div>}
       {error && <div role="alert" className="border border-red-200 bg-red-50 p-4 text-sm text-red-700 dark:border-red-900/70 dark:bg-red-950/30 dark:text-red-300">{error}</div>}
