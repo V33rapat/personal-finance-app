@@ -100,6 +100,7 @@ model spending_plan_revisions {
   spending_plan_revision_purposes spending_plan_revision_purposes[]
 
   @@index([plan_id, effective_date(sort: Desc), created_at(sort: Desc)], map: "idx_spending_plan_revisions_plan_date")
+  @@unique([plan_id, effective_date], map: "uq_spending_plan_revisions_plan_effective_date")
 }
 
 model spending_plan_revision_wallets {

@@ -1,4 +1,3 @@
-import { BadRequestException } from '@nestjs/common';
 import { Prisma, spending_plan_view, wallet_type } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { SpendingPlanService } from './spending-plan.service';
@@ -93,14 +92,23 @@ function createPlan() {
 describe('SpendingPlanService', () => {
   let service: SpendingPlanService;
   let prisma: {
-    spending_plans: { findFirst: jest.Mock; findMany: jest.Mock };
+    spending_plans: {
+      findFirst: jest.Mock;
+      findMany: jest.Mock;
+    };
     transactions: { groupBy: jest.Mock };
+    wallets: { findMany: jest.Mock };
+    categories: { findMany: jest.Mock };
+    $transaction: jest.Mock;
   };
 
   beforeEach(() => {
     prisma = {
       spending_plans: { findFirst: jest.fn(), findMany: jest.fn() },
       transactions: { groupBy: jest.fn() },
+      wallets: { findMany: jest.fn() },
+      categories: { findMany: jest.fn() },
+      $transaction: jest.fn(),
     };
     service = new SpendingPlanService(prisma as unknown as PrismaService);
     jest.useFakeTimers();
@@ -111,17 +119,44 @@ describe('SpendingPlanService', () => {
     jest.useRealTimers();
   });
 
-  it('rejects plans that begin before today in Bangkok', async () => {
+  it('creates plans that begin before today in Bangkok', async () => {
+    const walletId = '550e8400-e29b-41d4-a716-446655440000';
+    const categoryId = '660e8400-e29b-41d4-a716-446655440000';
+    prisma.wallets.findMany.mockResolvedValue([{ id: walletId }]);
+    prisma.categories.findMany.mockResolvedValue([{ id: categoryId }]);
+    prisma.spending_plans.findMany.mockResolvedValue([]);
+    prisma.$transaction.mockImplementation(
+      async (
+        callback: (transaction: {
+          spending_plans: { create: jest.Mock; findUniqueOrThrow: jest.Mock };
+          spending_plan_revisions: { create: jest.Mock };
+        }) => Promise<ReturnType<typeof createPlan>>,
+      ) =>
+        callback({
+          spending_plans: {
+            create: jest.fn().mockResolvedValue({ id: 'plan-1' }),
+            findUniqueOrThrow: jest.fn().mockResolvedValue(createPlan()),
+          },
+          spending_plan_revisions: { create: jest.fn() },
+        }),
+    );
+
     await expect(
       service.create('user-1', {
         name: 'Past plan',
         amount: 100,
         start_date: '2026-07-19',
         end_date: '2026-07-19',
-        wallet_ids: ['550e8400-e29b-41d4-a716-446655440000'],
-        purposes: [],
+        wallet_ids: [walletId],
+        purposes: [
+          {
+            name: 'Food',
+            category_ids: [categoryId],
+            allocations: [{ date: '2026-07-19', amount: 100 }],
+          },
+        ],
       }),
-    ).rejects.toBeInstanceOf(BadRequestException);
+    ).resolves.toMatchObject({ id: 'plan-1' });
   });
 
   it('reports actual spending only from the selected wallet and excludes transfers', async () => {
