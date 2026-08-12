@@ -7,15 +7,17 @@ import {
 } from "./spending-plan.helpers";
 
 test.describe("Spending Plan creation", () => {
-  test("creates a plan through the authenticated UI", async ({ page }) => {
+  test("creates a plan through the authenticated UI", async ({ page }, testInfo) => {
     const name = createPlanName("create");
 
     await createPlanThroughUi(page, {
       name,
-      startDate: addDays(getBangkokToday(), 1),
+      startDate: addDays(getBangkokToday(), 1 + testInfo.retry),
     });
 
-    await expect(page.getByText("ภาพรวมรายเดือน", { exact: true })).toBeVisible();
+    await expect(
+      page.getByRole("heading", { name: "ภาพรวมรายเดือน", exact: true }),
+    ).toBeVisible();
     await expect(page.getByText("E2E ค่าอาหาร", { exact: true })).toBeVisible();
   });
 
