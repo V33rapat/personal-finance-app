@@ -43,13 +43,13 @@ describe("spending plan BFF payload", () => {
     expect(
       toBackendSpendingPlanUpdateBody({
         effective_date: "2026-08-03",
+        amount: 999,
         wallet_ids: ["wallet-1"],
         purposes: [],
         start_date: "not-allowed-on-update",
       }),
     ).toEqual({
       name: undefined,
-      amount: undefined,
       effective_date: "2026-08-03",
       wallet_ids: ["wallet-1"],
       purposes: [],
