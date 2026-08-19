@@ -36,7 +36,7 @@ test.describe("Spending Plan creation", () => {
       page.getByText("กรุณาเลือกกระเป๋าอย่างน้อย 1 ใบ"),
     ).toBeVisible();
     await expect(
-      page.getByText("กรอกชื่อ เลือกหมวดหมู่ และจัดสรรเงินให้ครบทุกวัตถุประสงค์"),
+      page.getByText("กรอกชื่อ เลือกหมวดหมู่ และยอดของทุกวัตถุประสงค์ให้ครบ"),
     ).toBeVisible();
   });
 });

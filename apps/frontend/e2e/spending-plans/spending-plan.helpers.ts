@@ -30,10 +30,26 @@ export function createPlanName(suffix: string) {
   return `E2E Spending Plan ${suffix} ${Date.now()}`;
 }
 
+export type DistributionFixture =
+  | { type: "equal_daily" }
+  | { type: "weekdays" }
+  | { type: "weekly"; weekdays: number[] }
+  | { type: "biweekly"; weekdays: number[] }
+  | { type: "specific_dates"; dates: string[] };
+
 export async function createPlanThroughUi(
   page: Page,
-  options: { name: string; startDate: string },
+  options: {
+    name: string;
+    startDate: string;
+    endDate?: string;
+    amount?: string;
+    purposeAmount?: string;
+    distribution?: DistributionFixture;
+  },
 ) {
+  const endDate = options.endDate ?? options.startDate;
+  const distribution = options.distribution ?? { type: "equal_daily" as const };
   await page.goto("/spending-plans/new");
   await expect(
     page.getByRole("heading", { name: "สร้างแผนใหม่", exact: true }),
@@ -42,13 +58,13 @@ export async function createPlanThroughUi(
   await page.getByLabel("ชื่อแผน", { exact: true }).fill(options.name);
   await page
     .getByLabel("ยอดรวมที่วางแผน", { exact: true })
-    .fill("100");
+    .fill(options.amount ?? "100");
   await page
     .getByLabel("วันเริ่มต้น", { exact: true })
     .fill(options.startDate);
   await page
     .getByLabel("วันสิ้นสุด", { exact: true })
-    .fill(options.startDate);
+    .fill(endDate);
 
   const walletOptions = page.getByTestId("spending-plan-wallet-options");
   await expect(walletOptions).toBeVisible();
@@ -57,21 +73,52 @@ export async function createPlanThroughUi(
     .first()
     .check();
 
-  await page
-    .getByTestId("spending-plan-purpose-name")
-    .first()
-    .fill("E2E ค่าอาหาร");
-  const categoryOptions = page
-    .getByTestId("spending-plan-category-options")
-    .first();
+  const purpose = page.getByTestId("spending-plan-purpose-card").first();
+  await purpose.getByTestId("spending-plan-purpose-name").fill("E2E ค่าอาหาร");
+  await purpose
+    .getByTestId("spending-plan-purpose-amount")
+    .fill(options.purposeAmount ?? options.amount ?? "100");
+  const categoryOptions = purpose.getByTestId("spending-plan-category-options");
   await expect(categoryOptions).toBeVisible();
   await categoryOptions
     .getByTestId("spending-plan-category-checkbox")
     .first()
     .check();
-  await page.getByTestId("spending-plan-allocation").first().fill("100");
 
+  await purpose
+    .getByTestId("spending-plan-distribution-select")
+    .selectOption(distribution.type);
+
+  if (distribution.type === "weekly" || distribution.type === "biweekly") {
+    for (const weekday of distribution.weekdays) {
+      await purpose
+        .getByTestId("spending-plan-weekday-checkbox")
+        .nth(weekday - 1)
+        .check();
+    }
+  }
+
+  if (distribution.type === "specific_dates") {
+    for (const selectedDate of distribution.dates) {
+      await purpose
+        .getByTestId("spending-plan-specific-date-picker")
+        .locator(`[data-day="${selectedDate}"]`)
+        .click();
+    }
+  }
+
+  const createResponsePromise = page.waitForResponse(
+    (response) =>
+      response.url().endsWith("/api/spending-plan") &&
+      response.request().method() === "POST",
+  );
   await page.getByRole("button", { name: "สร้างแผน", exact: true }).click();
+  const createResponse = await createResponsePromise;
+  if (!createResponse.ok()) {
+    throw new Error(
+      `Create spending plan failed (${createResponse.status()}): ${await createResponse.text()}`,
+    );
+  }
   await expect(page).toHaveURL(/\/spending-plans\/[0-9a-f-]+$/);
   await expect(
     page.getByRole("heading", { name: options.name, exact: true }),

@@ -73,11 +73,15 @@ function formatCurrency(value: string | number) {
 }
 
 function toPickerDate(value: string) {
-  return new Date(`${value}T00:00:00.000Z`);
+  const [year, month, day] = value.split("-").map(Number);
+  return new Date(year, month - 1, day);
 }
 
 function toDateValue(value: Date) {
-  return value.toISOString().slice(0, 10);
+  const year = value.getFullYear();
+  const month = String(value.getMonth() + 1).padStart(2, "0");
+  const day = String(value.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
 }
 
 function PurposeCard({
@@ -131,6 +135,7 @@ function PurposeCard({
           <label className="flex flex-col gap-1 text-sm font-semibold text-slate-700 dark:text-slate-200">
             ชื่อวัตถุประสงค์
             <input
+              data-testid="spending-plan-purpose-name"
               value={purpose.name}
               onChange={(event) =>
                 onUpdate((item) => ({ ...item, name: event.target.value }))
@@ -144,6 +149,7 @@ function PurposeCard({
             ยอดของวัตถุประสงค์
             <input
               type="number"
+              data-testid="spending-plan-purpose-amount"
               min="0.01"
               step="0.01"
               inputMode="decimal"
@@ -186,7 +192,10 @@ function PurposeCard({
               className="h-9 w-full border border-slate-200 bg-white pl-8 pr-2 text-xs text-slate-800 outline-none focus:border-violet-400 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
             />
           </div>
-          <div className="mt-1 max-h-32 overflow-y-auto border border-slate-100 dark:border-slate-800">
+          <div
+            data-testid="spending-plan-category-options"
+            className="mt-1 max-h-32 overflow-y-auto border border-slate-100 dark:border-slate-800"
+          >
             {visibleCategories.map((category) => {
               const selectedElsewhere = values.purposes.some(
                 (item) =>
@@ -199,6 +208,7 @@ function PurposeCard({
                 >
                   <input
                     type="checkbox"
+                    data-testid="spending-plan-category-checkbox"
                     checked={purpose.category_ids.includes(category.id)}
                     disabled={isSaving || selectedElsewhere}
                     onChange={(event) =>
@@ -231,6 +241,7 @@ function PurposeCard({
           <label className="flex flex-col gap-1 text-sm font-semibold text-slate-700 dark:text-slate-200">
             รูปแบบการกระจายเงิน
             <select
+              data-testid="spending-plan-distribution-select"
               value={purpose.distribution.type ?? ""}
               onChange={(event) =>
                 onUpdate((item) => ({
@@ -273,6 +284,7 @@ function PurposeCard({
                     >
                       <input
                         type="checkbox"
+                        data-testid="spending-plan-weekday-checkbox"
                         checked={checked}
                         onChange={(event) =>
                           onUpdate((item) => ({
@@ -309,6 +321,7 @@ function PurposeCard({
                 เลือกวันที่ในช่วง {formatShortDate(windowStart)} - {formatShortDate(windowEnd)}
               </p>
               <DayPicker
+                data-testid="spending-plan-specific-date-picker"
                 mode="multiple"
                 selected={purpose.distribution.dates.map(toPickerDate)}
                 onSelect={(selected) =>
@@ -521,7 +534,10 @@ export default function SpendingPlanEditor({
             className="h-11 w-full border border-slate-200 bg-white pl-10 pr-3 text-sm text-slate-800 outline-none transition focus:border-violet-400 focus:ring-2 focus:ring-violet-400/20 disabled:cursor-not-allowed disabled:opacity-60 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
           />
         </div>
-        <div className="mt-3 max-h-52 overflow-y-auto border border-slate-200 dark:border-slate-700">
+        <div
+          data-testid="spending-plan-wallet-options"
+          className="mt-3 max-h-52 overflow-y-auto border border-slate-200 dark:border-slate-700"
+        >
           {visibleWallets.map((wallet) => (
             <label
               key={wallet.id}
@@ -529,6 +545,7 @@ export default function SpendingPlanEditor({
             >
               <input
                 type="checkbox"
+                data-testid="spending-plan-wallet-checkbox"
                 checked={values.wallet_ids.includes(wallet.id)}
                 onChange={(event) => toggleWallet(wallet.id, event.target.checked)}
                 disabled={isSaving}
@@ -581,35 +598,36 @@ export default function SpendingPlanEditor({
 
         <div className="mt-5 space-y-4">
           {values.purposes.map((purpose) => (
-            <PurposeCard
-              key={purpose.id}
-              purpose={purpose}
-              values={values}
-              dates={dates}
-              windowStart={windowStart}
-              windowEnd={windowEnd}
-              isRevision={isRevision}
-              isSaving={isSaving}
-              isLoadingCategories={isLoadingCategories}
-              visibleCategories={visibleCategories}
-              categorySearch={categorySearch}
-              onCategorySearchChange={setCategorySearch}
-              onUpdate={(updater) => updatePurpose(purpose.id, updater)}
-              onToggleCategory={(categoryId, checked) =>
-                updatePurpose(purpose.id, (item) => ({
-                  ...item,
-                  category_ids: checked
-                    ? [...item.category_ids, categoryId]
-                    : item.category_ids.filter((id) => id !== categoryId),
-                }))
-              }
-              onRemove={() =>
-                update({
-                  ...values,
-                  purposes: values.purposes.filter((item) => item.id !== purpose.id),
-                })
-              }
-            />
+            <div key={purpose.id} data-testid="spending-plan-purpose-card">
+              <PurposeCard
+                purpose={purpose}
+                values={values}
+                dates={dates}
+                windowStart={windowStart}
+                windowEnd={windowEnd}
+                isRevision={isRevision}
+                isSaving={isSaving}
+                isLoadingCategories={isLoadingCategories}
+                visibleCategories={visibleCategories}
+                categorySearch={categorySearch}
+                onCategorySearchChange={setCategorySearch}
+                onUpdate={(updater) => updatePurpose(purpose.id, updater)}
+                onToggleCategory={(categoryId, checked) =>
+                  updatePurpose(purpose.id, (item) => ({
+                    ...item,
+                    category_ids: checked
+                      ? [...item.category_ids, categoryId]
+                      : item.category_ids.filter((id) => id !== categoryId),
+                  }))
+                }
+                onRemove={() =>
+                  update({
+                    ...values,
+                    purposes: values.purposes.filter((item) => item.id !== purpose.id),
+                  })
+                }
+              />
+            </div>
           ))}
         </div>
 
