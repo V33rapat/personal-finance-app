@@ -8,9 +8,17 @@ import { PrismaService } from '../prisma/prisma.service';
 import { CopySpendingPlanDto } from './dto/copy-spending-plan.dto';
 import { CreateSpendingPlanDto } from './dto/create-spending-plan.dto';
 import { FindSpendingPlanDetailDto } from './dto/find-spending-plan-detail.dto';
-import { SpendingPlanPurposeDto } from './dto/spending-plan-purpose.dto';
+import {
+  SpendingPlanPurposeDto,
+  type SpendingPlanDistributionType,
+} from './dto/spending-plan-purpose.dto';
 import { UpdateSpendingPlanDto } from './dto/update-spending-plan.dto';
 import { UpdateSpendingPlanPreferencesDto } from './dto/update-spending-plan-preferences.dto';
+import {
+  buildDailyAllocations,
+  getDistributionDates,
+  type DistributionRule,
+} from './spending-plan-distribution';
 
 const BANGKOK_TIME_ZONE = 'Asia/Bangkok';
 const DAY_MS = 86_400_000;
@@ -47,6 +55,9 @@ const planInclude = {
           spending_plan_revision_allocations: {
             orderBy: { allocation_date: 'asc' },
           },
+          spending_plan_revision_purpose_dates: {
+            orderBy: { selected_date: 'asc' },
+          },
         },
       },
     },
@@ -62,6 +73,12 @@ type RevisionRecord = SpendingPlanRecord['spending_plan_revisions'][number];
 interface NormalizedPurpose {
   name: string;
   categoryIds: string[];
+  amount: number;
+  distribution: {
+    type: SpendingPlanDistributionType;
+    weekdays: number[];
+    dates: string[];
+  };
   allocations: Array<{ date: string; amount: number }>;
 }
 
@@ -197,8 +214,14 @@ export class SpendingPlanService {
       );
     }
 
-    const values = await this.validateRevisionValues(userId, plan, dto);
     const revisionEnd = this.getRevisionEndDate(plan, effectiveDate);
+    const values = await this.validateRevisionValues(
+      userId,
+      plan,
+      dto,
+      effectiveDate,
+      revisionEnd,
+    );
     await this.assertNoOverlap(userId, effectiveDate, revisionEnd, values, id);
 
     const updated = await this.prisma.$transaction(async (tx) => {
@@ -282,27 +305,40 @@ export class SpendingPlanService {
         (wallet) => wallet.wallet_id,
       ),
       purposes: sourceRevision.spending_plan_revision_purposes.map(
-        (purpose) => ({
-          name: purpose.name,
-          category_ids: purpose.spending_plan_revision_purpose_categories.map(
-            (category) => category.category_id,
-          ),
-          allocations: purpose.spending_plan_revision_allocations.map(
-            (allocation) => ({
-              date: this.toDateString(
-                this.shiftDate(
-                  this.toUtcDate(allocation.allocation_date),
-                  Math.floor(
-                    (start.getTime() -
-                      this.toUtcDate(source.start_date).getTime()) /
-                      DAY_MS,
-                  ),
-                ),
-              ),
-              amount: Number(allocation.amount),
-            }),
-          ),
-        }),
+        (purpose) => {
+          const offsetDays = Math.floor(
+            (start.getTime() - this.toUtcDate(source.start_date).getTime()) /
+              DAY_MS,
+          );
+          const amount = purpose.spending_plan_revision_allocations.reduce(
+            (total, allocation) => total + Number(allocation.amount),
+            0,
+          );
+          const distributionType = purpose.distribution_type;
+
+          return {
+            name: purpose.name,
+            amount,
+            category_ids: purpose.spending_plan_revision_purpose_categories.map(
+              (category) => category.category_id,
+            ),
+            distribution: {
+              type: distributionType ?? 'equal_daily',
+              weekdays: purpose.distribution_weekdays,
+              dates:
+                distributionType === 'specific_dates'
+                  ? purpose.spending_plan_revision_purpose_dates.map((date) =>
+                      this.toDateString(
+                        this.shiftDate(
+                          this.toUtcDate(date.selected_date),
+                          offsetDays,
+                        ),
+                      ),
+                    )
+                  : [],
+            },
+          };
+        },
       ),
     };
 
@@ -402,6 +438,8 @@ export class SpendingPlanService {
       amount: dto.amount,
       start,
       end,
+      windowStart: start,
+      windowEnd: end,
       walletIds: dto.wallet_ids,
       purposes: dto.purposes,
     });
@@ -411,6 +449,8 @@ export class SpendingPlanService {
     userId: string,
     plan: SpendingPlanRecord,
     dto: UpdateSpendingPlanDto,
+    windowStart: Date,
+    windowEnd: Date,
   ) {
     return this.validateValues(
       userId,
@@ -418,6 +458,8 @@ export class SpendingPlanService {
         name: dto.name ?? plan.name,
         start: this.toUtcDate(plan.start_date),
         end: this.toUtcDate(plan.end_date),
+        windowStart,
+        windowEnd,
         walletIds: dto.wallet_ids,
         purposes: dto.purposes,
       },
@@ -432,6 +474,8 @@ export class SpendingPlanService {
       amount?: number;
       start: Date;
       end: Date;
+      windowStart: Date;
+      windowEnd: Date;
       walletIds: string[];
       purposes: SpendingPlanPurposeDto[];
     },
@@ -453,12 +497,11 @@ export class SpendingPlanService {
       );
     }
 
-    const amount = values.amount ?? 0;
     if (
       requireAllocationTotal &&
-      (!Number.isFinite(amount) ||
-        amount <= 0 ||
-        !Number.isInteger(amount * 100))
+      (!Number.isFinite(values.amount) ||
+        (values.amount ?? 0) <= 0 ||
+        !Number.isInteger((values.amount ?? 0) * 100))
     ) {
       throw new BadRequestException(
         'Spending plan amount must have no more than two decimal places',
@@ -471,15 +514,17 @@ export class SpendingPlanService {
       values.purposes,
       values.start,
       values.end,
+      values.windowStart,
+      values.windowEnd,
     );
     await this.validatePurposeCategories(userId, purposes);
     if (requireAllocationTotal) {
-      this.assertAllocationTotal(amount, purposes);
+      this.assertPurposeTotal(values.amount ?? 0, purposes);
     }
 
     return {
       name,
-      amount,
+      amount: values.amount,
       start: values.start,
       end: values.end,
       walletIds,
@@ -489,8 +534,10 @@ export class SpendingPlanService {
 
   private normalizePurposes(
     purposes: SpendingPlanPurposeDto[],
-    start: Date,
-    end: Date,
+    planStart: Date,
+    planEnd: Date,
+    windowStart: Date,
+    windowEnd: Date,
   ) {
     if (purposes.length < 1 || purposes.length > 10) {
       throw new BadRequestException(
@@ -498,9 +545,6 @@ export class SpendingPlanService {
       );
     }
 
-    const expectedDates = this.getDateRange(start, end).map((date) =>
-      this.toDateString(date),
-    );
     const purposeNames = new Set<string>();
 
     return purposes.map((purpose) => {
@@ -511,40 +555,84 @@ export class SpendingPlanService {
       purposeNames.add(name);
 
       const categoryIds = this.normalizeIds(purpose.category_ids, 'Categories');
-      const allocationByDate = new Map(
-        purpose.allocations.map((allocation) => [allocation.date, allocation]),
-      );
-
       if (
-        allocationByDate.size !== purpose.allocations.length ||
-        expectedDates.some((date) => !allocationByDate.has(date)) ||
-        [...allocationByDate.keys()].some(
-          (date) => !expectedDates.includes(date),
-        )
+        !Number.isFinite(purpose.amount) ||
+        purpose.amount <= 0 ||
+        !Number.isInteger(purpose.amount * 100)
       ) {
         throw new BadRequestException(
-          'Every purpose must contain one allocation for each plan day',
+          'Purpose amounts must be greater than zero with no more than two decimal places',
         );
       }
 
-      const allocations = expectedDates.map((date) => {
-        const allocation = allocationByDate.get(date);
-        if (!allocation) {
-          throw new BadRequestException('Spending plan allocation is missing');
-        }
-        if (
-          !Number.isFinite(allocation.amount) ||
-          allocation.amount < 0 ||
-          !Number.isInteger(allocation.amount * 100)
-        ) {
+      const distribution = purpose.distribution;
+      if (!distribution) {
+        throw new BadRequestException(
+          'Every purpose needs a distribution rule',
+        );
+      }
+
+      const weekdays = [...new Set(distribution.weekdays ?? [])].sort(
+        (left, right) => left - right,
+      );
+      if (
+        (distribution.type === 'weekly' || distribution.type === 'biweekly') &&
+        (weekdays.length === 0 || weekdays.some((day) => day < 1 || day > 7))
+      ) {
+        throw new BadRequestException(
+          'Weekly distributions must select at least one weekday',
+        );
+      }
+
+      const selectedDates = [...new Set(distribution.dates ?? [])].sort();
+      if (distribution.type === 'specific_dates') {
+        if (selectedDates.length === 0) {
           throw new BadRequestException(
-            'Spending plan allocations must have no more than two decimal places',
+            'Specific-date distributions must select at least one date',
           );
         }
-        return { date, amount: allocation.amount };
-      });
+        selectedDates.forEach((date) => {
+          this.parseDate(date);
+          if (
+            this.parseDate(date) < windowStart ||
+            this.parseDate(date) > windowEnd
+          ) {
+            throw new BadRequestException(
+              'Specific distribution dates must be inside the editable window',
+            );
+          }
+        });
+      }
 
-      return { name, categoryIds, allocations };
+      const normalizedDistribution: DistributionRule = {
+        type: distribution.type,
+        weekdays,
+        dates: selectedDates,
+      };
+      const selectedDistributionDates = getDistributionDates(
+        this.toDateString(planStart),
+        this.toDateString(windowStart),
+        this.toDateString(windowEnd),
+        normalizedDistribution,
+      );
+      if (selectedDistributionDates.length === 0) {
+        throw new BadRequestException(
+          'Distribution rule must select at least one day',
+        );
+      }
+
+      return {
+        name,
+        categoryIds,
+        amount: purpose.amount,
+        distribution: normalizedDistribution,
+        allocations: buildDailyAllocations(
+          this.toDateString(planStart),
+          this.toDateString(planEnd),
+          purpose.amount,
+          selectedDistributionDates,
+        ),
+      };
     });
   }
 
@@ -595,23 +683,18 @@ export class SpendingPlanService {
     }
   }
 
-  private assertAllocationTotal(
+  private assertPurposeTotal(
     amount: number,
-    purposes: Array<{ allocations: Array<{ amount: number }> }>,
+    purposes: Array<{ amount: number }>,
   ) {
-    const allocationTotal = purposes.reduce(
-      (total, purpose) =>
-        total +
-        purpose.allocations.reduce(
-          (purposeTotal, allocation) => purposeTotal + allocation.amount,
-          0,
-        ),
+    const purposeTotal = purposes.reduce(
+      (total, purpose) => total + purpose.amount,
       0,
     );
 
-    if (Math.round(allocationTotal * 100) !== Math.round(amount * 100)) {
+    if (Math.round(purposeTotal * 100) !== Math.round(amount * 100)) {
       throw new BadRequestException(
-        'Spending plan allocations must equal the plan amount',
+        'Purpose amounts must equal the plan amount',
       );
     }
   }
@@ -695,6 +778,8 @@ export class SpendingPlanService {
           create: values.purposes.map((purpose, index) => ({
             name: purpose.name,
             sort_order: index,
+            distribution_type: purpose.distribution.type,
+            distribution_weekdays: purpose.distribution.weekdays,
             spending_plan_revision_purpose_categories: {
               create: purpose.categoryIds.map((categoryId) => ({
                 category_id: categoryId,
@@ -706,6 +791,14 @@ export class SpendingPlanService {
                 amount: allocation.amount,
               })),
             },
+            spending_plan_revision_purpose_dates:
+              purpose.distribution.type === 'specific_dates'
+                ? {
+                    create: purpose.distribution.dates.map((date) => ({
+                      selected_date: this.parseDate(date),
+                    })),
+                  }
+                : undefined,
           })),
         },
       },
@@ -895,6 +988,12 @@ export class SpendingPlanService {
         (wallet) => wallet.wallet_id,
       ),
       purposes: revision.spending_plan_revision_purposes.map((purpose) => ({
+        amount: purpose.spending_plan_revision_allocations
+          .reduce(
+            (total, allocation) => total.plus(allocation.amount),
+            new Prisma.Decimal(0),
+          )
+          .toFixed(2),
         name: purpose.name,
         category_ids: purpose.spending_plan_revision_purpose_categories.map(
           (category) => category.category_id,
@@ -906,6 +1005,17 @@ export class SpendingPlanService {
             color: category.categories.color,
           }),
         ),
+        distribution:
+          purpose.distribution_type === null
+            ? null
+            : {
+                type: purpose.distribution_type,
+                weekdays: purpose.distribution_weekdays,
+                dates: purpose.spending_plan_revision_purpose_dates.map(
+                  (date) =>
+                    this.toDateString(this.toUtcDate(date.selected_date)),
+                ),
+              },
         allocations: purpose.spending_plan_revision_allocations.map(
           (allocation) => ({
             date: this.toDateString(this.toUtcDate(allocation.allocation_date)),

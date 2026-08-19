@@ -61,6 +61,9 @@ function createPlan() {
             revision_id: 'revision-1',
             name: 'Food',
             sort_order: 0,
+            distribution_type: null,
+            distribution_weekdays: [],
+            spending_plan_revision_purpose_dates: [],
             created_at: date('2026-07-01'),
             spending_plan_revision_purpose_categories: [
               {
@@ -152,7 +155,12 @@ describe('SpendingPlanService', () => {
           {
             name: 'Food',
             category_ids: [categoryId],
-            allocations: [{ date: '2026-07-19', amount: 100 }],
+            amount: 100,
+            distribution: {
+              type: 'equal_daily',
+              weekdays: [],
+              dates: [],
+            },
           },
         ],
       }),
@@ -197,5 +205,88 @@ describe('SpendingPlanService', () => {
       transfers_transfers_from_transaction_idTotransactions: { is: null },
       transfers_transfers_to_transaction_idTotransactions: { is: null },
     });
+  });
+
+  it('generates daily allocations from the purpose distribution', async () => {
+    const walletId = '550e8400-e29b-41d4-a716-446655440000';
+    const categoryId = '660e8400-e29b-41d4-a716-446655440000';
+    const revisionCreate = jest.fn();
+    const transaction = {
+      spending_plans: {
+        create: jest.fn().mockResolvedValue({ id: 'plan-1' }),
+        findUniqueOrThrow: jest.fn().mockResolvedValue(createPlan()),
+      },
+      spending_plan_revisions: { create: revisionCreate },
+    };
+    prisma.wallets.findMany.mockResolvedValue([{ id: walletId }]);
+    prisma.categories.findMany.mockResolvedValue([{ id: categoryId }]);
+    prisma.spending_plans.findMany.mockResolvedValue([]);
+    prisma.$transaction.mockImplementation(
+      async (callback: (value: typeof transaction) => Promise<unknown>) =>
+        callback(transaction),
+    );
+
+    await service.create('user-1', {
+      name: 'Weekday plan',
+      amount: 100,
+      start_date: '2026-07-20',
+      end_date: '2026-07-26',
+      wallet_ids: [walletId],
+      purposes: [
+        {
+          name: 'Food',
+          category_ids: [categoryId],
+          amount: 100,
+          distribution: { type: 'weekdays', weekdays: [], dates: [] },
+        },
+      ],
+    });
+
+    const [[revisionArgs]] = revisionCreate.mock.calls as [
+      [{ data: { spending_plan_revision_purposes: { create: unknown[] } } }],
+    ];
+    const [purpose] = revisionArgs.data.spending_plan_revision_purposes
+      .create as Array<{
+      spending_plan_revision_allocations: {
+        create: Array<{ date: Date; amount: number }>;
+      };
+    }>;
+
+    expect(purpose.spending_plan_revision_allocations.create).toEqual([
+      { allocation_date: date('2026-07-20'), amount: 20 },
+      { allocation_date: date('2026-07-21'), amount: 20 },
+      { allocation_date: date('2026-07-22'), amount: 20 },
+      { allocation_date: date('2026-07-23'), amount: 20 },
+      { allocation_date: date('2026-07-24'), amount: 20 },
+      { allocation_date: date('2026-07-25'), amount: 0 },
+      { allocation_date: date('2026-07-26'), amount: 0 },
+    ]);
+  });
+
+  it('rejects a weekly rule without selected weekdays', async () => {
+    const walletId = '550e8400-e29b-41d4-a716-446655440000';
+    const categoryId = '660e8400-e29b-41d4-a716-446655440000';
+    prisma.wallets.findMany.mockResolvedValue([{ id: walletId }]);
+    prisma.categories.findMany.mockResolvedValue([{ id: categoryId }]);
+
+    await expect(
+      service.create('user-1', {
+        name: 'Invalid weekly plan',
+        amount: 100,
+        start_date: '2026-07-20',
+        end_date: '2026-07-20',
+        wallet_ids: [walletId],
+        purposes: [
+          {
+            name: 'Food',
+            category_ids: [categoryId],
+            amount: 100,
+            distribution: { type: 'weekly', weekdays: [], dates: [] },
+          },
+        ],
+      }),
+    ).rejects.toThrow('Weekly distributions must select at least one weekday');
+
+    expect(prisma.$transaction).not.toHaveBeenCalled();
   });
 });
