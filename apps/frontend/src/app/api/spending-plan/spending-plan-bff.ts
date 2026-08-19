@@ -45,6 +45,19 @@ function toAmount(value: unknown) {
   return typeof value === "string" ? Number(value) : value;
 }
 
+function toBackendDistribution(value: unknown) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    return value;
+  }
+
+  const distribution = value as Record<string, unknown>;
+  return {
+    type: distribution.type,
+    weekdays: distribution.weekdays,
+    dates: distribution.dates,
+  };
+}
+
 function toBackendPurpose(value: unknown) {
   if (!value || typeof value !== "object" || Array.isArray(value)) {
     return value;
@@ -52,24 +65,12 @@ function toBackendPurpose(value: unknown) {
 
   const purpose = value as Record<string, unknown>;
   const categoryIds = purpose.categoryIds ?? purpose.category_ids;
-  const allocations = Array.isArray(purpose.allocations)
-    ? purpose.allocations.map((allocation) => {
-        if (!allocation || typeof allocation !== "object" || Array.isArray(allocation)) {
-          return allocation;
-        }
-
-        const item = allocation as Record<string, unknown>;
-        return {
-          date: item.date,
-          amount: toAmount(item.amount),
-        };
-      })
-    : purpose.allocations;
 
   return {
     name: trimString(purpose.name),
     category_ids: categoryIds,
-    allocations,
+    amount: toAmount(purpose.amount),
+    distribution: toBackendDistribution(purpose.distribution),
   };
 }
 

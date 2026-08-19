@@ -179,11 +179,15 @@ An explicit, user-created plan that distributes one total amount across one to 3
 _Avoid_: Spending Budget, transfer, reserved balance
 
 **Plan Purpose**:
-A named part of a Spending Plan that maps one or more expense Transaction Categories and has a daily planned amount.
+A named part of a Spending Plan that maps one or more expense Transaction Categories, has an amount allocated to that purpose, and uses one Spending Plan Distribution rule.
 _Avoid_: Transaction Category, wallet purpose
 
+**Spending Plan Distribution**:
+The rule that chooses which calendar days receive a Plan Purpose's amount, such as every day, weekdays, selected weekdays every week, selected weekdays every two weeks, or specific dates. The system calculates equal daily amounts and keeps any remaining cents on the first selected days.
+_Avoid_: manual daily allocation, recurring Transaction
+
 **Plan Revision**:
-A configuration of a Spending Plan's Wallet Scope, Plan Purposes, category mappings, and daily allocations that becomes effective on a specific calendar date and remains in effect until the next Revision. Saving a Revision for the same effective date replaces that day's configuration.
+A configuration of a Spending Plan's Wallet Scope, Plan Purposes, category mappings, Distribution rules, and generated daily allocations that becomes effective on a specific calendar date and remains in effect until the next Revision. Saving a Revision for the same effective date replaces that day's configuration.
 _Avoid_: Transaction edit, plan history entry
 
 **Dashboard Layout**:

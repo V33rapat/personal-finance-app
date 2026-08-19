@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { DayPicker } from "react-day-picker";
 import { Plus, Search, X } from "lucide-react";
 import Button from "@/components/ui/Button";
 import Card from "@/components/ui/Card";
@@ -10,9 +11,11 @@ import { getTransactionWalletOptions } from "@/feature/transaction/lib/transacti
 import { useWallet } from "@/feature/wallet/hooks/useWallet";
 import {
   createPurpose,
+  getDistributionPreview,
   getPlanDates,
-  synchronizePlanAllocations,
+  type SpendingPlanDistributionType,
   type SpendingPlanFormValues,
+  type SpendingPlanPurposeFormValue,
   type SpendingPlanValidationErrors,
 } from "../lib/spendingPlan";
 
@@ -31,12 +34,325 @@ interface SpendingPlanEditorProps {
   onCancel: () => void;
 }
 
+const distributionOptions: Array<{
+  value: SpendingPlanDistributionType;
+  label: string;
+}> = [
+  { value: "equal_daily", label: "แบ่งเท่ากันทุกวัน" },
+  { value: "weekdays", label: "กำหนดเฉพาะวันทำงาน (จันทร์-ศุกร์)" },
+  { value: "weekly", label: "ซ้ำทุกสัปดาห์" },
+  { value: "biweekly", label: "ซ้ำทุก 2 สัปดาห์" },
+  { value: "specific_dates", label: "เลือกวันเจาะจง" },
+];
+
+const weekdayOptions = [
+  { value: 1, label: "จันทร์" },
+  { value: 2, label: "อังคาร" },
+  { value: 3, label: "พุธ" },
+  { value: 4, label: "พฤหัสบดี" },
+  { value: 5, label: "ศุกร์" },
+  { value: 6, label: "เสาร์" },
+  { value: 7, label: "อาทิตย์" },
+];
+
 function formatShortDate(date: string) {
   return new Intl.DateTimeFormat("th-TH", {
     day: "numeric",
     month: "short",
     timeZone: "UTC",
   }).format(new Date(`${date}T00:00:00.000Z`));
+}
+
+function formatCurrency(value: string | number) {
+  return new Intl.NumberFormat("th-TH", {
+    style: "currency",
+    currency: "THB",
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(Number(value));
+}
+
+function toPickerDate(value: string) {
+  return new Date(`${value}T00:00:00.000Z`);
+}
+
+function toDateValue(value: Date) {
+  return value.toISOString().slice(0, 10);
+}
+
+function PurposeCard({
+  purpose,
+  values,
+  dates,
+  windowStart,
+  windowEnd,
+  isRevision,
+  isSaving,
+  isLoadingCategories,
+  visibleCategories,
+  categorySearch,
+  onCategorySearchChange,
+  onUpdate,
+  onToggleCategory,
+  onRemove,
+}: {
+  purpose: SpendingPlanPurposeFormValue;
+  values: SpendingPlanFormValues;
+  dates: string[];
+  windowStart: string;
+  windowEnd: string;
+  isRevision: boolean;
+  isSaving: boolean;
+  isLoadingCategories: boolean;
+  visibleCategories: Array<{ id: string; name: string; color: string | null }>;
+  categorySearch: string;
+  onCategorySearchChange: (value: string) => void;
+  onUpdate: (
+    updater: (purpose: SpendingPlanPurposeFormValue) => SpendingPlanPurposeFormValue,
+  ) => void;
+  onToggleCategory: (categoryId: string, checked: boolean) => void;
+  onRemove: () => void;
+}) {
+  const preview = getDistributionPreview(
+    purpose,
+    values.start_date,
+    windowStart,
+    windowEnd,
+  );
+  const isWeekly =
+    purpose.distribution.type === "weekly" ||
+    purpose.distribution.type === "biweekly";
+  const isSpecificDates = purpose.distribution.type === "specific_dates";
+
+  return (
+    <article className="border border-slate-200 p-4 dark:border-slate-700 sm:p-5">
+      <div className="flex items-start gap-3">
+        <div className="grid flex-1 gap-4 md:grid-cols-[minmax(0,1fr)_180px]">
+          <label className="flex flex-col gap-1 text-sm font-semibold text-slate-700 dark:text-slate-200">
+            ชื่อวัตถุประสงค์
+            <input
+              value={purpose.name}
+              onChange={(event) =>
+                onUpdate((item) => ({ ...item, name: event.target.value }))
+              }
+              placeholder="เช่น ค่าอาหาร"
+              disabled={isSaving}
+              className="h-11 border border-slate-200 bg-white px-3 text-sm font-normal text-slate-800 outline-none transition focus:border-violet-400 focus:ring-2 focus:ring-violet-400/20 disabled:opacity-60 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
+            />
+          </label>
+          <label className="flex flex-col gap-1 text-sm font-semibold text-slate-700 dark:text-slate-200">
+            ยอดของวัตถุประสงค์
+            <input
+              type="number"
+              min="0.01"
+              step="0.01"
+              inputMode="decimal"
+              value={purpose.amount}
+              onChange={(event) =>
+                onUpdate((item) => ({ ...item, amount: event.target.value }))
+              }
+              disabled={isSaving}
+              className="h-11 border border-slate-200 bg-white px-3 text-right text-sm font-normal text-slate-800 outline-none transition focus:border-violet-400 focus:ring-2 focus:ring-violet-400/20 disabled:opacity-60 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
+            />
+          </label>
+        </div>
+        <button
+          type="button"
+          disabled={isSaving || values.purposes.length === 1}
+          onClick={onRemove}
+          aria-label={`ลบ ${purpose.name || "วัตถุประสงค์"}`}
+          title="ลบวัตถุประสงค์"
+          className="shrink-0 p-2 text-rose-600 transition hover:bg-rose-50 disabled:cursor-not-allowed disabled:opacity-50 dark:text-rose-400 dark:hover:bg-rose-950/30"
+        >
+          <X className="h-4 w-4" aria-hidden />
+        </button>
+      </div>
+
+      <div className="mt-4 grid gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
+        <div>
+          <p className="text-sm font-semibold text-slate-700 dark:text-slate-200">
+            หมวดหมู่รายจ่าย
+          </p>
+          <div className="relative mt-2">
+            <Search
+              className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400"
+              aria-hidden
+            />
+            <input
+              value={categorySearch}
+              onChange={(event) => onCategorySearchChange(event.target.value)}
+              placeholder="ค้นหาหมวดหมู่"
+              disabled={isSaving}
+              className="h-9 w-full border border-slate-200 bg-white pl-8 pr-2 text-xs text-slate-800 outline-none focus:border-violet-400 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
+            />
+          </div>
+          <div className="mt-1 max-h-32 overflow-y-auto border border-slate-100 dark:border-slate-800">
+            {visibleCategories.map((category) => {
+              const selectedElsewhere = values.purposes.some(
+                (item) =>
+                  item.id !== purpose.id && item.category_ids.includes(category.id),
+              );
+              return (
+                <label
+                  key={category.id}
+                  className="flex cursor-pointer items-center gap-2 px-2 py-1.5 text-xs text-slate-600 hover:bg-slate-50 dark:text-slate-300 dark:hover:bg-slate-800"
+                >
+                  <input
+                    type="checkbox"
+                    checked={purpose.category_ids.includes(category.id)}
+                    disabled={isSaving || selectedElsewhere}
+                    onChange={(event) =>
+                      onToggleCategory(category.id, event.target.checked)
+                    }
+                    className="h-3.5 w-3.5 accent-violet-600"
+                  />
+                  <span
+                    className="h-2 w-2 rounded-full"
+                    style={{ backgroundColor: category.color ?? "#94a3b8" }}
+                  />
+                  <span className="truncate">{category.name}</span>
+                </label>
+              );
+            })}
+            {isLoadingCategories && (
+              <p className="px-2 py-2 text-xs text-slate-500">
+                กำลังโหลดหมวดหมู่...
+              </p>
+            )}
+            {!isLoadingCategories && visibleCategories.length === 0 && (
+              <p className="px-2 py-2 text-xs text-slate-500">
+                ไม่พบหมวดหมู่
+              </p>
+            )}
+          </div>
+        </div>
+
+        <div>
+          <label className="flex flex-col gap-1 text-sm font-semibold text-slate-700 dark:text-slate-200">
+            รูปแบบการกระจายเงิน
+            <select
+              value={purpose.distribution.type ?? ""}
+              onChange={(event) =>
+                onUpdate((item) => ({
+                  ...item,
+                  distribution: {
+                    type: (event.target.value || null) as SpendingPlanDistributionType | null,
+                    weekdays:
+                      event.target.value === "weekly" ||
+                      event.target.value === "biweekly"
+                        ? item.distribution.weekdays
+                        : [],
+                    dates: event.target.value === "specific_dates" ? item.distribution.dates : [],
+                  },
+                }))
+              }
+              disabled={isSaving}
+              className="h-11 border border-slate-200 bg-white px-3 text-sm font-normal text-slate-800 outline-none focus:border-violet-400 focus:ring-2 focus:ring-violet-400/20 disabled:opacity-60 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
+            >
+              <option value="">เลือกรูปแบบการกระจาย</option>
+              {distributionOptions.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+          </label>
+
+          {isWeekly && (
+            <fieldset className="mt-3 border border-slate-200 p-3 dark:border-slate-700">
+              <legend className="px-1 text-xs font-semibold text-slate-600 dark:text-slate-300">
+                เลือกวันที่ต้องการทำซ้ำ
+              </legend>
+              <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+                {weekdayOptions.map((day) => {
+                  const checked = purpose.distribution.weekdays.includes(day.value);
+                  return (
+                    <label
+                      key={day.value}
+                      className="flex items-center gap-2 text-xs text-slate-600 dark:text-slate-300"
+                    >
+                      <input
+                        type="checkbox"
+                        checked={checked}
+                        onChange={(event) =>
+                          onUpdate((item) => ({
+                            ...item,
+                            distribution: {
+                              ...item.distribution,
+                              weekdays: event.target.checked
+                                ? [...item.distribution.weekdays, day.value].sort()
+                                : item.distribution.weekdays.filter(
+                                    (value) => value !== day.value,
+                                  ),
+                            },
+                          }))
+                        }
+                        disabled={isSaving}
+                        className="h-3.5 w-3.5 accent-violet-600"
+                      />
+                      {day.label}
+                    </label>
+                  );
+                })}
+              </div>
+              {purpose.distribution.type === "biweekly" && (
+                <p className="mt-3 text-xs text-slate-500 dark:text-slate-400">
+                  นับรอบละ 7 วัน โดยยึดวันเริ่มต้นของแผนเป็นจุดเริ่มต้น
+                </p>
+              )}
+            </fieldset>
+          )}
+
+          {isSpecificDates && (
+            <div className="mt-3 border border-slate-200 p-2 dark:border-slate-700">
+              <p className="px-2 pt-1 text-xs font-semibold text-slate-600 dark:text-slate-300">
+                เลือกวันที่ในช่วง {formatShortDate(windowStart)} - {formatShortDate(windowEnd)}
+              </p>
+              <DayPicker
+                mode="multiple"
+                selected={purpose.distribution.dates.map(toPickerDate)}
+                onSelect={(selected) =>
+                  onUpdate((item) => ({
+                    ...item,
+                    distribution: {
+                      ...item.distribution,
+                      dates: (selected ?? []).map(toDateValue).sort(),
+                    },
+                  }))
+                }
+                disabled={{
+                  before: toPickerDate(windowStart),
+                  after: toPickerDate(windowEnd),
+                }}
+                defaultMonth={toPickerDate(windowStart)}
+                className="mx-auto"
+              />
+            </div>
+          )}
+
+          {purpose.distribution.type === null && (
+            <p className="mt-3 text-xs text-amber-700 dark:text-amber-300">
+              แผนนี้เป็นรูปแบบเดิม กรุณาเลือกรูปแบบใหม่ก่อนบันทึก Revision
+            </p>
+          )}
+        </div>
+      </div>
+
+      <div className="mt-4 flex flex-wrap items-center justify-between gap-2 border-t border-slate-100 pt-3 text-sm dark:border-slate-800">
+        <p className="text-slate-500 dark:text-slate-400">
+          เลือก {preview.dayCount} วัน · เฉลี่ยประมาณ {formatCurrency(preview.amountPerDay)} / วัน
+        </p>
+        <p className="font-semibold text-slate-800 dark:text-slate-100">
+          รวม {formatCurrency(preview.total)}
+        </p>
+      </div>
+      {isRevision && purpose.distribution.type === "specific_dates" && dates.length > 0 && (
+        <p className="mt-2 text-xs text-slate-500 dark:text-slate-400">
+          วันที่นอกช่วง Revision จะยังคงใช้ค่าจาก Revision เดิม
+        </p>
+      )}
+    </article>
+  );
 }
 
 export default function SpendingPlanEditor({
@@ -52,7 +368,7 @@ export default function SpendingPlanEditor({
   const { categories, isLoading: isLoadingCategories } = useCategory({
     type: "expense",
   });
-  const [values, setValues] = useState(() => synchronizePlanAllocations(initialValues));
+  const [values, setValues] = useState(initialValues);
   const [errors, setErrors] = useState<SpendingPlanValidationErrors>({});
   const [walletSearch, setWalletSearch] = useState("");
   const [categorySearch, setCategorySearch] = useState("");
@@ -60,25 +376,33 @@ export default function SpendingPlanEditor({
     () => getPlanDates(values.start_date, values.end_date),
     [values.end_date, values.start_date],
   );
+  const windowStart = effectiveDate ?? values.start_date;
+  const windowEnd = effectiveEndDate ?? values.end_date;
   const transactionWallets = useMemo(
-    () => getTransactionWalletOptions(wallets.filter((wallet) => wallet.wallet_type === "normal")),
+    () =>
+      getTransactionWalletOptions(
+        wallets.filter((wallet) => wallet.wallet_type === "normal"),
+      ),
     [wallets],
   );
   const visibleWallets = useMemo(() => {
     const search = walletSearch.trim().toLocaleLowerCase();
     return search
-      ? transactionWallets.filter((wallet) => wallet.label.toLocaleLowerCase().includes(search))
+      ? transactionWallets.filter((wallet) =>
+          wallet.label.toLocaleLowerCase().includes(search),
+        )
       : transactionWallets;
   }, [transactionWallets, walletSearch]);
   const visibleCategories = useMemo(() => {
     const search = categorySearch.trim().toLocaleLowerCase();
     return search
-      ? categories.filter((category) => category.name.toLocaleLowerCase().includes(search))
+      ? categories.filter((category) =>
+          category.name.toLocaleLowerCase().includes(search),
+        )
       : categories;
   }, [categories, categorySearch]);
-  const allocationTotal = values.purposes.reduce(
-    (total, purpose) =>
-      total + purpose.allocations.reduce((sum, allocation) => sum + Number(allocation.amount || 0), 0),
+  const purposeTotal = values.purposes.reduce(
+    (total, purpose) => total + Number(purpose.amount || 0),
     0,
   );
   const planAmount = Number(values.amount || 0);
@@ -90,12 +414,7 @@ export default function SpendingPlanEditor({
   };
 
   const updateDates = (key: "start_date" | "end_date", value: string) => {
-    update(
-      synchronizePlanAllocations({
-        ...values,
-        [key]: value,
-      }),
-    );
+    update({ ...values, [key]: value });
   };
 
   const toggleWallet = (walletId: string, checked: boolean) => {
@@ -109,7 +428,9 @@ export default function SpendingPlanEditor({
 
   const updatePurpose = (
     purposeId: string,
-    updater: (purpose: SpendingPlanFormValues["purposes"][number]) => SpendingPlanFormValues["purposes"][number],
+    updater: (
+      purpose: SpendingPlanPurposeFormValue,
+    ) => SpendingPlanPurposeFormValue,
   ) => {
     update({
       ...values,
@@ -117,15 +438,6 @@ export default function SpendingPlanEditor({
         purpose.id === purposeId ? updater(purpose) : purpose,
       ),
     });
-  };
-
-  const toggleCategory = (purposeId: string, categoryId: string, checked: boolean) => {
-    updatePurpose(purposeId, (purpose) => ({
-      ...purpose,
-      category_ids: checked
-        ? [...purpose.category_ids, categoryId]
-        : purpose.category_ids.filter((id) => id !== categoryId),
-    }));
   };
 
   const submit = async (event: React.FormEvent<HTMLFormElement>) => {
@@ -163,7 +475,7 @@ export default function SpendingPlanEditor({
             value={values.start_date}
             onChange={(event) => updateDates("start_date", event.target.value)}
             error={errors.dates}
-            disabled={isSaving || Boolean(effectiveDate)}
+            disabled={isSaving || isRevision}
           />
           <FormField
             label="วันสิ้นสุด"
@@ -172,7 +484,7 @@ export default function SpendingPlanEditor({
             value={values.end_date}
             onChange={(event) => updateDates("end_date", event.target.value)}
             error={errors.dates}
-            disabled={isSaving || Boolean(effectiveDate)}
+            disabled={isSaving || isRevision}
           />
         </div>
         {effectiveDate && (
@@ -185,13 +497,22 @@ export default function SpendingPlanEditor({
       <Card className="p-5 sm:p-6">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
           <div>
-            <h2 className="text-base font-bold text-slate-900 dark:text-slate-50">กระเป๋าที่ติดตาม</h2>
-            <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">เลือกกระเป๋าที่จะนำรายจ่ายมาคิดในแผนนี้</p>
+            <h2 className="text-base font-bold text-slate-900 dark:text-slate-50">
+              กระเป๋าที่ติดตาม
+            </h2>
+            <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+              เลือกกระเป๋าที่จะนำรายจ่ายมาคิดในแผนนี้
+            </p>
           </div>
-          <span className="text-sm font-semibold text-slate-600 dark:text-slate-300">เลือกแล้ว {values.wallet_ids.length} ใบ</span>
+          <span className="text-sm font-semibold text-slate-600 dark:text-slate-300">
+            เลือกแล้ว {values.wallet_ids.length} ใบ
+          </span>
         </div>
         <div className="relative mt-4">
-          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" aria-hidden />
+          <Search
+            className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400"
+            aria-hidden
+          />
           <input
             value={walletSearch}
             onChange={(event) => setWalletSearch(event.target.value)}
@@ -200,15 +521,14 @@ export default function SpendingPlanEditor({
             className="h-11 w-full border border-slate-200 bg-white pl-10 pr-3 text-sm text-slate-800 outline-none transition focus:border-violet-400 focus:ring-2 focus:ring-violet-400/20 disabled:cursor-not-allowed disabled:opacity-60 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
           />
         </div>
-        <div
-          data-testid="spending-plan-wallet-options"
-          className="mt-3 max-h-52 overflow-y-auto border border-slate-200 dark:border-slate-700"
-        >
+        <div className="mt-3 max-h-52 overflow-y-auto border border-slate-200 dark:border-slate-700">
           {visibleWallets.map((wallet) => (
-            <label key={wallet.id} className="flex cursor-pointer items-center gap-3 px-3 py-2.5 text-sm text-slate-700 hover:bg-slate-50 dark:text-slate-200 dark:hover:bg-slate-800">
+            <label
+              key={wallet.id}
+              className="flex cursor-pointer items-center gap-3 px-3 py-2.5 text-sm text-slate-700 hover:bg-slate-50 dark:text-slate-200 dark:hover:bg-slate-800"
+            >
               <input
                 type="checkbox"
-                data-testid="spending-plan-wallet-checkbox"
                 checked={values.wallet_ids.includes(wallet.id)}
                 onChange={(event) => toggleWallet(wallet.id, event.target.checked)}
                 disabled={isSaving}
@@ -218,136 +538,103 @@ export default function SpendingPlanEditor({
             </label>
           ))}
           {!isLoadingWallets && visibleWallets.length === 0 && (
-            <p className="p-3 text-sm text-slate-500 dark:text-slate-400">ไม่มีกระเป๋าที่ใช้บันทึกรายการได้</p>
+            <p className="p-3 text-sm text-slate-500 dark:text-slate-400">
+              ไม่มีกระเป๋าที่ใช้บันทึกรายการได้
+            </p>
           )}
         </div>
-        {errors.wallets && <p role="alert" className="mt-2 text-sm text-red-600 dark:text-red-400">{errors.wallets}</p>}
+        {errors.wallets && (
+          <p role="alert" className="mt-2 text-sm text-red-600 dark:text-red-400">
+            {errors.wallets}
+          </p>
+        )}
       </Card>
 
-      <Card className="overflow-hidden">
-        <header className="flex flex-col gap-4 border-b border-slate-200 p-5 dark:border-slate-800 sm:flex-row sm:items-end sm:justify-between sm:p-6">
+      <Card className="p-5 sm:p-6">
+        <header className="flex flex-col gap-4 border-b border-slate-200 pb-5 dark:border-slate-800 sm:flex-row sm:items-end sm:justify-between">
           <div>
-            <h2 className="text-base font-bold text-slate-900 dark:text-slate-50">ตารางจัดสรรตามวัน</h2>
-            <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">แต่ละช่องคือวงเงินของวัตถุประสงค์นั้นในวันนั้น</p>
+            <h2 className="text-base font-bold text-slate-900 dark:text-slate-50">
+              รูปแบบการกระจายเงิน
+            </h2>
+            <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+              กรอกยอดของแต่ละวัตถุประสงค์ แล้วเลือกรูปแบบวันที่ให้ระบบคำนวณเอง
+            </p>
           </div>
           <Button
             size="sm"
             variant="secondary"
-            disabled={isSaving || values.purposes.length >= 10 || dates.length === 0}
-            onClick={() => update({ ...values, purposes: [...values.purposes, createPurpose(dates, values.purposes.length + 1)] })}
+            disabled={isSaving || values.purposes.length >= 10}
+            onClick={() =>
+              update({
+                ...values,
+                purposes: [
+                  ...values.purposes,
+                  createPurpose(values.purposes.length + 1),
+                ],
+              })
+            }
           >
             <Plus className="h-4 w-4" aria-hidden />
             เพิ่มวัตถุประสงค์
           </Button>
         </header>
 
-        <div className="overflow-x-auto p-5 sm:p-6">
-          <table className="min-w-[900px] w-full border-collapse text-sm">
-            <thead>
-              <tr className="border-b border-slate-200 text-left text-xs font-semibold uppercase tracking-widest text-slate-500 dark:border-slate-800 dark:text-slate-400">
-                <th className="min-w-56 pb-3 pr-3">วัตถุประสงค์และหมวดหมู่</th>
-                {dates.map((date) => <th key={date} className="min-w-24 px-1 pb-3 text-center">{formatShortDate(date)}</th>)}
-                <th className="min-w-28 pb-3 pl-3 text-right">รวม</th>
-              </tr>
-            </thead>
-            <tbody>
-              {values.purposes.map((purpose) => {
-                const purposeTotal = purpose.allocations.reduce((sum, allocation) => sum + Number(allocation.amount || 0), 0);
-                return (
-                  <tr key={purpose.id} className="align-top border-b border-slate-100 dark:border-slate-800">
-                    <td className="py-4 pr-3">
-                      <div className="flex gap-2">
-                        <input
-                          data-testid="spending-plan-purpose-name"
-                          value={purpose.name}
-                          onChange={(event) => updatePurpose(purpose.id, (item) => ({ ...item, name: event.target.value }))}
-                          placeholder="เช่น อาหาร"
-                          disabled={isSaving}
-                          className="min-w-0 flex-1 border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800 outline-none focus:border-violet-400 focus:ring-2 focus:ring-violet-400/20 disabled:opacity-60 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
-                        />
-                        <button
-                          type="button"
-                          disabled={isSaving || values.purposes.length === 1}
-                          onClick={() => update({ ...values, purposes: values.purposes.filter((item) => item.id !== purpose.id) })}
-                          aria-label={`ลบ ${purpose.name || "วัตถุประสงค์"}`}
-                          title="ลบวัตถุประสงค์"
-                          className="shrink-0 p-2 text-rose-600 transition hover:bg-rose-50 disabled:cursor-not-allowed disabled:opacity-50 dark:text-rose-400 dark:hover:bg-rose-950/30"
-                        >
-                          <X className="h-4 w-4" aria-hidden />
-                        </button>
-                      </div>
-                      <div className="relative mt-2">
-                        <Search className="pointer-events-none absolute left-2 top-2.5 h-3.5 w-3.5 text-slate-400" aria-hidden />
-                        <input
-                          value={categorySearch}
-                          onChange={(event) => setCategorySearch(event.target.value)}
-                          placeholder="ค้นหาหมวดหมู่"
-                          className="h-9 w-full border border-slate-200 bg-white pl-7 pr-2 text-xs text-slate-800 outline-none focus:border-violet-400 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
-                        />
-                      </div>
-                      <div
-                        data-testid="spending-plan-category-options"
-                        className="mt-1 max-h-28 overflow-y-auto border border-slate-100 dark:border-slate-800"
-                      >
-                        {visibleCategories.map((category) => {
-                          const selectedElsewhere = values.purposes.some(
-                            (item) => item.id !== purpose.id && item.category_ids.includes(category.id),
-                          );
-                          return (
-                            <label key={category.id} className="flex cursor-pointer items-center gap-2 px-2 py-1.5 text-xs text-slate-600 hover:bg-slate-50 dark:text-slate-300 dark:hover:bg-slate-800">
-                              <input
-                                type="checkbox"
-                                data-testid="spending-plan-category-checkbox"
-                                checked={purpose.category_ids.includes(category.id)}
-                                disabled={isSaving || selectedElsewhere}
-                                onChange={(event) => toggleCategory(purpose.id, category.id, event.target.checked)}
-                                className="h-3.5 w-3.5 accent-violet-600"
-                              />
-                              <span className="h-2 w-2 rounded-full" style={{ backgroundColor: category.color ?? "#94a3b8" }} />
-                              <span className="truncate">{category.name}</span>
-                            </label>
-                          );
-                        })}
-                        {isLoadingCategories && <p className="px-2 py-2 text-xs text-slate-500">กำลังโหลดหมวดหมู่...</p>}
-                      </div>
-                    </td>
-                    {purpose.allocations.map((allocation) => (
-                      <td key={allocation.date} className="px-1 py-4">
-                        <input
-                          type="number"
-                          data-testid="spending-plan-allocation"
-                          min="0"
-                          step="0.01"
-                          inputMode="decimal"
-                          value={allocation.amount}
-                          onChange={(event) => updatePurpose(purpose.id, (item) => ({
-                            ...item,
-                            allocations: item.allocations.map((cell) =>
-                              cell.date === allocation.date ? { ...cell, amount: event.target.value } : cell,
-                            ),
-                          }))}
-                          disabled={isSaving || Boolean(effectiveDate && (allocation.date < effectiveDate || allocation.date > (effectiveEndDate ?? values.end_date)))}
-                          aria-label={`${purpose.name || "วัตถุประสงค์"} ${allocation.date}`}
-                          className="h-9 w-full border border-slate-200 bg-white px-2 text-right text-sm text-slate-800 outline-none focus:border-violet-400 focus:ring-2 focus:ring-violet-400/20 disabled:opacity-60 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
-                        />
-                      </td>
-                    ))}
-                    <td className="py-4 pl-3 text-right font-semibold text-slate-700 dark:text-slate-200">฿{purposeTotal.toFixed(2)}</td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
+        <div className="mt-5 space-y-4">
+          {values.purposes.map((purpose) => (
+            <PurposeCard
+              key={purpose.id}
+              purpose={purpose}
+              values={values}
+              dates={dates}
+              windowStart={windowStart}
+              windowEnd={windowEnd}
+              isRevision={isRevision}
+              isSaving={isSaving}
+              isLoadingCategories={isLoadingCategories}
+              visibleCategories={visibleCategories}
+              categorySearch={categorySearch}
+              onCategorySearchChange={setCategorySearch}
+              onUpdate={(updater) => updatePurpose(purpose.id, updater)}
+              onToggleCategory={(categoryId, checked) =>
+                updatePurpose(purpose.id, (item) => ({
+                  ...item,
+                  category_ids: checked
+                    ? [...item.category_ids, categoryId]
+                    : item.category_ids.filter((id) => id !== categoryId),
+                }))
+              }
+              onRemove={() =>
+                update({
+                  ...values,
+                  purposes: values.purposes.filter((item) => item.id !== purpose.id),
+                })
+              }
+            />
+          ))}
         </div>
 
-        <footer className="flex flex-col gap-3 border-t border-slate-200 bg-slate-50/70 p-5 dark:border-slate-800 dark:bg-slate-950/20 sm:flex-row sm:items-center sm:justify-between sm:px-6">
+        <footer className="mt-5 flex flex-col gap-3 border-t border-slate-200 bg-slate-50/70 pt-5 dark:border-slate-800 dark:bg-slate-950/20 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <p className="text-sm font-semibold text-slate-900 dark:text-slate-50">{isRevision ? `ยอดรวมทั้งแผน ฿${planAmount.toFixed(2)} จะคำนวณใหม่จาก Revision ตามวันเมื่อบันทึก` : `จัดสรรแล้ว ฿${allocationTotal.toFixed(2)} / ฿${planAmount.toFixed(2)}`}</p>
-            {errors.purposes && <p role="alert" className="mt-1 text-sm text-red-600 dark:text-red-400">{errors.purposes}</p>}
-            {errors.allocations && <p role="alert" className="mt-1 text-sm text-red-600 dark:text-red-400">{errors.allocations}</p>}
+            <p className="text-sm font-semibold text-slate-900 dark:text-slate-50">
+              {isRevision
+                ? `ยอดรวม Revision นี้ ${formatCurrency(purposeTotal)} จะคำนวณใหม่ตามช่วงที่มีผล`
+                : `จัดสรรแล้ว ${formatCurrency(purposeTotal)} / ${formatCurrency(planAmount)}`}
+            </p>
+            {errors.purposes && (
+              <p role="alert" className="mt-1 text-sm text-red-600 dark:text-red-400">
+                {errors.purposes}
+              </p>
+            )}
+            {errors.distributions && (
+              <p role="alert" className="mt-1 text-sm text-red-600 dark:text-red-400">
+                {errors.distributions}
+              </p>
+            )}
           </div>
           <div className="flex flex-col-reverse gap-2 sm:flex-row">
-            <Button variant="secondary" disabled={isSaving} onClick={onCancel}>ยกเลิก</Button>
+            <Button variant="secondary" disabled={isSaving} onClick={onCancel}>
+              ยกเลิก
+            </Button>
             <Button type="submit" disabled={isSaving || dates.length === 0}>
               {isSaving ? "กำลังบันทึก" : submitLabel}
             </Button>

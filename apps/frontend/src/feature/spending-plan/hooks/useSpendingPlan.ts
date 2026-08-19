@@ -8,6 +8,7 @@ import {
   getSpendingPlanValidationErrors,
   type SpendingPlanFormValues,
   type SpendingPlanStatus,
+  type SpendingPlanDistributionFormValue,
   type SpendingPlanValidationErrors,
   type SpendingPlanView,
 } from "../lib/spendingPlan";
@@ -30,10 +31,18 @@ export interface SpendingPlanAllocation {
   amount: string;
 }
 
+export interface SpendingPlanDistribution {
+  type: SpendingPlanDistributionFormValue["type"];
+  weekdays: number[];
+  dates: string[];
+}
+
 export interface SpendingPlanPurpose {
   name: string;
   category_ids: string[];
   categories: SpendingPlanCategory[];
+  amount: string;
+  distribution: SpendingPlanDistribution | null;
   allocations: SpendingPlanAllocation[];
 }
 
@@ -128,7 +137,31 @@ function mapDetail(detail: SpendingPlanDetail): SpendingPlanDetail {
         ? detail.view.range_days
         : [],
     },
-    revisions: Array.isArray(detail.revisions) ? detail.revisions : [],
+    revisions: Array.isArray(detail.revisions)
+      ? detail.revisions.map((revision) => ({
+          ...revision,
+          purposes: Array.isArray(revision.purposes)
+            ? revision.purposes.map((purpose) => ({
+                ...purpose,
+                amount: String(purpose.amount ?? "0"),
+                allocations: Array.isArray(purpose.allocations)
+                  ? purpose.allocations
+                  : [],
+                distribution: purpose.distribution
+                  ? {
+                      ...purpose.distribution,
+                      weekdays: Array.isArray(purpose.distribution.weekdays)
+                        ? purpose.distribution.weekdays
+                        : [],
+                      dates: Array.isArray(purpose.distribution.dates)
+                        ? purpose.distribution.dates
+                        : [],
+                    }
+                  : null,
+              }))
+            : [],
+        }))
+      : [],
     preferences: detail.preferences ?? {
       last_view: "monthly",
       show_daily_balance: true,
@@ -147,10 +180,14 @@ function toPayload(values: SpendingPlanFormValues, includeAmount = true) {
     purposes: values.purposes.map((purpose) => ({
       name: purpose.name.trim(),
       category_ids: purpose.category_ids,
-      allocations: purpose.allocations.map((allocation) => ({
-        date: allocation.date,
-        amount: Number(allocation.amount),
-      })),
+      amount: Number(purpose.amount),
+      distribution: purpose.distribution.type
+        ? {
+            type: purpose.distribution.type,
+            weekdays: purpose.distribution.weekdays,
+            dates: purpose.distribution.dates,
+          }
+        : null,
     })),
   };
 }
@@ -258,9 +295,12 @@ export function useSpendingPlan(autoLoad = true) {
       id: string,
       effectiveDate: string,
       values: SpendingPlanFormValues,
+      effectiveEndDate?: string,
     ): Promise<MutationResult> => {
       const validationErrors = getSpendingPlanValidationErrors(values, {
         skipPlanAmount: true,
+        windowStart: effectiveDate,
+        windowEnd: effectiveEndDate,
       });
 
       if (Object.keys(validationErrors).length || isSaving) {
