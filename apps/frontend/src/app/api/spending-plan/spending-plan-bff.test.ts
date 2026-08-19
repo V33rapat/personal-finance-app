@@ -18,7 +18,13 @@ describe("spending plan BFF payload", () => {
           {
             name: " Food ",
             categoryIds: ["category-1"],
-            allocations: [{ date: "2026-08-01", amount: "180" }],
+            amount: "180",
+            distribution: {
+              type: "specific_dates",
+              weekdays: [1, 5],
+              dates: ["2026-08-01"],
+            },
+            allocations: [{ date: "2026-08-01", amount: "999" }],
           },
         ],
         user_id: "must-not-reach-backend",
@@ -33,7 +39,12 @@ describe("spending plan BFF payload", () => {
         {
           name: "Food",
           category_ids: ["category-1"],
-          allocations: [{ date: "2026-08-01", amount: 180 }],
+          amount: 180,
+          distribution: {
+            type: "specific_dates",
+            weekdays: [1, 5],
+            dates: ["2026-08-01"],
+          },
         },
       ],
     });
