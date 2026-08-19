@@ -8,7 +8,12 @@ import Button from "@/components/ui/Button";
 import Card from "@/components/ui/Card";
 import ConfirmationDialog from "@/components/ui/ConfirmationDialog";
 import { getBangkokToday } from "@/feature/dashboard/lib/date";
-import { createPurpose, type SpendingPlanFormValues, type SpendingPlanView } from "../lib/spendingPlan";
+import {
+  createPurpose,
+  type SpendingPlanDistributionType,
+  type SpendingPlanFormValues,
+  type SpendingPlanView,
+} from "../lib/spendingPlan";
 import {
   useSpendingPlan,
   type SpendingPlanDay,
@@ -69,14 +74,29 @@ function dayClassName(day: SpendingPlanDay) {
   return "border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900";
 }
 
+function formatDistribution(type: SpendingPlanDistributionType | null | undefined) {
+  switch (type) {
+    case "equal_daily":
+      return "แบ่งเท่ากันทุกวัน";
+    case "weekdays":
+      return "วันทำงาน (จันทร์-ศุกร์)";
+    case "weekly":
+      return "ซ้ำทุกสัปดาห์";
+    case "biweekly":
+      return "ซ้ำทุก 2 สัปดาห์";
+    case "specific_dates":
+      return "เลือกวันเจาะจง";
+    default:
+      return "รูปแบบเดิม";
+  }
+}
+
 function getEditorValues(detail: SpendingPlanDetail, effectiveDate: string): SpendingPlanFormValues {
   const revision = detail.revisions
     .slice()
     .sort((left, right) => left.effective_date.localeCompare(right.effective_date))
     .filter((item) => item.effective_date <= effectiveDate)
     .at(-1) ?? detail.revisions.at(-1);
-  const dates = detail.view.range_days.map((day) => day.date);
-
   return {
     name: detail.name,
     amount: detail.amount,
@@ -87,11 +107,15 @@ function getEditorValues(detail: SpendingPlanDetail, effectiveDate: string): Spe
       id: `revision-purpose-${index}`,
       name: purpose.name,
       category_ids: purpose.category_ids,
-      allocations: purpose.allocations.map((allocation) => ({
-        date: allocation.date,
-        amount: allocation.amount,
-      })),
-    })) ?? [createPurpose(dates, 1)],
+      amount: purpose.amount,
+      distribution: purpose.distribution
+        ? {
+            type: purpose.distribution.type,
+            weekdays: purpose.distribution.weekdays,
+            dates: purpose.distribution.dates,
+          }
+        : { type: null, weekdays: [], dates: [] },
+    })) ?? [createPurpose(1)],
   };
 }
 
@@ -244,6 +268,9 @@ export default function SpendingPlanDetailPage() {
   const canGoNext = nextMonth <= detail.end_date.slice(0, 7);
   const isEditable = detail.status !== "cancelled";
   const canCancel = detail.status === "active" || detail.status === "scheduled";
+  const latestRevision = detail.revisions[0];
+  const isLegacyCopy =
+    latestRevision?.purposes.some((purpose) => purpose.distribution === null) ?? false;
   const minimumEffectiveDate = detail.start_date;
   const effectiveDate = revisionEffectiveDate || minimumEffectiveDate;
   const nextRevision = detail.revisions
@@ -272,7 +299,12 @@ export default function SpendingPlanDetailPage() {
           isSaving={isSaving}
           submitLabel="บันทึกเป็น Revision ใหม่"
           onSubmit={async (values) => {
-            const result = await updatePlan(detail.id, effectiveDate, values);
+            const result = await updatePlan(
+              detail.id,
+              effectiveDate,
+              values,
+              effectiveEndDate,
+            );
             if (result.success) {
               setIsEditing(false);
               await load(month);
@@ -295,7 +327,18 @@ export default function SpendingPlanDetailPage() {
         </div>
         <div className="flex flex-wrap gap-2">
           {isEditable && <Button variant="secondary" onClick={() => { setRevisionEffectiveDate(minimumEffectiveDate); setIsEditing(true); }}><Pencil className="h-4 w-4" aria-hidden />แก้ไขแผน</Button>}
-          <Button variant="secondary" onClick={() => setIsCopyOpen((current) => !current)}>คัดลอกแผน</Button>
+          <Button
+            variant="secondary"
+            onClick={() => {
+              if (isLegacyCopy) {
+                router.push(`/spending-plans/new?copyFrom=${detail.id}`);
+                return;
+              }
+              setIsCopyOpen((current) => !current);
+            }}
+          >
+            คัดลอกแผน
+          </Button>
           {canCancel && <Button variant="danger" onClick={() => setIsCancelOpen(true)}>ยกเลิกแผน</Button>}
         </div>
       </header>
@@ -345,7 +388,8 @@ export default function SpendingPlanDetailPage() {
                     <div key={purpose.name} className="border border-slate-200 p-3 dark:border-slate-700">
                       <p className="font-semibold text-slate-900 dark:text-slate-50">{purpose.name}</p>
                       <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">{purpose.categories.map((category) => category.name).join(", ")}</p>
-                      <p className="mt-3 text-sm font-medium text-slate-700 dark:text-slate-200">{purpose.allocations.map((allocation) => `${formatThaiDate(allocation.date)} ${formatCurrency(allocation.amount)}`).join(" · ")}</p>
+                      <p className="mt-2 text-sm font-medium text-slate-700 dark:text-slate-200">{formatDistribution(purpose.distribution?.type)}</p>
+                      <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">ยอด {formatCurrency(purpose.amount)}</p>
                     </div>
                   ))}
                 </div>

@@ -1,65 +1,101 @@
 import { describe, expect, it } from "vitest";
 import {
   createPurpose,
+  getDistributionDates,
+  getDistributionPreview,
   getPlanDates,
   getSpendingPlanValidationErrors,
-  synchronizePlanAllocations,
 } from "./spendingPlan";
 
-describe("spending plan form helpers", () => {
-  it("keeps one allocation cell for every day in a plan", () => {
-    const dates = getPlanDates("2026-08-01", "2026-08-03");
-    const values = synchronizePlanAllocations({
-      name: "August plan",
-      amount: "300",
-      start_date: "2026-08-01",
-      end_date: "2026-08-03",
-      wallet_ids: ["wallet-1"],
-      purposes: [createPurpose(dates.slice(0, 1), 1)],
-    });
+describe("spending plan distribution helpers", () => {
+  it("creates a purpose with equal daily distribution by default", () => {
+    const purpose = createPurpose(1);
 
-    expect(values.purposes[0].allocations).toHaveLength(3);
-    expect(values.purposes[0].allocations.map((item) => item.date)).toEqual(dates);
+    expect(purpose.amount).toBe("0");
+    expect(purpose.distribution).toEqual({
+      type: "equal_daily",
+      weekdays: [],
+      dates: [],
+    });
   });
 
-  it("requires the complete allocation grid to match the plan total", () => {
-    const dates = getPlanDates("2026-08-01", "2026-08-02");
-    const purpose = createPurpose(dates, 1);
+  it("selects weekdays and biweekly dates from the plan start anchor", () => {
+    expect(
+      getDistributionDates("2026-08-03", "2026-08-03", "2026-08-09", {
+        type: "weekdays",
+        weekdays: [],
+        dates: [],
+      }),
+    ).toHaveLength(5);
+    expect(
+      getDistributionDates("2026-08-03", "2026-08-03", "2026-08-24", {
+        type: "biweekly",
+        weekdays: [1],
+        dates: [],
+      }),
+    ).toEqual(["2026-08-03", "2026-08-17"]);
+  });
+
+  it("shows preview count, daily amount, and total for a purpose", () => {
+    const purpose = createPurpose(1);
     purpose.name = "Food";
-    purpose.category_ids = ["category-1"];
-    purpose.allocations[0].amount = "80";
-    purpose.allocations[1].amount = "100";
+    purpose.amount = "100";
+    purpose.distribution = { type: "weekdays", weekdays: [], dates: [] };
 
     expect(
-      getSpendingPlanValidationErrors({
+      getDistributionPreview(purpose, "2026-08-03", "2026-08-03", "2026-08-09"),
+    ).toMatchObject({ dayCount: 5, amountPerDay: 20, total: 100 });
+  });
+
+  it("requires purpose totals to equal the plan total", () => {
+    const purpose = createPurpose(1);
+    purpose.name = "Food";
+    purpose.amount = "80";
+    purpose.category_ids = ["category-1"];
+
+    const errors = getSpendingPlanValidationErrors({
+      name: "August plan",
+      amount: "100",
+      start_date: "2026-08-01",
+      end_date: "2026-08-02",
+      wallet_ids: ["wallet-1"],
+      purposes: [purpose],
+    });
+
+    expect(errors.purposes).toBe(
+      "ยอดของทุกวัตถุประสงค์รวมกันต้องเท่ากับยอดรวมของแผน",
+    );
+  });
+
+  it("requires a distribution for legacy purposes before saving a revision", () => {
+    const purpose = createPurpose(1);
+    purpose.name = "Food";
+    purpose.amount = "100";
+    purpose.category_ids = ["category-1"];
+    purpose.distribution = { type: null, weekdays: [], dates: [] };
+
+    const errors = getSpendingPlanValidationErrors(
+      {
         name: "August plan",
-        amount: "200",
+        amount: "100",
         start_date: "2026-08-01",
         end_date: "2026-08-02",
         wallet_ids: ["wallet-1"],
         purposes: [purpose],
-      }).allocations,
-    ).toBe("ยอดจัดสรรทุกช่องรวมกันต้องเท่ากับยอดรวมของแผน");
+      },
+      { skipPlanAmount: true, windowStart: "2026-08-01", windowEnd: "2026-08-02" },
+    );
+
+    expect(errors.distributions).toBe(
+      "เลือกวันสำหรับรูปแบบการกระจายของทุกวัตถุประสงค์ให้ครบ",
+    );
   });
 
-  it("does not require a client-supplied plan amount when saving a revision", () => {
-    const dates = getPlanDates("2026-08-01", "2026-08-02");
-    const purpose = createPurpose(dates, 1);
-    purpose.name = "Food";
-    purpose.category_ids = ["category-1"];
-
-    expect(
-      getSpendingPlanValidationErrors(
-        {
-          name: "August plan",
-          amount: "not-used-for-revision",
-          start_date: "2026-08-01",
-          end_date: "2026-08-02",
-          wallet_ids: ["wallet-1"],
-          purposes: [purpose],
-        },
-        { skipPlanAmount: true },
-      ),
-    ).not.toHaveProperty("amount");
+  it("keeps plan dates as UTC calendar dates", () => {
+    expect(getPlanDates("2026-08-01", "2026-08-03")).toEqual([
+      "2026-08-01",
+      "2026-08-02",
+      "2026-08-03",
+    ]);
   });
 });
