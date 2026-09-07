@@ -159,13 +159,16 @@ function PlanCalendar({
   showDailyBalance,
   selectedDate,
   onSelect,
+  onOpenDaily,
 }: {
   days: SpendingPlanDay[];
   visiblePurposeNames: string[];
   showDailyBalance: boolean;
   selectedDate: string | null;
   onSelect: (date: string) => void;
+  onOpenDaily: (date: string) => void;
 }) {
+  const [hoveredDate, setHoveredDate] = useState<string | null>(null);
   const firstDay = days[0]?.date
     ? (new Date(`${days[0].date}T00:00:00.000Z`).getUTCDay() + 6) % 7
     : 0;
@@ -195,6 +198,7 @@ function PlanCalendar({
           ))}
           {days.map((day, index) => {
             const progress = getProgressPercent(day.actual, day.planned);
+            const showOverviewAction = hoveredDate === day.date || selectedDate === day.date;
             const statusColor =
               day.status === "over"
                 ? "bg-rose-500"
@@ -205,41 +209,59 @@ function PlanCalendar({
                     : "bg-emerald-500";
 
             return (
-              <button
-                type="button"
+              <div
                 key={day.date}
-                onClick={() => onSelect(day.date)}
-                className={`min-h-40 border-b p-3 text-left transition hover:relative hover:z-10 hover:outline hover:outline-2 hover:outline-violet-400 focus-visible:relative focus-visible:z-10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-violet-500 ${(firstDay + index) % 7 < 6 ? "border-r" : ""} ${dayClassName(day)} ${selectedDate === day.date ? "relative z-10 outline outline-2 outline-violet-500 outline-offset-[-2px]" : ""}`}
-                aria-label={`ดูรายละเอียดวันที่ ${day.date}`}
+                className={`group relative min-h-40 border-b p-3 text-left transition hover:relative hover:z-10 hover:outline hover:outline-2 hover:outline-violet-400 ${(firstDay + index) % 7 < 6 ? "border-r" : ""} ${dayClassName(day)} ${selectedDate === day.date ? "relative z-10 outline outline-2 outline-violet-500 outline-offset-[-2px]" : ""}`}
+                onMouseEnter={() => setHoveredDate(day.date)}
+                onMouseLeave={() => setHoveredDate(null)}
               >
-                <div className="flex items-start justify-between gap-2">
-                  <span className="text-sm font-bold text-slate-800 dark:text-slate-100">
-                    {new Date(`${day.date}T00:00:00.000Z`).getUTCDate()}
-                  </span>
-                  {showDailyBalance && (
-                    <span className={`text-right text-[11px] font-bold ${remainingClassName(day.remaining)}`}>
-                      {getRemainingLabel(day)}
+                <button
+                  type="button"
+                  onClick={() => onSelect(day.date)}
+                  onFocus={() => setHoveredDate(day.date)}
+                  className="flex h-full min-h-32 w-full flex-col pb-8 text-left focus-visible:outline focus-visible:outline-2 focus-visible:outline-violet-500 focus-visible:outline-offset-[-2px]"
+                  aria-label={`เลือกวันที่ ${day.date}`}
+                  aria-pressed={selectedDate === day.date}
+                >
+                  <div className="flex items-start justify-between gap-2">
+                    <span className="text-sm font-bold text-slate-800 dark:text-slate-100">
+                      {new Date(`${day.date}T00:00:00.000Z`).getUTCDate()}
                     </span>
-                  )}
-                </div>
-                <div className="mt-3 grid gap-1">
-                  {displayedNames.map((name) => {
-                    const purpose = day.purposes.find((item) => item.name === name);
-                    if (!purpose) return null;
-                    return (
-                      <span key={name} className="flex items-center justify-between gap-2 text-[11px] text-slate-600 dark:text-slate-300">
-                        <span className="truncate">{name}</span>
-                        <b className={purpose.status === "over" ? "text-rose-600 dark:text-rose-400" : "text-slate-800 dark:text-slate-100"}>
-                          {formatCurrency(purpose.actual)}
-                        </b>
+                    {showDailyBalance && (
+                      <span className={`text-right text-[11px] font-bold ${remainingClassName(day.remaining)}`}>
+                        {getRemainingLabel(day)}
                       </span>
-                    );
-                  })}
-                </div>
-                <span className="mt-3 block h-1 w-full overflow-hidden bg-slate-200 dark:bg-slate-700">
-                  <span className={`block h-full ${statusColor}`} style={{ width: `${progress}%` }} />
-                </span>
-              </button>
+                    )}
+                  </div>
+                  <div className="mt-3 grid gap-1">
+                    {displayedNames.map((name) => {
+                      const purpose = day.purposes.find((item) => item.name === name);
+                      if (!purpose) return null;
+                      return (
+                        <span key={name} className="flex items-center justify-between gap-2 text-[11px] text-slate-600 dark:text-slate-300">
+                          <span className="truncate">{name}</span>
+                          <b className={purpose.status === "over" ? "text-rose-600 dark:text-rose-400" : "text-slate-800 dark:text-slate-100"}>
+                            {formatCurrency(purpose.actual)}
+                          </b>
+                        </span>
+                      );
+                    })}
+                  </div>
+                  <span className="mt-auto block h-1 w-full overflow-hidden bg-slate-200 dark:bg-slate-700">
+                    <span className={`block h-full ${statusColor}`} style={{ width: `${progress}%` }} />
+                  </span>
+                </button>
+                {showOverviewAction && (
+                  <button
+                    type="button"
+                    onClick={() => onOpenDaily(day.date)}
+                    onFocus={() => setHoveredDate(day.date)}
+                    className="absolute bottom-2 left-3 right-3 z-10 bg-violet-600 px-2 py-1.5 text-xs font-semibold text-white shadow-sm transition hover:bg-violet-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-violet-500 focus-visible:outline-offset-2"
+                  >
+                    ดูภาพรวม
+                  </button>
+                )}
+              </div>
             );
           })}
         </div>
@@ -373,7 +395,11 @@ export default function SpendingPlanDetailPage() {
       setView(next.preferences.last_view);
       setShowDailyBalance(next.preferences.show_daily_balance);
       setVisiblePurposeNames(next.preferences.visible_purpose_names);
-      setSelectedDate((current) => current ?? next.view.days[0]?.date ?? null);
+      setSelectedDate((current) =>
+        current && next.view.range_days.some((day) => day.date === current)
+          ? current
+          : null,
+      );
     }
   }, [loadPlan, params.id]);
 
@@ -626,7 +652,7 @@ export default function SpendingPlanDetailPage() {
               <Button type="button" variant="secondary" size="sm" onClick={() => setIsSettingsOpen((current) => !current)}><Settings2 className="h-4 w-4" aria-hidden />ปรับสิ่งที่แสดง</Button>
             </header>
             {isSettingsOpen && <aside className="ml-auto mt-4 max-w-md border border-violet-200 bg-violet-50/60 p-4 dark:border-violet-900/70 dark:bg-violet-950/20"><h3 className="font-semibold text-slate-900 dark:text-slate-50">การแสดงผลในภาพรวมรายเดือน</h3><p className="mt-1 text-xs text-slate-500 dark:text-slate-400">เลือกวัตถุประสงค์ที่อยากติดตามบนทุกวันได้สูงสุด 5 รายการ</p><label className="mt-4 flex items-center justify-between gap-3 border-t border-violet-100 pt-3 text-sm text-slate-700 dark:border-violet-900/60 dark:text-slate-200"><span>แสดงยอดเหลือหรือเกินของวัน</span><input type="checkbox" checked={showDailyBalance} onChange={(event) => void savePreference({ show_daily_balance: event.target.checked })} className="h-4 w-4 accent-violet-600" /></label><fieldset className="mt-4"><legend className="text-sm font-semibold text-slate-800 dark:text-slate-100">วัตถุประสงค์ที่แสดง (สูงสุด 5)</legend><div className="mt-2 grid gap-2 sm:grid-cols-2">{purposeNames.map((name) => { const checked = visiblePurposeNames.includes(name); const disabled = !checked && visiblePurposeNames.length >= 5; return <label key={name} className="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-300"><input type="checkbox" checked={checked} disabled={disabled} onChange={(event) => { const next = event.target.checked ? [...visiblePurposeNames, name] : visiblePurposeNames.filter((item) => item !== name); void savePreference({ visible_purpose_names: next }); }} className="h-4 w-4 accent-violet-600" />{name}</label>; })}</div></fieldset></aside>}
-            <div className="mt-5"><PlanCalendar days={detail.view.days} visiblePurposeNames={visiblePurposeNames} showDailyBalance={showDailyBalance} selectedDate={selectedDate} onSelect={(date) => { setSelectedDate(date); void savePreference({ last_view: "daily" }); }} /></div>
+            <div className="mt-5"><PlanCalendar days={detail.view.days} visiblePurposeNames={visiblePurposeNames} showDailyBalance={showDailyBalance} selectedDate={selectedDate} onSelect={setSelectedDate} onOpenDaily={(date) => { setSelectedDate(date); void savePreference({ last_view: "daily" }); }} /></div>
           </section>
         )}
 
