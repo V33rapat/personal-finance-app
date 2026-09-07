@@ -94,6 +94,7 @@ function PurposeCard({
   isRevision,
   isSaving,
   isLoadingCategories,
+  allCategories,
   visibleCategories,
   categorySearch,
   onCategorySearchChange,
@@ -109,6 +110,7 @@ function PurposeCard({
   isRevision: boolean;
   isSaving: boolean;
   isLoadingCategories: boolean;
+  allCategories: Array<{ id: string; name: string; color: string | null }>;
   visibleCategories: Array<{ id: string; name: string; color: string | null }>;
   categorySearch: string;
   onCategorySearchChange: (value: string) => void;
@@ -128,6 +130,9 @@ function PurposeCard({
     purpose.distribution.type === "weekly" ||
     purpose.distribution.type === "biweekly";
   const isSpecificDates = purpose.distribution.type === "specific_dates";
+  const selectedCategories = allCategories.filter((category) =>
+    purpose.category_ids.includes(category.id),
+  );
 
   return (
     <article className="border border-slate-200 p-4 dark:border-slate-700 sm:p-5">
@@ -178,17 +183,45 @@ function PurposeCard({
           <p className="text-sm font-semibold text-slate-700 dark:text-slate-200">
             หมวดหมู่รายจ่าย
           </p>
-          <div className="relative mt-2">
+          <div
+            role="group"
+            aria-label="หมวดหมู่ที่เลือก"
+            className="mt-2 flex min-h-9 flex-wrap items-center gap-1.5 border border-slate-200 bg-white px-2 py-1.5 dark:border-slate-700 dark:bg-slate-800"
+          >
             <Search
-              className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400"
+              className="h-3.5 w-3.5 shrink-0 text-slate-400"
               aria-hidden
             />
+            {selectedCategories.map((category) => (
+              <span
+                key={category.id}
+                className="inline-flex max-w-full items-center gap-1 bg-violet-50 px-1.5 py-1 text-xs text-violet-700 dark:bg-violet-950/40 dark:text-violet-200"
+              >
+                <span
+                  className="h-2 w-2 shrink-0 rounded-full"
+                  style={{ backgroundColor: category.color ?? "#94a3b8" }}
+                  aria-hidden
+                />
+                <span className="max-w-40 truncate">{category.name}</span>
+                <button
+                  type="button"
+                  onClick={() => onToggleCategory(category.id, false)}
+                  disabled={isSaving}
+                  aria-label={`นำหมวดหมู่ ${category.name} ออก`}
+                  title={`นำหมวดหมู่ ${category.name} ออก`}
+                  className="shrink-0 p-0.5 text-violet-600 transition hover:bg-violet-100 disabled:cursor-not-allowed disabled:opacity-50 dark:text-violet-300 dark:hover:bg-violet-900/60"
+                >
+                  <X className="h-3 w-3" aria-hidden />
+                </button>
+              </span>
+            ))}
             <input
               value={categorySearch}
               onChange={(event) => onCategorySearchChange(event.target.value)}
               placeholder="ค้นหาหมวดหมู่"
+              aria-label="ค้นหาหมวดหมู่รายจ่าย"
               disabled={isSaving}
-              className="h-9 w-full border border-slate-200 bg-white pl-8 pr-2 text-xs text-slate-800 outline-none focus:border-violet-400 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
+              className="h-7 min-w-[8rem] flex-1 border-0 bg-transparent p-0 text-xs text-slate-800 outline-none placeholder:text-slate-400 focus:ring-0 dark:text-slate-100"
             />
           </div>
           <div className="mt-1 max-h-32 overflow-y-auto border border-slate-100 dark:border-slate-800">
@@ -601,6 +634,7 @@ export default function SpendingPlanEditor({
                 isRevision={isRevision}
                 isSaving={isSaving}
                 isLoadingCategories={isLoadingCategories}
+                allCategories={categories}
                 visibleCategories={getVisibleCategories(categorySearch)}
                 categorySearch={categorySearch}
                 onCategorySearchChange={(value) =>
