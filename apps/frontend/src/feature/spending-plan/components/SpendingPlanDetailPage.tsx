@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
-import { ChevronLeft, ChevronRight, Pencil, Plus, Settings2 } from "lucide-react";
+import { ChevronLeft, ChevronRight, Pencil, Plus, Settings2, X } from "lucide-react";
 import Button from "@/components/ui/Button";
 import Card from "@/components/ui/Card";
 import ConfirmationDialog from "@/components/ui/ConfirmationDialog";
@@ -426,6 +426,17 @@ export default function SpendingPlanDetailPage() {
     setVisiblePurposeNames(saved.visible_purpose_names);
   };
 
+  const submitCopy = () => {
+    if (!copyStartDate || isSaving) return;
+
+    void copyPlan(detail.id, { start_date: copyStartDate, end_date: copyEndDate }).then((plan) => {
+      if (plan) {
+        setIsCopyOpen(false);
+        router.push(`/spending-plans/${plan.id}`);
+      }
+    });
+  };
+
   if (isEditing) {
     return (
       <div className="flex flex-col gap-6">
@@ -469,13 +480,7 @@ export default function SpendingPlanDetailPage() {
           {isEditable && <Button variant="secondary" onClick={() => { setRevisionEffectiveDate(minimumEffectiveDate); setIsEditing(true); }}><Pencil className="h-4 w-4" aria-hidden />แก้ไขแผน</Button>}
           <Button
             variant="secondary"
-            onClick={() => {
-              if (isLegacyCopy) {
-                router.push(`/spending-plans/new?copyFrom=${detail.id}`);
-                return;
-              }
-              setIsCopyOpen((current) => !current);
-            }}
+            onClick={() => setIsCopyOpen(true)}
           >
             คัดลอกแผน
           </Button>
@@ -483,7 +488,100 @@ export default function SpendingPlanDetailPage() {
         </div>
       </header>
 
-      {isCopyOpen && <Card className="p-5"><div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between"><label className="flex flex-col gap-1 text-sm font-semibold text-slate-700 dark:text-slate-200">วันเริ่มต้นของแผนใหม่<input type="date" value={copyStartDate} onChange={(event) => setCopyStartDate(event.target.value)} disabled={isSaving} className="h-10 border border-slate-200 bg-white px-3 text-sm text-slate-800 outline-none focus:border-violet-400 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100" /></label><p className="text-sm text-slate-500 dark:text-slate-400">แผนใหม่จะสิ้นสุด {formatThaiDate(copyEndDate)}</p><Button disabled={isSaving || !copyStartDate} onClick={() => void copyPlan(detail.id, { start_date: copyStartDate, end_date: copyEndDate }).then((plan) => { if (plan) router.push(`/spending-plans/${plan.id}`); })}>สร้างสำเนา</Button></div></Card>}
+      {isCopyOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <button
+            type="button"
+            aria-label="ปิดหน้าต่างคัดลอกแผน"
+            className="absolute inset-0 cursor-default bg-slate-950/50 backdrop-blur-sm"
+            onClick={() => setIsCopyOpen(false)}
+            disabled={isSaving}
+          />
+          <section
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="copy-spending-plan-title"
+            className="relative z-10 w-full max-w-lg overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl shadow-slate-950/20 dark:border-slate-800 dark:bg-slate-900"
+          >
+            <header className="flex items-start justify-between gap-4 border-b border-slate-100 p-5 dark:border-slate-800">
+              <div>
+                <h2 id="copy-spending-plan-title" className="text-lg font-bold text-slate-900 dark:text-slate-50">
+                  คัดลอกแผนการใช้เงิน
+                </h2>
+                <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+                  ตรวจสอบรายละเอียดก่อนสร้างแผนใหม่จากแผนนี้
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsCopyOpen(false)}
+                disabled={isSaving}
+                aria-label="ปิดหน้าต่างคัดลอกแผน"
+                title="ปิดหน้าต่าง"
+                className="rounded-lg p-2 text-slate-400 transition hover:bg-slate-100 hover:text-slate-700 disabled:cursor-not-allowed disabled:opacity-60 dark:hover:bg-slate-800 dark:hover:text-slate-200"
+              >
+                <X className="h-5 w-5" aria-hidden />
+              </button>
+            </header>
+
+            <div className="space-y-5 p-5">
+              <div className="border border-violet-200 bg-violet-50/70 p-4 dark:border-violet-900/70 dark:bg-violet-950/20">
+                <p className="text-xs font-semibold text-violet-700 dark:text-violet-300">แผนต้นฉบับ</p>
+                <p className="mt-1 font-semibold text-slate-900 dark:text-slate-50">{detail.name}</p>
+                <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">{formatThaiDate(detail.start_date)} - {formatThaiDate(detail.end_date)}</p>
+              </div>
+
+              {isLegacyCopy ? (
+                <div className="space-y-2 text-sm text-slate-600 dark:text-slate-300">
+                  <p className="font-semibold text-amber-700 dark:text-amber-300">แผนนี้ใช้รูปแบบเดิม</p>
+                  <p>ระบบจะเปิดหน้าเตรียมสำเนาให้คุณตั้งค่ารูปแบบการกระจายเงินใหม่ก่อนสร้างแผน</p>
+                </div>
+              ) : (
+                <form
+                  onSubmit={(event) => {
+                    event.preventDefault();
+                    submitCopy();
+                  }}
+                  className="space-y-4"
+                >
+                  <label className="flex flex-col gap-1.5 text-sm font-semibold text-slate-700 dark:text-slate-200">
+                    วันเริ่มต้นของแผนใหม่
+                    <input
+                      type="date"
+                      value={copyStartDate}
+                      onChange={(event) => setCopyStartDate(event.target.value)}
+                      disabled={isSaving}
+                      className="h-11 border border-slate-200 bg-white px-3 text-sm font-normal text-slate-800 outline-none transition focus:border-violet-400 focus:ring-2 focus:ring-violet-400/20 disabled:cursor-not-allowed disabled:opacity-60 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
+                    />
+                  </label>
+                  <p className="text-sm text-slate-500 dark:text-slate-400">
+                    แผนใหม่จะสิ้นสุดวันที่ {formatThaiDate(copyEndDate)} โดยคงความยาวเท่ากับแผนต้นฉบับ
+                  </p>
+                  <div className="flex flex-col-reverse gap-2 border-t border-slate-100 pt-4 dark:border-slate-800 sm:flex-row sm:justify-end">
+                    <Button type="button" variant="secondary" disabled={isSaving} onClick={() => setIsCopyOpen(false)}>
+                      ยกเลิก
+                    </Button>
+                    <Button type="submit" disabled={isSaving || !copyStartDate}>
+                      {isSaving ? "กำลังสร้างสำเนา" : "ยืนยันคัดลอกแผน"}
+                    </Button>
+                  </div>
+                </form>
+              )}
+
+              {isLegacyCopy && (
+                <div className="flex flex-col-reverse gap-2 border-t border-slate-100 pt-4 dark:border-slate-800 sm:flex-row sm:justify-end">
+                  <Button type="button" variant="secondary" disabled={isSaving} onClick={() => setIsCopyOpen(false)}>
+                    ยกเลิก
+                  </Button>
+                  <Button type="button" disabled={isSaving} onClick={() => router.push(`/spending-plans/new?copyFrom=${detail.id}`)}>
+                    ไปเตรียมสำเนา
+                  </Button>
+                </div>
+              )}
+            </div>
+          </section>
+        </div>
+      )}
 
       {detail.unavailable_wallet_count > 0 && <div className="border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800 dark:border-amber-900/70 dark:bg-amber-950/30 dark:text-amber-200">มีกระเป๋าที่เลือกไว้ไม่พร้อมใช้งาน รายจ่ายใหม่จากกระเป๋านั้นจะไม่ถูกนับ แต่ข้อมูลเดิมยังอยู่ในประวัติ</div>}
       {error && <div role="alert" className="border border-red-200 bg-red-50 p-4 text-sm text-red-700 dark:border-red-900/70 dark:bg-red-950/30 dark:text-red-300">{error}</div>}
