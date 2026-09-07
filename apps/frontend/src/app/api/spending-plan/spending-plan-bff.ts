@@ -11,7 +11,6 @@ export {
 export interface SpendingPlanRequestBody {
   [key: string]: unknown;
   name?: unknown;
-  amount?: unknown;
   startDate?: unknown;
   start_date?: unknown;
   endDate?: unknown;
@@ -65,11 +64,12 @@ function toBackendPurpose(value: unknown) {
 
   const purpose = value as Record<string, unknown>;
   const categoryIds = purpose.categoryIds ?? purpose.category_ids;
+  const targetAmount = purpose.targetAmount ?? purpose.target_amount;
 
   return {
     name: trimString(purpose.name),
     category_ids: categoryIds,
-    amount: toAmount(purpose.amount),
+    target_amount: toAmount(targetAmount),
     distribution: toBackendDistribution(purpose.distribution),
   };
 }
@@ -81,7 +81,6 @@ function toBackendPurposes(value: unknown) {
 export function toBackendSpendingPlanCreateBody(body: SpendingPlanRequestBody) {
   return {
     name: trimString(body.name),
-    amount: toAmount(body.amount),
     start_date: getValue(body, "startDate", "start_date"),
     end_date: getValue(body, "endDate", "end_date"),
     wallet_ids: getValue(body, "walletIds", "wallet_ids"),
