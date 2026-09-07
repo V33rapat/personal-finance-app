@@ -431,6 +431,9 @@ export default function SpendingPlanEditor({
         )
       : transactionWallets;
   }, [transactionWallets, walletSearch]);
+  const selectedWallets = values.wallet_ids
+    .map((walletId) => transactionWallets.find((wallet) => wallet.id === walletId))
+    .filter((wallet): wallet is (typeof transactionWallets)[number] => Boolean(wallet));
   const getVisibleCategories = (categorySearch: string) => {
     const search = categorySearch.trim().toLocaleLowerCase();
     return search
@@ -547,17 +550,40 @@ export default function SpendingPlanEditor({
             เลือกแล้ว {values.wallet_ids.length} ใบ
           </span>
         </div>
-        <div className="relative mt-4">
+        <div
+          role="group"
+          aria-label="กระเป๋าที่เลือก"
+          className="mt-4 flex min-h-11 flex-wrap items-center gap-1.5 border border-slate-200 bg-white px-2.5 py-2 dark:border-slate-700 dark:bg-slate-800"
+        >
           <Search
-            className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400"
+            className="h-4 w-4 shrink-0 text-slate-400"
             aria-hidden
           />
+          {selectedWallets.map((wallet) => (
+            <span
+              key={wallet.id}
+              className="inline-flex max-w-full items-center gap-1 bg-violet-50 px-2 py-1 text-xs text-violet-700 dark:bg-violet-950/40 dark:text-violet-200"
+            >
+              <span className="max-w-56 truncate">{wallet.label}</span>
+              <button
+                type="button"
+                onClick={() => toggleWallet(wallet.id, false)}
+                disabled={isSaving}
+                aria-label={`นำกระเป๋า ${wallet.label} ออก`}
+                title={`นำกระเป๋า ${wallet.label} ออก`}
+                className="shrink-0 p-0.5 text-violet-600 transition hover:bg-violet-100 disabled:cursor-not-allowed disabled:opacity-50 dark:text-violet-300 dark:hover:bg-violet-900/60"
+              >
+                <X className="h-3.5 w-3.5" aria-hidden />
+              </button>
+            </span>
+          ))}
           <input
             value={walletSearch}
             onChange={(event) => setWalletSearch(event.target.value)}
             placeholder="ค้นหากระเป๋า"
+            aria-label="ค้นหากระเป๋าที่ติดตาม"
             disabled={isSaving || isLoadingWallets}
-            className="h-11 w-full border border-slate-200 bg-white pl-10 pr-3 text-sm text-slate-800 outline-none transition focus:border-violet-400 focus:ring-2 focus:ring-violet-400/20 disabled:cursor-not-allowed disabled:opacity-60 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
+            className="h-7 min-w-[10rem] flex-1 border-0 bg-transparent p-0 text-sm text-slate-800 outline-none placeholder:text-slate-400 focus:ring-0 disabled:cursor-not-allowed disabled:opacity-60 dark:text-slate-100"
           />
         </div>
         <div className="mt-3 max-h-52 overflow-y-auto border border-slate-200 dark:border-slate-700">
