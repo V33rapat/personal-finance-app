@@ -376,7 +376,7 @@ export default function SpendingPlanEditor({
   const [values, setValues] = useState(initialValues);
   const [errors, setErrors] = useState<SpendingPlanValidationErrors>({});
   const [walletSearch, setWalletSearch] = useState("");
-  const [categorySearch, setCategorySearch] = useState("");
+  const [categorySearches, setCategorySearches] = useState<Record<string, string>>({});
   const dates = useMemo(
     () => getPlanDates(values.start_date, values.end_date),
     [values.end_date, values.start_date],
@@ -398,14 +398,14 @@ export default function SpendingPlanEditor({
         )
       : transactionWallets;
   }, [transactionWallets, walletSearch]);
-  const visibleCategories = useMemo(() => {
+  const getVisibleCategories = (categorySearch: string) => {
     const search = categorySearch.trim().toLocaleLowerCase();
     return search
       ? categories.filter((category) =>
           category.name.toLocaleLowerCase().includes(search),
         )
       : categories;
-  }, [categories, categorySearch]);
+  };
   const planTotal = getProjectedPlanTotal(values, windowStart, windowEnd);
   const isRevision = Boolean(effectiveDate);
 
@@ -438,6 +438,22 @@ export default function SpendingPlanEditor({
       purposes: values.purposes.map((purpose) =>
         purpose.id === purposeId ? updater(purpose) : purpose,
       ),
+    });
+  };
+
+  const updateCategorySearch = (purposeId: string, value: string) => {
+    setCategorySearches((current) => ({ ...current, [purposeId]: value }));
+  };
+
+  const removePurpose = (purposeId: string) => {
+    update({
+      ...values,
+      purposes: values.purposes.filter((purpose) => purpose.id !== purposeId),
+    });
+    setCategorySearches((current) => {
+      const next = { ...current };
+      delete next[purposeId];
+      return next;
     });
   };
 
@@ -571,37 +587,38 @@ export default function SpendingPlanEditor({
         </header>
 
         <div className="mt-5 space-y-4">
-          {values.purposes.map((purpose) => (
-            <PurposeCard
-              key={purpose.id}
-              purpose={purpose}
-              values={values}
-              dates={dates}
-              windowStart={windowStart}
-              windowEnd={windowEnd}
-              isRevision={isRevision}
-              isSaving={isSaving}
-              isLoadingCategories={isLoadingCategories}
-              visibleCategories={visibleCategories}
-              categorySearch={categorySearch}
-              onCategorySearchChange={setCategorySearch}
-              onUpdate={(updater) => updatePurpose(purpose.id, updater)}
-              onToggleCategory={(categoryId, checked) =>
-                updatePurpose(purpose.id, (item) => ({
-                  ...item,
-                  category_ids: checked
-                    ? [...item.category_ids, categoryId]
-                    : item.category_ids.filter((id) => id !== categoryId),
-                }))
-              }
-              onRemove={() =>
-                update({
-                  ...values,
-                  purposes: values.purposes.filter((item) => item.id !== purpose.id),
-                })
-              }
-            />
-          ))}
+          {values.purposes.map((purpose) => {
+            const categorySearch = categorySearches[purpose.id] ?? "";
+
+            return (
+              <PurposeCard
+                key={purpose.id}
+                purpose={purpose}
+                values={values}
+                dates={dates}
+                windowStart={windowStart}
+                windowEnd={windowEnd}
+                isRevision={isRevision}
+                isSaving={isSaving}
+                isLoadingCategories={isLoadingCategories}
+                visibleCategories={getVisibleCategories(categorySearch)}
+                categorySearch={categorySearch}
+                onCategorySearchChange={(value) =>
+                  updateCategorySearch(purpose.id, value)
+                }
+                onUpdate={(updater) => updatePurpose(purpose.id, updater)}
+                onToggleCategory={(categoryId, checked) =>
+                  updatePurpose(purpose.id, (item) => ({
+                    ...item,
+                    category_ids: checked
+                      ? [...item.category_ids, categoryId]
+                      : item.category_ids.filter((id) => id !== categoryId),
+                  }))
+                }
+                onRemove={() => removePurpose(purpose.id)}
+              />
+            );
+          })}
         </div>
 
         <footer className="mt-5 flex flex-col gap-3 border-t border-slate-200 bg-slate-50/70 pt-5 dark:border-slate-800 dark:bg-slate-950/20 sm:flex-row sm:items-center sm:justify-between">
