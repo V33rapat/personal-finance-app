@@ -15,7 +15,7 @@ import {
 import { UpdateSpendingPlanDto } from './dto/update-spending-plan.dto';
 import { UpdateSpendingPlanPreferencesDto } from './dto/update-spending-plan-preferences.dto';
 import {
-  buildDailyAllocations,
+  buildOccurrenceAllocations,
   getDistributionDates,
   type DistributionRule,
 } from './spending-plan-distribution';
@@ -73,7 +73,7 @@ type RevisionRecord = SpendingPlanRecord['spending_plan_revisions'][number];
 interface NormalizedPurpose {
   name: string;
   categoryIds: string[];
-  amount: number;
+  targetAmount: number;
   distribution: {
     type: SpendingPlanDistributionType;
     weekdays: number[];
@@ -85,6 +85,7 @@ interface NormalizedPurpose {
 interface RevisionValues {
   walletIds: string[];
   purposes: NormalizedPurpose[];
+  planTotal: number;
 }
 
 export interface DailyPurposeOverview {
@@ -92,6 +93,7 @@ export interface DailyPurposeOverview {
   planned: string;
   actual: string;
   remaining: string;
+  is_unplanned: boolean;
   status: 'ok' | 'warning' | 'over' | 'planned';
 }
 
@@ -174,7 +176,7 @@ export class SpendingPlanService {
         data: {
           user_id: userId,
           name: values.name,
-          amount: values.amount ?? 0,
+          amount: values.planTotal,
           start_date: values.start,
           end_date: values.end,
           spending_plan_view_preferences: {
@@ -298,7 +300,6 @@ export class SpendingPlanService {
 
     const values: CreateSpendingPlanDto = {
       name: dto.name ?? `${source.name} (สำเนา)`,
-      amount: Number(source.amount),
       start_date: dto.start_date,
       end_date: dto.end_date,
       wallet_ids: sourceRevision.spending_plan_revision_wallets.map(
@@ -310,15 +311,16 @@ export class SpendingPlanService {
             (start.getTime() - this.toUtcDate(source.start_date).getTime()) /
               DAY_MS,
           );
-          const amount = purpose.spending_plan_revision_allocations.reduce(
-            (total, allocation) => total + Number(allocation.amount),
-            0,
-          );
+          if (purpose.target_amount === null) {
+            throw new BadRequestException(
+              'Legacy spending plans must be configured before copying',
+            );
+          }
           const distributionType = purpose.distribution_type;
 
           return {
             name: purpose.name,
-            amount,
+            target_amount: Number(purpose.target_amount),
             category_ids: purpose.spending_plan_revision_purpose_categories.map(
               (category) => category.category_id,
             ),
@@ -435,7 +437,6 @@ export class SpendingPlanService {
     const end = this.parseDate(dto.end_date);
     return this.validateValues(userId, {
       name: dto.name,
-      amount: dto.amount,
       start,
       end,
       windowStart: start,
@@ -452,26 +453,21 @@ export class SpendingPlanService {
     windowStart: Date,
     windowEnd: Date,
   ) {
-    return this.validateValues(
-      userId,
-      {
-        name: dto.name ?? plan.name,
-        start: this.toUtcDate(plan.start_date),
-        end: this.toUtcDate(plan.end_date),
-        windowStart,
-        windowEnd,
-        walletIds: dto.wallet_ids,
-        purposes: dto.purposes,
-      },
-      false,
-    );
+    return this.validateValues(userId, {
+      name: dto.name ?? plan.name,
+      start: this.toUtcDate(plan.start_date),
+      end: this.toUtcDate(plan.end_date),
+      windowStart,
+      windowEnd,
+      walletIds: dto.wallet_ids,
+      purposes: dto.purposes,
+    });
   }
 
   private async validateValues(
     userId: string,
     values: {
       name: string;
-      amount?: number;
       start: Date;
       end: Date;
       windowStart: Date;
@@ -479,7 +475,6 @@ export class SpendingPlanService {
       walletIds: string[];
       purposes: SpendingPlanPurposeDto[];
     },
-    requireAllocationTotal = true,
   ) {
     const name = values.name.trim();
     if (name.length < 3 || name.length > 100) {
@@ -497,17 +492,6 @@ export class SpendingPlanService {
       );
     }
 
-    if (
-      requireAllocationTotal &&
-      (!Number.isFinite(values.amount) ||
-        (values.amount ?? 0) <= 0 ||
-        !Number.isInteger((values.amount ?? 0) * 100))
-    ) {
-      throw new BadRequestException(
-        'Spending plan amount must have no more than two decimal places',
-      );
-    }
-
     const walletIds = this.normalizeIds(values.walletIds, 'Wallets');
     await this.validateWallets(userId, walletIds);
     const purposes = this.normalizePurposes(
@@ -518,17 +502,14 @@ export class SpendingPlanService {
       values.windowEnd,
     );
     await this.validatePurposeCategories(userId, purposes);
-    if (requireAllocationTotal) {
-      this.assertPurposeTotal(values.amount ?? 0, purposes);
-    }
 
     return {
       name,
-      amount: values.amount,
       start: values.start,
       end: values.end,
       walletIds,
       purposes,
+      planTotal: this.getPlanTotal(purposes),
     };
   }
 
@@ -556,12 +537,12 @@ export class SpendingPlanService {
 
       const categoryIds = this.normalizeIds(purpose.category_ids, 'Categories');
       if (
-        !Number.isFinite(purpose.amount) ||
-        purpose.amount <= 0 ||
-        !Number.isInteger(purpose.amount * 100)
+        !Number.isFinite(purpose.target_amount) ||
+        purpose.target_amount <= 0 ||
+        !Number.isInteger(purpose.target_amount * 100)
       ) {
         throw new BadRequestException(
-          'Purpose amounts must be greater than zero with no more than two decimal places',
+          'Purpose target amounts must be greater than zero with no more than two decimal places',
         );
       }
 
@@ -624,12 +605,12 @@ export class SpendingPlanService {
       return {
         name,
         categoryIds,
-        amount: purpose.amount,
+        targetAmount: purpose.target_amount,
         distribution: normalizedDistribution,
-        allocations: buildDailyAllocations(
+        allocations: buildOccurrenceAllocations(
           this.toDateString(planStart),
           this.toDateString(planEnd),
-          purpose.amount,
+          purpose.target_amount,
           selectedDistributionDates,
         ),
       };
@@ -683,20 +664,18 @@ export class SpendingPlanService {
     }
   }
 
-  private assertPurposeTotal(
-    amount: number,
-    purposes: Array<{ amount: number }>,
-  ) {
-    const purposeTotal = purposes.reduce(
-      (total, purpose) => total + purpose.amount,
+  private getPlanTotal(purposes: NormalizedPurpose[]) {
+    const totalCents = purposes.reduce(
+      (total, purpose) =>
+        total +
+        purpose.allocations.reduce(
+          (purposeTotal, allocation) =>
+            purposeTotal + Math.round(allocation.amount * 100),
+          0,
+        ),
       0,
     );
-
-    if (Math.round(purposeTotal * 100) !== Math.round(amount * 100)) {
-      throw new BadRequestException(
-        'Purpose amounts must equal the plan amount',
-      );
-    }
+    return totalCents / 100;
   }
 
   private async assertNoOverlap(
@@ -778,6 +757,7 @@ export class SpendingPlanService {
           create: values.purposes.map((purpose, index) => ({
             name: purpose.name,
             sort_order: index,
+            target_amount: purpose.targetAmount,
             distribution_type: purpose.distribution.type,
             distribution_weekdays: purpose.distribution.weekdays,
             spending_plan_revision_purpose_categories: {
@@ -902,6 +882,7 @@ export class SpendingPlanService {
             planned: planned.toFixed(2),
             actual: actual.toFixed(2),
             remaining: remaining.toFixed(2),
+            is_unplanned: planned.isZero() && actual.greaterThan(0),
             status: this.getAmountStatus(actual, planned, date > today),
           };
         });
@@ -988,7 +969,8 @@ export class SpendingPlanService {
         (wallet) => wallet.wallet_id,
       ),
       purposes: revision.spending_plan_revision_purposes.map((purpose) => ({
-        amount: purpose.spending_plan_revision_allocations
+        target_amount: purpose.target_amount?.toFixed(2) ?? null,
+        planned_total: purpose.spending_plan_revision_allocations
           .reduce(
             (total, allocation) => total.plus(allocation.amount),
             new Prisma.Decimal(0),

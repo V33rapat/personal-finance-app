@@ -72,27 +72,20 @@ export function getDistributionDates(
   }
 }
 
-export function buildDailyAllocations(
+export function buildOccurrenceAllocations(
   planStart: string,
   planEnd: string,
-  amount: number,
+  targetAmount: number,
   selectedDates: string[],
 ): DailyAllocationValue[] {
   const selected = [...new Set(selectedDates)].sort();
-  const totalCents = Math.round(amount * 100);
-  const baseCents =
-    selected.length > 0 ? Math.floor(totalCents / selected.length) : 0;
-  let remainderCents = selected.length > 0 ? totalCents % selected.length : 0;
-  const centsByDate = new Map<string, number>();
-
-  selected.forEach((date) => {
-    const cents = baseCents + (remainderCents > 0 ? 1 : 0);
-    centsByDate.set(date, cents);
-    remainderCents -= remainderCents > 0 ? 1 : 0;
-  });
+  const targetCents = Math.round(targetAmount * 100);
+  const selectedDatesInCents = new Map(
+    selected.map((date) => [date, targetCents]),
+  );
 
   return getDateRange(planStart, planEnd).map((date) => ({
     date,
-    amount: (centsByDate.get(date) ?? 0) / 100,
+    amount: (selectedDatesInCents.get(date) ?? 0) / 100,
   }));
 }

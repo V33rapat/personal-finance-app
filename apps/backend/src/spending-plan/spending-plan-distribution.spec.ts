@@ -1,5 +1,5 @@
 import {
-  buildDailyAllocations,
+  buildOccurrenceAllocations,
   getDistributionDates,
   type DistributionRule,
 } from './spending-plan-distribution';
@@ -88,28 +88,28 @@ describe('spending plan distribution rules', () => {
     ).toEqual(['2026-08-04', '2026-08-09']);
   });
 
-  it('puts leftover cents on the first selected days', () => {
+  it('uses the target amount on every selected day', () => {
     expect(
-      buildDailyAllocations('2026-08-03', '2026-08-05', 10, [
+      buildOccurrenceAllocations('2026-08-03', '2026-08-05', 10, [
         '2026-08-03',
         '2026-08-05',
       ]),
     ).toEqual([
-      { date: '2026-08-03', amount: 5 },
+      { date: '2026-08-03', amount: 10 },
       { date: '2026-08-04', amount: 0 },
-      { date: '2026-08-05', amount: 5 },
+      { date: '2026-08-05', amount: 10 },
     ]);
 
     expect(
-      buildDailyAllocations('2026-08-03', '2026-08-05', 10.01, [
+      buildOccurrenceAllocations('2026-08-03', '2026-08-05', 10.01, [
         '2026-08-03',
         '2026-08-04',
         '2026-08-05',
       ]),
     ).toEqual([
-      { date: '2026-08-03', amount: 3.34 },
-      { date: '2026-08-04', amount: 3.34 },
-      { date: '2026-08-05', amount: 3.33 },
+      { date: '2026-08-03', amount: 10.01 },
+      { date: '2026-08-04', amount: 10.01 },
+      { date: '2026-08-05', amount: 10.01 },
     ]);
   });
 });
