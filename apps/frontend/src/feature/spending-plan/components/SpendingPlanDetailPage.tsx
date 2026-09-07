@@ -99,7 +99,6 @@ function getEditorValues(detail: SpendingPlanDetail, effectiveDate: string): Spe
     .at(-1) ?? detail.revisions.at(-1);
   return {
     name: detail.name,
-    amount: detail.amount,
     start_date: detail.start_date,
     end_date: detail.end_date,
     wallet_ids: revision?.wallet_ids ?? [],
@@ -107,7 +106,7 @@ function getEditorValues(detail: SpendingPlanDetail, effectiveDate: string): Spe
       id: `revision-purpose-${index}`,
       name: purpose.name,
       category_ids: purpose.category_ids,
-      amount: purpose.amount,
+      target_amount: purpose.target_amount ?? "",
       distribution: purpose.distribution
         ? {
             type: purpose.distribution.type,
@@ -209,7 +208,13 @@ function DayDetail({ day }: { day: SpendingPlanDay | null }) {
       <div className="mt-5 divide-y divide-slate-100 border-y border-slate-100 dark:divide-slate-800 dark:border-slate-800">
         {day.purposes.map((purpose) => (
           <div key={purpose.name} className="grid grid-cols-[1fr_auto] gap-4 py-3 text-sm">
-            <div><p className="font-semibold text-slate-900 dark:text-slate-50">{purpose.name}</p><p className="mt-1 text-slate-500 dark:text-slate-400">ใช้ {formatCurrency(purpose.actual)} จาก {formatCurrency(purpose.planned)}</p></div>
+            <div>
+              <p className="font-semibold text-slate-900 dark:text-slate-50">{purpose.name}</p>
+              <p className="mt-1 text-slate-500 dark:text-slate-400">ใช้ {formatCurrency(purpose.actual)} จาก {formatCurrency(purpose.planned)}</p>
+              {purpose.is_unplanned && (
+                <span className="mt-1 inline-flex text-xs font-semibold text-rose-600 dark:text-rose-400">รายจ่ายนอกแผน</span>
+              )}
+            </div>
             <p className={`self-center font-bold ${Number(purpose.remaining) < 0 ? "text-rose-600 dark:text-rose-400" : "text-emerald-600 dark:text-emerald-400"}`}>{formatCurrency(purpose.remaining)}</p>
           </div>
         ))}
@@ -323,7 +328,7 @@ export default function SpendingPlanDetailPage() {
         <div>
           <Link href="/spending-plans" className="text-sm font-semibold text-violet-600 hover:text-violet-700 dark:text-violet-300">แผนการใช้เงิน</Link>
           <h1 className="mt-2 text-3xl font-bold text-slate-900 dark:text-slate-50">{detail.name}</h1>
-          <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">{formatThaiDate(detail.start_date)} - {formatThaiDate(detail.end_date)} · วงเงิน {formatCurrency(detail.amount)}</p>
+          <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">{formatThaiDate(detail.start_date)} - {formatThaiDate(detail.end_date)} · ยอดรวมแผน {formatCurrency(detail.amount)}</p>
         </div>
         <div className="flex flex-wrap gap-2">
           {isEditable && <Button variant="secondary" onClick={() => { setRevisionEffectiveDate(minimumEffectiveDate); setIsEditing(true); }}><Pencil className="h-4 w-4" aria-hidden />แก้ไขแผน</Button>}
@@ -389,7 +394,14 @@ export default function SpendingPlanDetailPage() {
                       <p className="font-semibold text-slate-900 dark:text-slate-50">{purpose.name}</p>
                       <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">{purpose.categories.map((category) => category.name).join(", ")}</p>
                       <p className="mt-2 text-sm font-medium text-slate-700 dark:text-slate-200">{formatDistribution(purpose.distribution?.type)}</p>
-                      <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">ยอด {formatCurrency(purpose.amount)}</p>
+                      {purpose.target_amount === null ? (
+                        <p className="mt-1 text-sm text-amber-700 dark:text-amber-300">รูปแบบเดิม: ต้องตั้งวงเงินต่อครั้งใหม่</p>
+                      ) : (
+                        <>
+                          <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">วงเงินต่อครั้ง {formatCurrency(purpose.target_amount)}</p>
+                          <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">รวมช่วงนี้ {formatCurrency(purpose.planned_total)}</p>
+                        </>
+                      )}
                     </div>
                   ))}
                 </div>

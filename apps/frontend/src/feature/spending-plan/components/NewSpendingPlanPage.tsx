@@ -26,7 +26,6 @@ function getDayCount(start: string, end: string) {
 function getInitialValues(today: string): SpendingPlanFormValues {
   return {
     name: "",
-    amount: "",
     start_date: today,
     end_date: today,
     wallet_ids: [],
@@ -37,24 +36,31 @@ function getInitialValues(today: string): SpendingPlanFormValues {
 function getCopyValues(detail: SpendingPlanDetail, today: string): SpendingPlanFormValues {
   const sourceRevision = detail.revisions[0];
   const dayCount = getDayCount(detail.start_date, detail.end_date);
+  const offsetDays = Math.floor(
+    (new Date(`${today}T00:00:00.000Z`).getTime() -
+      new Date(`${detail.start_date}T00:00:00.000Z`).getTime()) /
+      86_400_000,
+  );
+  const newEndDate = addDays(today, dayCount - 1);
 
   return {
     name: `${detail.name} (สำเนา)`,
-    amount: detail.amount,
     start_date: today,
-    end_date: addDays(today, dayCount - 1),
+    end_date: newEndDate,
     wallet_ids: sourceRevision?.wallet_ids ?? [],
     purposes:
       sourceRevision?.purposes.map((purpose, index) => ({
         id: `copy-purpose-${index}`,
         name: purpose.name,
-        amount: purpose.amount,
+        target_amount: purpose.target_amount ?? "",
         category_ids: purpose.category_ids,
         distribution: purpose.distribution
           ? {
               type: purpose.distribution.type,
               weekdays: purpose.distribution.weekdays,
-              dates: purpose.distribution.dates,
+              dates: purpose.distribution.dates
+                .map((date) => addDays(date, offsetDays))
+                .filter((date) => date >= today && date <= newEndDate),
             }
           : { type: null, weekdays: [], dates: [] },
       })) ?? [createPurpose(1)],
@@ -98,7 +104,7 @@ export default function NewSpendingPlanPage() {
       <header>
         <p className="text-xs font-semibold uppercase tracking-widest text-violet-600 dark:text-violet-400">แผนการใช้เงิน</p>
         <h1 className="mt-2 text-3xl font-bold text-slate-900 dark:text-slate-50">{copyFrom ? "สร้างสำเนาแผน" : "สร้างแผนใหม่"}</h1>
-      <p className="mt-2 text-sm leading-6 text-slate-500 dark:text-slate-400">กำหนดยอดของแต่ละวัตถุประสงค์ แล้วเลือกรูปแบบวันที่ให้ระบบกระจายเงินให้</p>
+      <p className="mt-2 text-sm leading-6 text-slate-500 dark:text-slate-400">กำหนดวงเงินต่อครั้งของแต่ละวัตถุประสงค์ แล้วเลือกรูปแบบวันที่ให้ระบบคำนวณเอง</p>
       </header>
       <SpendingPlanEditor
         initialValues={initialValues}

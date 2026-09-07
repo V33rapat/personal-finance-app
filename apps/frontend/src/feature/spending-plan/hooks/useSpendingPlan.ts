@@ -41,7 +41,8 @@ export interface SpendingPlanPurpose {
   name: string;
   category_ids: string[];
   categories: SpendingPlanCategory[];
-  amount: string;
+  target_amount: string | null;
+  planned_total: string;
   distribution: SpendingPlanDistribution | null;
   allocations: SpendingPlanAllocation[];
 }
@@ -59,6 +60,7 @@ export interface SpendingPlanDayPurpose {
   planned: string;
   actual: string;
   remaining: string;
+  is_unplanned: boolean;
   status: "ok" | "warning" | "over" | "planned";
 }
 
@@ -143,7 +145,11 @@ function mapDetail(detail: SpendingPlanDetail): SpendingPlanDetail {
           purposes: Array.isArray(revision.purposes)
             ? revision.purposes.map((purpose) => ({
                 ...purpose,
-                amount: String(purpose.amount ?? "0"),
+                target_amount:
+                  purpose.target_amount === null
+                    ? null
+                    : String(purpose.target_amount ?? "0"),
+                planned_total: String(purpose.planned_total ?? "0"),
                 allocations: Array.isArray(purpose.allocations)
                   ? purpose.allocations
                   : [],
@@ -170,17 +176,16 @@ function mapDetail(detail: SpendingPlanDetail): SpendingPlanDetail {
   };
 }
 
-function toPayload(values: SpendingPlanFormValues, includeAmount = true) {
+function toPayload(values: SpendingPlanFormValues) {
   return {
     name: values.name.trim(),
-    ...(includeAmount ? { amount: Number(values.amount) } : {}),
     start_date: values.start_date,
     end_date: values.end_date,
     wallet_ids: values.wallet_ids,
     purposes: values.purposes.map((purpose) => ({
       name: purpose.name.trim(),
       category_ids: purpose.category_ids,
-      amount: Number(purpose.amount),
+      target_amount: Number(purpose.target_amount),
       distribution: purpose.distribution.type
         ? {
             type: purpose.distribution.type,
@@ -298,7 +303,6 @@ export function useSpendingPlan(autoLoad = true) {
       effectiveEndDate?: string,
     ): Promise<MutationResult> => {
       const validationErrors = getSpendingPlanValidationErrors(values, {
-        skipPlanAmount: true,
         windowStart: effectiveDate,
         windowEnd: effectiveEndDate,
       });
@@ -315,7 +319,7 @@ export function useSpendingPlan(autoLoad = true) {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            ...toPayload(values, false),
+            ...toPayload(values),
             effective_date: effectiveDate,
           }),
         });

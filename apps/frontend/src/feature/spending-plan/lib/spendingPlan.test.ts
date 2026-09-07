@@ -3,6 +3,7 @@ import {
   createPurpose,
   getDistributionDates,
   getDistributionPreview,
+  getProjectedPlanTotal,
   getPlanDates,
   getSpendingPlanValidationErrors,
 } from "./spendingPlan";
@@ -11,7 +12,7 @@ describe("spending plan distribution helpers", () => {
   it("creates a purpose with equal daily distribution by default", () => {
     const purpose = createPurpose(1);
 
-    expect(purpose.amount).toBe("0");
+    expect(purpose.target_amount).toBe("0");
     expect(purpose.distribution).toEqual({
       type: "equal_daily",
       weekdays: [],
@@ -36,54 +37,51 @@ describe("spending plan distribution helpers", () => {
     ).toEqual(["2026-08-03", "2026-08-17"]);
   });
 
-  it("shows preview count, daily amount, and total for a purpose", () => {
+  it("shows preview count, target amount per occurrence, and total for a purpose", () => {
     const purpose = createPurpose(1);
     purpose.name = "Food";
-    purpose.amount = "100";
+    purpose.target_amount = "100";
     purpose.distribution = { type: "weekdays", weekdays: [], dates: [] };
 
     expect(
       getDistributionPreview(purpose, "2026-08-03", "2026-08-03", "2026-08-09"),
-    ).toMatchObject({ dayCount: 5, amountPerDay: 20, total: 100 });
+    ).toMatchObject({ dayCount: 5, amountPerOccurrence: 100, total: 500 });
   });
 
-  it("requires purpose totals to equal the plan total", () => {
+  it("calculates the plan total from each purpose target and selected dates", () => {
     const purpose = createPurpose(1);
     purpose.name = "Food";
-    purpose.amount = "80";
+    purpose.target_amount = "80";
     purpose.category_ids = ["category-1"];
 
-    const errors = getSpendingPlanValidationErrors({
+    const values = {
       name: "August plan",
-      amount: "100",
       start_date: "2026-08-01",
       end_date: "2026-08-02",
       wallet_ids: ["wallet-1"],
       purposes: [purpose],
-    });
+    };
 
-    expect(errors.purposes).toBe(
-      "ยอดของทุกวัตถุประสงค์รวมกันต้องเท่ากับยอดรวมของแผน",
-    );
+    expect(getSpendingPlanValidationErrors(values)).toEqual({});
+    expect(getProjectedPlanTotal(values)).toBe(160);
   });
 
   it("requires a distribution for legacy purposes before saving a revision", () => {
     const purpose = createPurpose(1);
     purpose.name = "Food";
-    purpose.amount = "100";
+    purpose.target_amount = "100";
     purpose.category_ids = ["category-1"];
     purpose.distribution = { type: null, weekdays: [], dates: [] };
 
     const errors = getSpendingPlanValidationErrors(
       {
         name: "August plan",
-        amount: "100",
         start_date: "2026-08-01",
         end_date: "2026-08-02",
         wallet_ids: ["wallet-1"],
         purposes: [purpose],
       },
-      { skipPlanAmount: true, windowStart: "2026-08-01", windowEnd: "2026-08-02" },
+      { windowStart: "2026-08-01", windowEnd: "2026-08-02" },
     );
 
     expect(errors.distributions).toBe(

@@ -16,14 +16,13 @@ export interface SpendingPlanDistributionFormValue {
 export interface SpendingPlanPurposeFormValue {
   id: string;
   name: string;
-  amount: string;
+  target_amount: string;
   category_ids: string[];
   distribution: SpendingPlanDistributionFormValue;
 }
 
 export interface SpendingPlanFormValues {
   name: string;
-  amount: string;
   start_date: string;
   end_date: string;
   wallet_ids: string[];
@@ -32,7 +31,6 @@ export interface SpendingPlanFormValues {
 
 export interface SpendingPlanValidationErrors {
   name?: string;
-  amount?: string;
   dates?: string;
   wallets?: string;
   purposes?: string;
@@ -79,7 +77,7 @@ export function createPurpose(index: number): SpendingPlanPurposeFormValue {
   return {
     id: `purpose-${index}-${Date.now()}`,
     name: "",
-    amount: "0",
+    target_amount: "0",
     category_ids: [],
     distribution: {
       type: "equal_daily",
@@ -144,17 +142,16 @@ export function getDistributionPreview(
     windowEnd,
     purpose.distribution,
   );
-  const amount = Number(purpose.amount || 0);
-  const cents = Number.isFinite(amount) ? Math.round(amount * 100) : 0;
+  const targetAmount = Number(purpose.target_amount || 0);
+  const cents = Number.isFinite(targetAmount)
+    ? Math.round(targetAmount * 100)
+    : 0;
 
   return {
     selectedDates,
     dayCount: selectedDates.length,
-    amountPerDay:
-      selectedDates.length > 0
-        ? Math.floor(cents / selectedDates.length) / 100
-        : 0,
-    total: cents / 100,
+    amountPerOccurrence: cents / 100,
+    total: (cents * selectedDates.length) / 100,
   };
 }
 
@@ -172,7 +169,6 @@ function isMoney(value: string, allowZero = false) {
 export function getSpendingPlanValidationErrors(
   values: SpendingPlanFormValues,
   options: {
-    skipPlanAmount?: boolean;
     windowStart?: string;
     windowEnd?: string;
   } = {},
@@ -184,10 +180,6 @@ export function getSpendingPlanValidationErrors(
 
   if (values.name.trim().length < 3 || values.name.trim().length > 100) {
     errors.name = "กรุณากรอกชื่อแผน 3-100 ตัวอักษร";
-  }
-
-  if (!options.skipPlanAmount && !isMoney(values.amount)) {
-    errors.amount = "กรุณากรอกยอดรวมของแผนให้มากกว่า 0 บาท";
   }
 
   if (dates.length === 0 || dates.length > 31) {
@@ -205,10 +197,10 @@ export function getSpendingPlanValidationErrors(
       (purpose) =>
         !purpose.name.trim() ||
         purpose.category_ids.length === 0 ||
-        !isMoney(purpose.amount),
+        !isMoney(purpose.target_amount),
     )
   ) {
-    errors.purposes = "กรอกชื่อ เลือกหมวดหมู่ และยอดของทุกวัตถุประสงค์ให้ครบ";
+    errors.purposes = "กรอกชื่อ เลือกหมวดหมู่ และวงเงินต่อครั้งของทุกวัตถุประสงค์ให้ครบ";
   }
 
   const categories = values.purposes.flatMap((purpose) => purpose.category_ids);
@@ -240,19 +232,25 @@ export function getSpendingPlanValidationErrors(
     errors.distributions = "เลือกวันสำหรับรูปแบบการกระจายของทุกวัตถุประสงค์ให้ครบ";
   }
 
-  const purposeTotal = values.purposes.reduce(
-    (total, purpose) => total + Number(purpose.amount || 0),
-    0,
-  );
-  if (
-    !options.skipPlanAmount &&
-    isMoney(values.amount) &&
-    Math.round(purposeTotal * 100) !== Math.round(Number(values.amount) * 100)
-  ) {
-    errors.purposes = "ยอดของทุกวัตถุประสงค์รวมกันต้องเท่ากับยอดรวมของแผน";
-  }
-
   return errors;
+}
+
+export function getProjectedPlanTotal(
+  values: SpendingPlanFormValues,
+  windowStart = values.start_date,
+  windowEnd = values.end_date,
+) {
+  const totalCents = values.purposes.reduce((total, purpose) => {
+    const preview = getDistributionPreview(
+      purpose,
+      values.start_date,
+      windowStart,
+      windowEnd,
+    );
+    return total + Math.round(preview.total * 100);
+  }, 0);
+
+  return totalCents / 100;
 }
 
 export function getPlanRemaining(

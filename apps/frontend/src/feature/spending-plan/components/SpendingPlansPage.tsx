@@ -67,7 +67,7 @@ function SpendingPlanCard({ plan }: { plan: SpendingPlan }) {
           </div>
           <span className={`shrink-0 px-2.5 py-1 text-xs font-semibold ${statusClassName(plan.status)}`}>{statusLabel(plan.status)}</span>
         </div>
-        <p className="mt-6 text-2xl font-bold text-slate-900 dark:text-slate-50">{formatCurrency(plan.amount)}</p>
+        <p className="mt-6 text-2xl font-bold text-slate-900 dark:text-slate-50">ยอดรวมแผน {formatCurrency(plan.amount)}</p>
         <div className="mt-5 flex flex-wrap gap-x-4 gap-y-1 text-sm text-slate-500 dark:text-slate-400">
           <span>{walletLabel}{plan.wallets.length > 1 ? ` +${plan.wallets.length - 1}` : ""}</span>
           <span>{plan.purpose_count} วัตถุประสงค์</span>

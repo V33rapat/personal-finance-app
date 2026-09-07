@@ -12,6 +12,7 @@ import { useWallet } from "@/feature/wallet/hooks/useWallet";
 import {
   createPurpose,
   getDistributionPreview,
+  getProjectedPlanTotal,
   getPlanDates,
   type SpendingPlanDistributionType,
   type SpendingPlanFormValues,
@@ -73,11 +74,15 @@ function formatCurrency(value: string | number) {
 }
 
 function toPickerDate(value: string) {
-  return new Date(`${value}T00:00:00.000Z`);
+  const [year, month, day] = value.split("-").map(Number);
+  return new Date(year, month - 1, day);
 }
 
 function toDateValue(value: Date) {
-  return value.toISOString().slice(0, 10);
+  const year = value.getFullYear();
+  const month = String(value.getMonth() + 1).padStart(2, "0");
+  const day = String(value.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
 }
 
 function PurposeCard({
@@ -141,15 +146,15 @@ function PurposeCard({
             />
           </label>
           <label className="flex flex-col gap-1 text-sm font-semibold text-slate-700 dark:text-slate-200">
-            ยอดของวัตถุประสงค์
+            วงเงินต่อครั้ง
             <input
               type="number"
               min="0.01"
               step="0.01"
               inputMode="decimal"
-              value={purpose.amount}
+              value={purpose.target_amount}
               onChange={(event) =>
-                onUpdate((item) => ({ ...item, amount: event.target.value }))
+                onUpdate((item) => ({ ...item, target_amount: event.target.value }))
               }
               disabled={isSaving}
               className="h-11 border border-slate-200 bg-white px-3 text-right text-sm font-normal text-slate-800 outline-none transition focus:border-violet-400 focus:ring-2 focus:ring-violet-400/20 disabled:opacity-60 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
@@ -340,7 +345,7 @@ function PurposeCard({
 
       <div className="mt-4 flex flex-wrap items-center justify-between gap-2 border-t border-slate-100 pt-3 text-sm dark:border-slate-800">
         <p className="text-slate-500 dark:text-slate-400">
-          เลือก {preview.dayCount} วัน · เฉลี่ยประมาณ {formatCurrency(preview.amountPerDay)} / วัน
+          เลือก {preview.dayCount} ครั้ง · {formatCurrency(preview.amountPerOccurrence)} / ครั้ง
         </p>
         <p className="font-semibold text-slate-800 dark:text-slate-100">
           รวม {formatCurrency(preview.total)}
@@ -401,11 +406,7 @@ export default function SpendingPlanEditor({
         )
       : categories;
   }, [categories, categorySearch]);
-  const purposeTotal = values.purposes.reduce(
-    (total, purpose) => total + Number(purpose.amount || 0),
-    0,
-  );
-  const planAmount = Number(values.amount || 0);
+  const planTotal = getProjectedPlanTotal(values, windowStart, windowEnd);
   const isRevision = Boolean(effectiveDate);
 
   const update = (next: SpendingPlanFormValues) => {
@@ -457,17 +458,6 @@ export default function SpendingPlanEditor({
             error={errors.name}
             placeholder="เช่น แผนใช้เงินเที่ยวเชียงใหม่"
             disabled={isSaving}
-          />
-          <FormField
-            label="ยอดรวมที่วางแผน"
-            type="number"
-            min="0.01"
-            step="0.01"
-            inputMode="decimal"
-            value={values.amount}
-            onChange={(event) => update({ ...values, amount: event.target.value })}
-            error={errors.amount}
-            disabled={isSaving || isRevision}
           />
           <FormField
             label="วันเริ่มต้น"
@@ -561,6 +551,7 @@ export default function SpendingPlanEditor({
             </p>
           </div>
           <Button
+            type="button"
             size="sm"
             variant="secondary"
             disabled={isSaving || values.purposes.length >= 10}
@@ -617,8 +608,8 @@ export default function SpendingPlanEditor({
           <div>
             <p className="text-sm font-semibold text-slate-900 dark:text-slate-50">
               {isRevision
-                ? `ยอดรวม Revision นี้ ${formatCurrency(purposeTotal)} จะคำนวณใหม่ตามช่วงที่มีผล`
-                : `จัดสรรแล้ว ${formatCurrency(purposeTotal)} / ${formatCurrency(planAmount)}`}
+                ? `ยอดรวม Revision นี้ ${formatCurrency(planTotal)} จะคำนวณใหม่ตามช่วงที่มีผล`
+                : `ยอดรวมแผน ${formatCurrency(planTotal)} จากวงเงินต่อครั้ง`}
             </p>
             {errors.purposes && (
               <p role="alert" className="mt-1 text-sm text-red-600 dark:text-red-400">
@@ -632,7 +623,7 @@ export default function SpendingPlanEditor({
             )}
           </div>
           <div className="flex flex-col-reverse gap-2 sm:flex-row">
-            <Button variant="secondary" disabled={isSaving} onClick={onCancel}>
+            <Button type="button" variant="secondary" disabled={isSaving} onClick={onCancel}>
               ยกเลิก
             </Button>
             <Button type="submit" disabled={isSaving || dates.length === 0}>
