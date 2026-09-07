@@ -135,7 +135,7 @@ function PurposeCard({
   );
 
   return (
-    <article className="border border-slate-200 p-4 dark:border-slate-700 sm:p-5">
+    <article className="rounded-xl border border-slate-200 p-4 dark:border-slate-700 sm:p-5">
       <div className="flex items-start gap-3">
         <div className="grid flex-1 gap-4 md:grid-cols-[minmax(0,1fr)_180px]">
           <label className="flex flex-col gap-1 text-sm font-semibold text-slate-700 dark:text-slate-200">
@@ -147,7 +147,7 @@ function PurposeCard({
               }
               placeholder="เช่น ค่าอาหาร"
               disabled={isSaving}
-              className="h-11 border border-slate-200 bg-white px-3 text-sm font-normal text-slate-800 outline-none transition focus:border-violet-400 focus:ring-2 focus:ring-violet-400/20 disabled:opacity-60 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
+              className="h-11 rounded-xl border border-slate-200 bg-white px-3 text-sm font-normal text-slate-800 outline-none transition focus:border-violet-400 focus:ring-2 focus:ring-violet-400/20 disabled:opacity-60 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
             />
           </label>
           <label className="flex flex-col gap-1 text-sm font-semibold text-slate-700 dark:text-slate-200">
@@ -162,7 +162,7 @@ function PurposeCard({
                 onUpdate((item) => ({ ...item, target_amount: event.target.value }))
               }
               disabled={isSaving}
-              className="h-11 border border-slate-200 bg-white px-3 text-right text-sm font-normal text-slate-800 outline-none transition focus:border-violet-400 focus:ring-2 focus:ring-violet-400/20 disabled:opacity-60 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
+              className="h-11 rounded-xl border border-slate-200 bg-white px-3 text-right text-sm font-normal text-slate-800 outline-none transition focus:border-violet-400 focus:ring-2 focus:ring-violet-400/20 disabled:opacity-60 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
             />
           </label>
         </div>
@@ -172,7 +172,7 @@ function PurposeCard({
           onClick={onRemove}
           aria-label={`ลบ ${purpose.name || "วัตถุประสงค์"}`}
           title="ลบวัตถุประสงค์"
-          className="shrink-0 p-2 text-rose-600 transition hover:bg-rose-50 disabled:cursor-not-allowed disabled:opacity-50 dark:text-rose-400 dark:hover:bg-rose-950/30"
+          className="shrink-0 rounded-lg p-2 text-rose-600 transition hover:bg-rose-50 disabled:cursor-not-allowed disabled:opacity-50 dark:text-rose-400 dark:hover:bg-rose-950/30"
         >
           <X className="h-4 w-4" aria-hidden />
         </button>
@@ -186,7 +186,7 @@ function PurposeCard({
           <div
             role="group"
             aria-label="หมวดหมู่ที่เลือก"
-            className="mt-2 flex min-h-9 flex-wrap items-center gap-1.5 border border-slate-200 bg-white px-2 py-1.5 dark:border-slate-700 dark:bg-slate-800"
+            className="mt-2 flex min-h-9 flex-wrap items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-2 py-1.5 dark:border-slate-700 dark:bg-slate-800"
           >
             <Search
               className="h-3.5 w-3.5 shrink-0 text-slate-400"
@@ -195,7 +195,7 @@ function PurposeCard({
             {selectedCategories.map((category) => (
               <span
                 key={category.id}
-                className="inline-flex max-w-full items-center gap-1 bg-violet-50 px-1.5 py-1 text-xs text-violet-700 dark:bg-violet-950/40 dark:text-violet-200"
+                className="inline-flex max-w-full items-center gap-1 rounded-lg bg-violet-50 px-1.5 py-1 text-xs text-violet-700 dark:bg-violet-950/40 dark:text-violet-200"
               >
                 <span
                   className="h-2 w-2 shrink-0 rounded-full"
@@ -224,7 +224,7 @@ function PurposeCard({
               className="h-7 min-w-[8rem] flex-1 border-0 bg-transparent p-0 text-xs text-slate-800 outline-none placeholder:text-slate-400 focus:ring-0 dark:text-slate-100"
             />
           </div>
-          <div className="mt-1 max-h-32 overflow-y-auto border border-slate-100 dark:border-slate-800">
+          <div className="mt-1 max-h-32 overflow-y-auto rounded-xl border border-slate-100 dark:border-slate-800">
             {visibleCategories.map((category) => {
               const selectedElsewhere = values.purposes.some(
                 (item) =>
@@ -285,7 +285,7 @@ function PurposeCard({
                 }))
               }
               disabled={isSaving}
-              className="h-11 border border-slate-200 bg-white px-3 text-sm font-normal text-slate-800 outline-none focus:border-violet-400 focus:ring-2 focus:ring-violet-400/20 disabled:opacity-60 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
+              className="h-11 rounded-xl border border-slate-200 bg-white px-3 text-sm font-normal text-slate-800 outline-none focus:border-violet-400 focus:ring-2 focus:ring-violet-400/20 disabled:opacity-60 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
             >
               <option value="">เลือกรูปแบบการกระจาย</option>
               {distributionOptions.map((option) => (
@@ -297,7 +297,7 @@ function PurposeCard({
           </label>
 
           {isWeekly && (
-            <fieldset className="mt-3 border border-slate-200 p-3 dark:border-slate-700">
+            <fieldset className="mt-3 rounded-xl border border-slate-200 p-3 dark:border-slate-700">
               <legend className="px-1 text-xs font-semibold text-slate-600 dark:text-slate-300">
                 เลือกวันที่ต้องการทำซ้ำ
               </legend>
@@ -342,7 +342,7 @@ function PurposeCard({
           )}
 
           {isSpecificDates && (
-            <div className="mt-3 border border-slate-200 p-2 dark:border-slate-700">
+            <div className="mt-3 overflow-hidden rounded-xl border border-slate-200 p-2 dark:border-slate-700">
               <p className="px-2 pt-1 text-xs font-semibold text-slate-600 dark:text-slate-300">
                 เลือกวันที่ในช่วง {formatShortDate(windowStart)} - {formatShortDate(windowEnd)}
               </p>
@@ -376,7 +376,7 @@ function PurposeCard({
         </div>
       </div>
 
-      <div className="mt-4 flex flex-wrap items-center justify-between gap-2 border-t border-slate-100 pt-3 text-sm dark:border-slate-800">
+      <div className="mt-4 flex flex-wrap items-center justify-between gap-2 rounded-lg border-t border-slate-100 pt-3 text-sm dark:border-slate-800">
         <p className="text-slate-500 dark:text-slate-400">
           เลือก {preview.dayCount} ครั้ง · {formatCurrency(preview.amountPerOccurrence)} / ครั้ง
         </p>
@@ -553,7 +553,7 @@ export default function SpendingPlanEditor({
         <div
           role="group"
           aria-label="กระเป๋าที่เลือก"
-          className="mt-4 flex min-h-11 flex-wrap items-center gap-1.5 border border-slate-200 bg-white px-2.5 py-2 dark:border-slate-700 dark:bg-slate-800"
+          className="mt-4 flex min-h-11 flex-wrap items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-2.5 py-2 dark:border-slate-700 dark:bg-slate-800"
         >
           <Search
             className="h-4 w-4 shrink-0 text-slate-400"
@@ -562,7 +562,7 @@ export default function SpendingPlanEditor({
           {selectedWallets.map((wallet) => (
             <span
               key={wallet.id}
-              className="inline-flex max-w-full items-center gap-1 bg-violet-50 px-2 py-1 text-xs text-violet-700 dark:bg-violet-950/40 dark:text-violet-200"
+              className="inline-flex max-w-full items-center gap-1 rounded-lg bg-violet-50 px-2 py-1 text-xs text-violet-700 dark:bg-violet-950/40 dark:text-violet-200"
             >
               <span className="max-w-56 truncate">{wallet.label}</span>
               <button
@@ -586,7 +586,7 @@ export default function SpendingPlanEditor({
             className="h-7 min-w-[10rem] flex-1 border-0 bg-transparent p-0 text-sm text-slate-800 outline-none placeholder:text-slate-400 focus:ring-0 disabled:cursor-not-allowed disabled:opacity-60 dark:text-slate-100"
           />
         </div>
-        <div className="mt-3 max-h-52 overflow-y-auto border border-slate-200 dark:border-slate-700">
+        <div className="mt-3 max-h-52 overflow-y-auto rounded-xl border border-slate-200 dark:border-slate-700">
           {visibleWallets.map((wallet) => (
             <label
               key={wallet.id}

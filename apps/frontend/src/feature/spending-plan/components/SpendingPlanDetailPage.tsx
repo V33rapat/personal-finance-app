@@ -177,7 +177,7 @@ function PlanCalendar({
     : days[0]?.purposes.slice(0, 5).map((purpose) => purpose.name) ?? [];
 
   return (
-    <div className="overflow-x-auto border border-slate-200 dark:border-slate-700">
+    <div className="overflow-x-auto rounded-xl border border-slate-200 dark:border-slate-700">
       <div className="min-w-[938px]">
         <div className="grid grid-cols-7 bg-slate-50 dark:bg-slate-800/70">
           {["จันทร์", "อังคาร", "พุธ", "พฤหัสบดี", "ศุกร์", "เสาร์", "อาทิตย์"].map((label, index) => (
@@ -247,7 +247,7 @@ function PlanCalendar({
                       );
                     })}
                   </div>
-                  <span className="mt-auto block h-1 w-full overflow-hidden bg-slate-200 dark:bg-slate-700">
+                  <span className="mt-auto block h-1 w-full overflow-hidden rounded-full bg-slate-200 dark:bg-slate-700">
                     <span className={`block h-full ${statusColor}`} style={{ width: `${progress}%` }} />
                   </span>
                 </button>
@@ -256,7 +256,7 @@ function PlanCalendar({
                     type="button"
                     onClick={() => onOpenDaily(day.date)}
                     onFocus={() => setHoveredDate(day.date)}
-                    className="absolute bottom-2 left-3 right-3 z-10 bg-violet-600 px-2 py-1.5 text-xs font-semibold text-white shadow-sm transition hover:bg-violet-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-violet-500 focus-visible:outline-offset-2"
+                    className="absolute bottom-2 left-3 right-3 z-10 rounded-lg bg-violet-600 px-2 py-1.5 text-xs font-semibold text-white shadow-sm transition hover:bg-violet-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-violet-500 focus-visible:outline-offset-2"
                   >
                     ดูภาพรวม
                   </button>
@@ -284,7 +284,7 @@ function PlanRangeTable({
   ];
 
   return (
-    <div className="max-h-[640px] overflow-auto border border-slate-200 dark:border-slate-700">
+    <div className="max-h-[640px] overflow-auto rounded-xl border border-slate-200 dark:border-slate-700">
       <table className="min-w-[1000px] w-full border-collapse text-sm">
         <thead className="border-y border-slate-200 text-left text-xs font-semibold uppercase tracking-widest text-slate-500 dark:border-slate-800">
           <tr>
@@ -323,7 +323,7 @@ function PlanRangeTable({
                 );
               })}
               <td className="whitespace-nowrap px-4 py-3 text-right"><b className="text-slate-900 dark:text-slate-50">{formatCurrency(day.actual)}</b><span className="text-slate-400"> / {formatCurrency(day.planned)}</span></td>
-              <td className="px-4 py-3"><span className={`inline-flex px-2 py-1 text-xs font-semibold ${getStatusClassName(day.status)}`}>{getRemainingLabel(day)}</span></td>
+              <td className="px-4 py-3"><span className={`inline-flex rounded-md px-2 py-1 text-xs font-semibold ${getStatusClassName(day.status)}`}>{getRemainingLabel(day)}</span></td>
             </tr>
           ))}
         </tbody>
@@ -343,10 +343,10 @@ function DayDetail({ day }: { day: SpendingPlanDay | null }) {
           const progressColor = isOver ? "bg-rose-500" : "bg-emerald-500";
 
           return (
-            <article key={purpose.name} className="border border-slate-200 p-4 dark:border-slate-700">
+            <article key={purpose.name} className="rounded-xl border border-slate-200 p-4 dark:border-slate-700">
               <h3 className="font-semibold text-slate-900 dark:text-slate-50">{purpose.name}</h3>
               <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">วางแผน {formatCurrency(purpose.planned)}</p>
-              <div className="mt-4 h-2 overflow-hidden bg-slate-200 dark:bg-slate-700">
+              <div className="mt-4 h-2 overflow-hidden rounded-full bg-slate-200 dark:bg-slate-700">
                 <div className={`h-full ${progressColor}`} style={{ width: `${getProgressPercent(purpose.actual, purpose.planned)}%` }} />
               </div>
               <div className={`mt-3 flex items-center justify-between gap-3 text-sm font-bold ${isOver ? "text-rose-600 dark:text-rose-400" : "text-slate-800 dark:text-slate-100"}`}>
@@ -358,7 +358,7 @@ function DayDetail({ day }: { day: SpendingPlanDay | null }) {
           );
         })}
       </div>
-      <div className="mt-5 grid overflow-hidden border border-slate-200 sm:grid-cols-3 dark:border-slate-700">
+      <div className="mt-5 grid overflow-hidden rounded-xl border border-slate-200 sm:grid-cols-3 dark:border-slate-700">
         {[{ label: "งบของวันนี้", value: day.planned }, { label: "ใช้ไปแล้ว", value: day.actual }, { label: "เหลือ / เกิน", value: day.remaining }].map((item, index) => (
           <div key={item.label} className={`p-4 ${index < 2 ? "border-b sm:border-r sm:border-b-0" : ""} border-slate-200 dark:border-slate-700`}>
             <p className="text-xs font-semibold text-slate-500 dark:text-slate-400">{item.label}</p>
@@ -466,7 +466,7 @@ export default function SpendingPlanDetailPage() {
   if (isEditing) {
     return (
       <div className="flex flex-col gap-6">
-        <header><p className="text-xs font-semibold uppercase tracking-widest text-violet-600 dark:text-violet-400">แผนการใช้เงิน</p><h1 className="mt-2 text-3xl font-bold text-slate-900 dark:text-slate-50">แก้ไข {detail.name}</h1><label className="mt-4 inline-flex flex-col gap-1 text-sm font-semibold text-slate-700 dark:text-slate-200">ให้ Revision มีผลตั้งแต่<input type="date" min={minimumEffectiveDate} max={detail.end_date} value={effectiveDate} onChange={(event) => setRevisionEffectiveDate(event.target.value)} className="h-10 border border-slate-200 bg-white px-3 text-sm text-slate-800 outline-none focus:border-violet-400 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100" /></label></header>
+        <header><p className="text-xs font-semibold uppercase tracking-widest text-violet-600 dark:text-violet-400">แผนการใช้เงิน</p><h1 className="mt-2 text-3xl font-bold text-slate-900 dark:text-slate-50">แก้ไข {detail.name}</h1><label className="mt-4 inline-flex flex-col gap-1 text-sm font-semibold text-slate-700 dark:text-slate-200">ให้ Revision มีผลตั้งแต่<input type="date" min={minimumEffectiveDate} max={detail.end_date} value={effectiveDate} onChange={(event) => setRevisionEffectiveDate(event.target.value)} className="h-10 rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-800 outline-none focus:border-violet-400 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100" /></label></header>
         <SpendingPlanEditor
           key={effectiveDate}
           initialValues={getEditorValues(detail, effectiveDate)}
@@ -551,7 +551,7 @@ export default function SpendingPlanDetailPage() {
             </header>
 
             <div className="space-y-5 p-5">
-              <div className="border border-violet-200 bg-violet-50/70 p-4 dark:border-violet-900/70 dark:bg-violet-950/20">
+              <div className="rounded-xl border border-violet-200 bg-violet-50/70 p-4 dark:border-violet-900/70 dark:bg-violet-950/20">
                 <p className="text-xs font-semibold text-violet-700 dark:text-violet-300">แผนต้นฉบับ</p>
                 <p className="mt-1 font-semibold text-slate-900 dark:text-slate-50">{detail.name}</p>
                 <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">{formatThaiDate(detail.start_date)} - {formatThaiDate(detail.end_date)}</p>
@@ -577,7 +577,7 @@ export default function SpendingPlanDetailPage() {
                       value={copyStartDate}
                       onChange={(event) => setCopyStartDate(event.target.value)}
                       disabled={isSaving}
-                      className="h-11 border border-slate-200 bg-white px-3 text-sm font-normal text-slate-800 outline-none transition focus:border-violet-400 focus:ring-2 focus:ring-violet-400/20 disabled:cursor-not-allowed disabled:opacity-60 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
+                      className="h-11 rounded-xl border border-slate-200 bg-white px-3 text-sm font-normal text-slate-800 outline-none transition focus:border-violet-400 focus:ring-2 focus:ring-violet-400/20 disabled:cursor-not-allowed disabled:opacity-60 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
                     />
                   </label>
                   <p className="text-sm text-slate-500 dark:text-slate-400">
@@ -609,8 +609,8 @@ export default function SpendingPlanDetailPage() {
         </div>
       )}
 
-      {detail.unavailable_wallet_count > 0 && <div className="border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800 dark:border-amber-900/70 dark:bg-amber-950/30 dark:text-amber-200">มีกระเป๋าที่เลือกไว้ไม่พร้อมใช้งาน รายจ่ายใหม่จากกระเป๋านั้นจะไม่ถูกนับ แต่ข้อมูลเดิมยังอยู่ในประวัติ</div>}
-      {error && <div role="alert" className="border border-red-200 bg-red-50 p-4 text-sm text-red-700 dark:border-red-900/70 dark:bg-red-950/30 dark:text-red-300">{error}</div>}
+      {detail.unavailable_wallet_count > 0 && <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800 dark:border-amber-900/70 dark:bg-amber-950/30 dark:text-amber-200">มีกระเป๋าที่เลือกไว้ไม่พร้อมใช้งาน รายจ่ายใหม่จากกระเป๋านั้นจะไม่ถูกนับ แต่ข้อมูลเดิมยังอยู่ในประวัติ</div>}
+      {error && <div role="alert" className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700 dark:border-red-900/70 dark:bg-red-950/30 dark:text-red-300">{error}</div>}
 
       <Card className="overflow-hidden p-0">
         <section className="flex flex-col gap-4 border-b border-slate-200 px-5 py-6 dark:border-slate-800 sm:flex-row sm:items-end sm:justify-between sm:px-7">
@@ -636,12 +636,12 @@ export default function SpendingPlanDetailPage() {
         </section>
 
         <section className="flex flex-col gap-4 border-b border-slate-200 bg-slate-50/70 px-5 py-4 dark:border-slate-800 dark:bg-slate-950/20 sm:px-7 lg:flex-row lg:items-center lg:justify-between">
-          <div className="inline-flex w-full overflow-x-auto border border-slate-200 bg-slate-100 p-1 sm:w-auto dark:border-slate-700 dark:bg-slate-800">
+          <div className="inline-flex w-full overflow-x-auto rounded-xl border border-slate-200 bg-slate-100 p-1 sm:w-auto dark:border-slate-700 dark:bg-slate-800">
             {[{ id: "monthly", label: "ภาพรวมรายเดือน" }, { id: "range", label: "ตารางตามช่วงเวลา" }, { id: "daily", label: "ภาพรวมต่อวัน" }].map((item) => (
-              <button key={item.id} type="button" onClick={() => void savePreference({ last_view: item.id as SpendingPlanView })} className={`whitespace-nowrap px-3 py-2 text-sm font-semibold transition ${view === item.id ? "bg-white text-slate-900 shadow-sm dark:bg-slate-700 dark:text-slate-50" : "text-slate-500 hover:text-slate-800 dark:text-slate-300 dark:hover:text-slate-50"}`}>{item.label}</button>
+              <button key={item.id} type="button" onClick={() => void savePreference({ last_view: item.id as SpendingPlanView })} className={`whitespace-nowrap rounded-lg px-3 py-2 text-sm font-semibold transition ${view === item.id ? "bg-white text-slate-900 shadow-sm dark:bg-slate-700 dark:text-slate-50" : "text-slate-500 hover:text-slate-800 dark:text-slate-300 dark:hover:text-slate-50"}`}>{item.label}</button>
             ))}
           </div>
-          {view === "monthly" && <div className="flex items-center justify-between gap-2 border border-slate-200 bg-white p-1 dark:border-slate-700 dark:bg-slate-900"><button type="button" disabled={!canGoPrevious} onClick={() => void load(previousMonth)} aria-label="เดือนก่อนหน้า" className="p-2 disabled:opacity-40"><ChevronLeft className="h-4 w-4" aria-hidden /></button><span className="min-w-40 text-center text-sm font-semibold text-slate-800 dark:text-slate-100">{getMonthLabel(month)}</span><button type="button" disabled={!canGoNext} onClick={() => void load(nextMonth)} aria-label="เดือนถัดไป" className="p-2 disabled:opacity-40"><ChevronRight className="h-4 w-4" aria-hidden /></button></div>}
+          {view === "monthly" && <div className="flex items-center justify-between gap-2 rounded-xl border border-slate-200 bg-white p-1 dark:border-slate-700 dark:bg-slate-900"><button type="button" disabled={!canGoPrevious} onClick={() => void load(previousMonth)} aria-label="เดือนก่อนหน้า" className="rounded-lg p-2 disabled:opacity-40"><ChevronLeft className="h-4 w-4" aria-hidden /></button><span className="min-w-40 text-center text-sm font-semibold text-slate-800 dark:text-slate-100">{getMonthLabel(month)}</span><button type="button" disabled={!canGoNext} onClick={() => void load(nextMonth)} aria-label="เดือนถัดไป" className="rounded-lg p-2 disabled:opacity-40"><ChevronRight className="h-4 w-4" aria-hidden /></button></div>}
           {view !== "monthly" && <p className="text-sm text-slate-500 dark:text-slate-400">เลือกวันจากตารางเพื่อเปิดภาพรวมต่อวัน</p>}
         </section>
 
@@ -651,14 +651,14 @@ export default function SpendingPlanDetailPage() {
               <div><h2 className="text-lg font-bold text-slate-900 dark:text-slate-50">{getMonthLabel(month)}</h2><p className="mt-1 text-sm text-slate-500 dark:text-slate-400">แสดงยอดใช้จริงของวัตถุประสงค์ที่เลือก และสถานะของแต่ละวัน</p></div>
               <Button type="button" variant="secondary" size="sm" onClick={() => setIsSettingsOpen((current) => !current)}><Settings2 className="h-4 w-4" aria-hidden />ปรับสิ่งที่แสดง</Button>
             </header>
-            {isSettingsOpen && <aside className="ml-auto mt-4 max-w-md border border-violet-200 bg-violet-50/60 p-4 dark:border-violet-900/70 dark:bg-violet-950/20"><h3 className="font-semibold text-slate-900 dark:text-slate-50">การแสดงผลในภาพรวมรายเดือน</h3><p className="mt-1 text-xs text-slate-500 dark:text-slate-400">เลือกวัตถุประสงค์ที่อยากติดตามบนทุกวันได้สูงสุด 5 รายการ</p><label className="mt-4 flex items-center justify-between gap-3 border-t border-violet-100 pt-3 text-sm text-slate-700 dark:border-violet-900/60 dark:text-slate-200"><span>แสดงยอดเหลือหรือเกินของวัน</span><input type="checkbox" checked={showDailyBalance} onChange={(event) => void savePreference({ show_daily_balance: event.target.checked })} className="h-4 w-4 accent-violet-600" /></label><fieldset className="mt-4"><legend className="text-sm font-semibold text-slate-800 dark:text-slate-100">วัตถุประสงค์ที่แสดง (สูงสุด 5)</legend><div className="mt-2 grid gap-2 sm:grid-cols-2">{purposeNames.map((name) => { const checked = visiblePurposeNames.includes(name); const disabled = !checked && visiblePurposeNames.length >= 5; return <label key={name} className="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-300"><input type="checkbox" checked={checked} disabled={disabled} onChange={(event) => { const next = event.target.checked ? [...visiblePurposeNames, name] : visiblePurposeNames.filter((item) => item !== name); void savePreference({ visible_purpose_names: next }); }} className="h-4 w-4 accent-violet-600" />{name}</label>; })}</div></fieldset></aside>}
+            {isSettingsOpen && <aside className="ml-auto mt-4 max-w-md rounded-xl border border-violet-200 bg-violet-50/60 p-4 dark:border-violet-900/70 dark:bg-violet-950/20"><h3 className="font-semibold text-slate-900 dark:text-slate-50">การแสดงผลในภาพรวมรายเดือน</h3><p className="mt-1 text-xs text-slate-500 dark:text-slate-400">เลือกวัตถุประสงค์ที่อยากติดตามบนทุกวันได้สูงสุด 5 รายการ</p><label className="mt-4 flex items-center justify-between gap-3 border-t border-violet-100 pt-3 text-sm text-slate-700 dark:border-violet-900/60 dark:text-slate-200"><span>แสดงยอดเหลือหรือเกินของวัน</span><input type="checkbox" checked={showDailyBalance} onChange={(event) => void savePreference({ show_daily_balance: event.target.checked })} className="h-4 w-4 accent-violet-600" /></label><fieldset className="mt-4"><legend className="text-sm font-semibold text-slate-800 dark:text-slate-100">วัตถุประสงค์ที่แสดง (สูงสุด 5)</legend><div className="mt-2 grid gap-2 sm:grid-cols-2">{purposeNames.map((name) => { const checked = visiblePurposeNames.includes(name); const disabled = !checked && visiblePurposeNames.length >= 5; return <label key={name} className="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-300"><input type="checkbox" checked={checked} disabled={disabled} onChange={(event) => { const next = event.target.checked ? [...visiblePurposeNames, name] : visiblePurposeNames.filter((item) => item !== name); void savePreference({ visible_purpose_names: next }); }} className="h-4 w-4 accent-violet-600" />{name}</label>; })}</div></fieldset></aside>}
             <div className="mt-5"><PlanCalendar days={detail.view.days} visiblePurposeNames={visiblePurposeNames} showDailyBalance={showDailyBalance} selectedDate={selectedDate} onSelect={setSelectedDate} onOpenDaily={(date) => { setSelectedDate(date); void savePreference({ last_view: "daily" }); }} /></div>
           </section>
         )}
 
-        {view === "range" && <section className="px-5 py-6 sm:px-7"><div className="mb-4 flex flex-col gap-3 border border-violet-200 bg-violet-50/60 p-4 dark:border-violet-900/70 dark:bg-violet-950/20 sm:flex-row sm:items-center sm:justify-between"><div><h2 className="font-semibold text-slate-900 dark:text-slate-50">แผนตามช่วงเวลา: {formatThaiDate(detail.start_date)} - {formatThaiDate(detail.end_date)}</h2><p className="mt-1 text-sm text-slate-500 dark:text-slate-400">ไล่อ่านจากบนลงล่างเพื่อเทียบแผนและการใช้จริงของทุกวัน</p></div><Button type="button" variant="secondary" size="sm" disabled={!selectedDate} onClick={() => void savePreference({ last_view: "daily" })}>เปิดวันที่เลือก</Button></div><PlanRangeTable days={detail.view.range_days} selectedDate={selectedDate} onSelect={setSelectedDate} /></section>}
+        {view === "range" && <section className="px-5 py-6 sm:px-7"><div className="mb-4 flex flex-col gap-3 rounded-xl border border-violet-200 bg-violet-50/60 p-4 dark:border-violet-900/70 dark:bg-violet-950/20 sm:flex-row sm:items-center sm:justify-between"><div><h2 className="font-semibold text-slate-900 dark:text-slate-50">แผนตามช่วงเวลา: {formatThaiDate(detail.start_date)} - {formatThaiDate(detail.end_date)}</h2><p className="mt-1 text-sm text-slate-500 dark:text-slate-400">ไล่อ่านจากบนลงล่างเพื่อเทียบแผนและการใช้จริงของทุกวัน</p></div><Button type="button" variant="secondary" size="sm" disabled={!selectedDate} onClick={() => void savePreference({ last_view: "daily" })}>เปิดวันที่เลือก</Button></div><PlanRangeTable days={detail.view.range_days} selectedDate={selectedDate} onSelect={setSelectedDate} /></section>}
 
-        {view === "daily" && currentDay && <section className="px-5 py-6 sm:px-7"><div className="flex flex-col gap-4 border border-violet-200 bg-violet-50/60 p-4 dark:border-violet-900/70 dark:bg-violet-950/20 sm:flex-row sm:items-center sm:justify-between"><div><h2 className="text-lg font-bold text-slate-900 dark:text-slate-50">{formatThaiDate(currentDay.date)}</h2><p className="mt-1 text-sm text-slate-500 dark:text-slate-400">ใช้จริงเทียบกับแผนของวันนี้แยกตามวัตถุประสงค์</p></div><div className="flex items-center gap-3"><select value={currentDay.date} onChange={(event) => setSelectedDate(event.target.value)} aria-label="เลือกวันที่ดูภาพรวม" className="h-10 max-w-48 border border-slate-200 bg-white px-2 text-sm text-slate-800 outline-none focus:border-violet-400 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100">{detail.view.range_days.map((day) => <option key={day.date} value={day.date}>{formatThaiDate(day.date)}</option>)}</select><strong className={`text-lg ${remainingClassName(currentDay.remaining)}`}>{getRemainingLabel(currentDay)}</strong></div></div><DayDetail day={currentDay} /></section>}
+        {view === "daily" && currentDay && <section className="px-5 py-6 sm:px-7"><div className="flex flex-col gap-4 rounded-xl border border-violet-200 bg-violet-50/60 p-4 dark:border-violet-900/70 dark:bg-violet-950/20 sm:flex-row sm:items-center sm:justify-between"><div><h2 className="text-lg font-bold text-slate-900 dark:text-slate-50">{formatThaiDate(currentDay.date)}</h2><p className="mt-1 text-sm text-slate-500 dark:text-slate-400">ใช้จริงเทียบกับแผนของวันนี้แยกตามวัตถุประสงค์</p></div><div className="flex items-center gap-3"><select value={currentDay.date} onChange={(event) => setSelectedDate(event.target.value)} aria-label="เลือกวันที่ดูภาพรวม" className="h-10 max-w-48 rounded-xl border border-slate-200 bg-white px-2 text-sm text-slate-800 outline-none focus:border-violet-400 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100">{detail.view.range_days.map((day) => <option key={day.date} value={day.date}>{formatThaiDate(day.date)}</option>)}</select><strong className={`text-lg ${remainingClassName(currentDay.remaining)}`}>{getRemainingLabel(currentDay)}</strong></div></div><DayDetail day={currentDay} /></section>}
       </Card>
 
       <Card className="p-5">
@@ -673,7 +673,7 @@ export default function SpendingPlanDetailPage() {
                 </summary>
                 <div className="mt-4 grid gap-3 sm:grid-cols-2">
                   {revision.purposes.map((purpose) => (
-                    <div key={purpose.name} className="border border-slate-200 p-3 dark:border-slate-700">
+                    <div key={purpose.name} className="rounded-xl border border-slate-200 p-3 dark:border-slate-700">
                       <p className="font-semibold text-slate-900 dark:text-slate-50">{purpose.name}</p>
                       <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">{purpose.categories.map((category) => category.name).join(", ")}</p>
                       <p className="mt-2 text-sm font-medium text-slate-700 dark:text-slate-200">{formatDistribution(purpose.distribution?.type)}</p>
