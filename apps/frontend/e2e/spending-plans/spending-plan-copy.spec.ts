@@ -20,7 +20,7 @@ test.describe("Spending Plan copy", () => {
     await page
       .getByLabel("วันเริ่มต้นของแผนใหม่", { exact: true })
       .fill(copiedStartDate);
-    await page.getByRole("button", { name: "สร้างสำเนา", exact: true }).click();
+    await page.getByRole("button", { name: "ยืนยันคัดลอกแผน", exact: true }).click();
 
     await expect(page).toHaveURL(/\/spending-plans\/[0-9a-f-]+$/);
     await expect(

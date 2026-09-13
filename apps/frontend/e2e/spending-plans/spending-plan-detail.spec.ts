@@ -7,9 +7,10 @@ import {
 
 test.describe("Spending Plan detail views", () => {
   test("switches between monthly, range, and daily views", async ({ page }, testInfo) => {
+    const startDate = getPlanTestStartDate(15, testInfo.retry);
     await createPlanThroughUi(page, {
       name: createPlanName("detail"),
-      startDate: getPlanTestStartDate(15, testInfo.retry),
+      startDate,
     });
 
     await page
@@ -20,10 +21,9 @@ test.describe("Spending Plan detail views", () => {
     ).toBeVisible();
     await expect(page.getByRole("table")).toBeVisible();
 
-    await page
-      .getByRole("button", { name: "ภาพรวมต่อวัน", exact: true })
-      .click();
-    await expect(page.getByText("ภาพรวมต่อวัน:", { exact: false })).toBeVisible();
+    await page.getByRole("row", { name: `เลือกวันที่ ${startDate}` }).click();
+    await page.getByRole("button", { name: "เปิดวันที่เลือก", exact: true }).click();
+    await expect(page.getByLabel("เลือกวันที่ดูภาพรวม")).toBeVisible();
 
     await page
       .getByRole("button", { name: "ภาพรวมรายเดือน", exact: true })
