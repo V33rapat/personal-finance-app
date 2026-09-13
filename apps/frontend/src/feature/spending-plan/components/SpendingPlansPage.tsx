@@ -47,7 +47,7 @@ function statusClassName(status: SpendingPlan["status"]) {
     cancelled: "bg-rose-50 text-rose-700 dark:bg-rose-950/40 dark:text-rose-300",
   };
 
-  return classNames[status];
+  return `rounded-lg ${classNames[status]}`;
 }
 
 function SpendingPlanCard({ plan }: { plan: SpendingPlan }) {
@@ -67,7 +67,7 @@ function SpendingPlanCard({ plan }: { plan: SpendingPlan }) {
           </div>
           <span className={`shrink-0 px-2.5 py-1 text-xs font-semibold ${statusClassName(plan.status)}`}>{statusLabel(plan.status)}</span>
         </div>
-        <p className="mt-6 text-2xl font-bold text-slate-900 dark:text-slate-50">{formatCurrency(plan.amount)}</p>
+        <p className="mt-6 text-2xl font-bold text-slate-900 dark:text-slate-50">ยอดรวมแผน {formatCurrency(plan.amount)}</p>
         <div className="mt-5 flex flex-wrap gap-x-4 gap-y-1 text-sm text-slate-500 dark:text-slate-400">
           <span>{walletLabel}{plan.wallets.length > 1 ? ` +${plan.wallets.length - 1}` : ""}</span>
           <span>{plan.purpose_count} วัตถุประสงค์</span>
@@ -100,7 +100,7 @@ export default function SpendingPlansPage() {
       </header>
 
       {error && (
-        <div role="alert" className="flex flex-col gap-3 border border-red-200 bg-red-50 p-4 text-sm text-red-700 dark:border-red-900/70 dark:bg-red-950/30 dark:text-red-300 sm:flex-row sm:items-center sm:justify-between">
+        <div role="alert" className="flex flex-col gap-3 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700 dark:border-red-900/70 dark:bg-red-950/30 dark:text-red-300 sm:flex-row sm:items-center sm:justify-between">
           <p>{error}</p>
           <Button variant="secondary" size="sm" onClick={() => void loadPlans()}>ลองใหม่</Button>
         </div>

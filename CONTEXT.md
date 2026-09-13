@@ -199,7 +199,7 @@ An Expense in a Plan Purpose's Transaction Category and Wallet Scope that occurs
 _Avoid_: Ignored expense, uncategorized expense
 
 **Plan Revision**:
-A configuration of a Spending Plan's Wallet Scope, Plan Purposes, category mappings, Distribution rules, and generated daily allocations that becomes effective on a specific calendar date and remains in effect until the next Revision. Saving a Revision for the same effective date replaces that day's configuration.
+A configuration of a Spending Plan's Wallet Scope, Plan Purposes, category mappings, Distribution rules, and generated occurrence allocations that becomes effective on a specific calendar date and remains in effect until the next Revision. Saving a Revision for the same effective date replaces that day's configuration.
 _Avoid_: Transaction edit, plan history entry
 
 **Dashboard Layout**:

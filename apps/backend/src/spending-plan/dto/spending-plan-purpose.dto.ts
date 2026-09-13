@@ -63,7 +63,7 @@ export class SpendingPlanPurposeDto {
 
   @IsNumber({ maxDecimalPlaces: 2 })
   @Min(0.01)
-  amount: number;
+  target_amount: number;
 
   @ValidateNested({ each: true })
   @Type(() => SpendingPlanDistributionDto)

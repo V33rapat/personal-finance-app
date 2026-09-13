@@ -12,6 +12,7 @@ import { useWallet } from "@/feature/wallet/hooks/useWallet";
 import {
   createPurpose,
   getDistributionPreview,
+  getProjectedPlanTotal,
   getPlanDates,
   type SpendingPlanDistributionType,
   type SpendingPlanFormValues,
@@ -93,6 +94,7 @@ function PurposeCard({
   isRevision,
   isSaving,
   isLoadingCategories,
+  allCategories,
   visibleCategories,
   categorySearch,
   onCategorySearchChange,
@@ -108,6 +110,7 @@ function PurposeCard({
   isRevision: boolean;
   isSaving: boolean;
   isLoadingCategories: boolean;
+  allCategories: Array<{ id: string; name: string; color: string | null }>;
   visibleCategories: Array<{ id: string; name: string; color: string | null }>;
   categorySearch: string;
   onCategorySearchChange: (value: string) => void;
@@ -127,9 +130,15 @@ function PurposeCard({
     purpose.distribution.type === "weekly" ||
     purpose.distribution.type === "biweekly";
   const isSpecificDates = purpose.distribution.type === "specific_dates";
+  const selectedCategories = allCategories.filter((category) =>
+    purpose.category_ids.includes(category.id),
+  );
 
   return (
-    <article className="border border-slate-200 p-4 dark:border-slate-700 sm:p-5">
+    <article
+      data-testid="spending-plan-purpose-card"
+      className="rounded-xl border border-slate-200 p-4 dark:border-slate-700 sm:p-5"
+    >
       <div className="flex items-start gap-3">
         <div className="grid flex-1 gap-4 md:grid-cols-[minmax(0,1fr)_180px]">
           <label className="flex flex-col gap-1 text-sm font-semibold text-slate-700 dark:text-slate-200">
@@ -142,23 +151,23 @@ function PurposeCard({
               }
               placeholder="เช่น ค่าอาหาร"
               disabled={isSaving}
-              className="h-11 border border-slate-200 bg-white px-3 text-sm font-normal text-slate-800 outline-none transition focus:border-violet-400 focus:ring-2 focus:ring-violet-400/20 disabled:opacity-60 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
+              className="h-11 rounded-xl border border-slate-200 bg-white px-3 text-sm font-normal text-slate-800 outline-none transition focus:border-violet-400 focus:ring-2 focus:ring-violet-400/20 disabled:opacity-60 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
             />
           </label>
           <label className="flex flex-col gap-1 text-sm font-semibold text-slate-700 dark:text-slate-200">
-            ยอดของวัตถุประสงค์
+            วงเงินต่อครั้ง
             <input
               type="number"
               data-testid="spending-plan-purpose-amount"
               min="0.01"
               step="0.01"
               inputMode="decimal"
-              value={purpose.amount}
+              value={purpose.target_amount}
               onChange={(event) =>
-                onUpdate((item) => ({ ...item, amount: event.target.value }))
+                onUpdate((item) => ({ ...item, target_amount: event.target.value }))
               }
               disabled={isSaving}
-              className="h-11 border border-slate-200 bg-white px-3 text-right text-sm font-normal text-slate-800 outline-none transition focus:border-violet-400 focus:ring-2 focus:ring-violet-400/20 disabled:opacity-60 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
+              className="h-11 rounded-xl border border-slate-200 bg-white px-3 text-right text-sm font-normal text-slate-800 outline-none transition focus:border-violet-400 focus:ring-2 focus:ring-violet-400/20 disabled:opacity-60 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
             />
           </label>
         </div>
@@ -168,7 +177,7 @@ function PurposeCard({
           onClick={onRemove}
           aria-label={`ลบ ${purpose.name || "วัตถุประสงค์"}`}
           title="ลบวัตถุประสงค์"
-          className="shrink-0 p-2 text-rose-600 transition hover:bg-rose-50 disabled:cursor-not-allowed disabled:opacity-50 dark:text-rose-400 dark:hover:bg-rose-950/30"
+          className="shrink-0 rounded-lg p-2 text-rose-600 transition hover:bg-rose-50 disabled:cursor-not-allowed disabled:opacity-50 dark:text-rose-400 dark:hover:bg-rose-950/30"
         >
           <X className="h-4 w-4" aria-hidden />
         </button>
@@ -179,22 +188,50 @@ function PurposeCard({
           <p className="text-sm font-semibold text-slate-700 dark:text-slate-200">
             หมวดหมู่รายจ่าย
           </p>
-          <div className="relative mt-2">
+          <div
+            role="group"
+            aria-label="หมวดหมู่ที่เลือก"
+            className="mt-2 flex min-h-9 flex-wrap items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-2 py-1.5 dark:border-slate-700 dark:bg-slate-800"
+          >
             <Search
-              className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400"
+              className="h-3.5 w-3.5 shrink-0 text-slate-400"
               aria-hidden
             />
+            {selectedCategories.map((category) => (
+              <span
+                key={category.id}
+                className="inline-flex max-w-full items-center gap-1 rounded-lg bg-violet-50 px-1.5 py-1 text-xs text-violet-700 dark:bg-violet-950/40 dark:text-violet-200"
+              >
+                <span
+                  className="h-2 w-2 shrink-0 rounded-full"
+                  style={{ backgroundColor: category.color ?? "#94a3b8" }}
+                  aria-hidden
+                />
+                <span className="max-w-40 truncate">{category.name}</span>
+                <button
+                  type="button"
+                  onClick={() => onToggleCategory(category.id, false)}
+                  disabled={isSaving}
+                  aria-label={`นำหมวดหมู่ ${category.name} ออก`}
+                  title={`นำหมวดหมู่ ${category.name} ออก`}
+                  className="shrink-0 p-0.5 text-violet-600 transition hover:bg-violet-100 disabled:cursor-not-allowed disabled:opacity-50 dark:text-violet-300 dark:hover:bg-violet-900/60"
+                >
+                  <X className="h-3 w-3" aria-hidden />
+                </button>
+              </span>
+            ))}
             <input
               value={categorySearch}
               onChange={(event) => onCategorySearchChange(event.target.value)}
               placeholder="ค้นหาหมวดหมู่"
+              aria-label="ค้นหาหมวดหมู่รายจ่าย"
               disabled={isSaving}
-              className="h-9 w-full border border-slate-200 bg-white pl-8 pr-2 text-xs text-slate-800 outline-none focus:border-violet-400 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
+              className="h-7 min-w-[8rem] flex-1 border-0 bg-transparent p-0 text-xs text-slate-800 outline-none placeholder:text-slate-400 focus:ring-0 dark:text-slate-100"
             />
           </div>
           <div
             data-testid="spending-plan-category-options"
-            className="mt-1 max-h-32 overflow-y-auto border border-slate-100 dark:border-slate-800"
+            className="mt-1 max-h-32 overflow-y-auto rounded-xl border border-slate-100 dark:border-slate-800"
           >
             {visibleCategories.map((category) => {
               const selectedElsewhere = values.purposes.some(
@@ -258,7 +295,7 @@ function PurposeCard({
                 }))
               }
               disabled={isSaving}
-              className="h-11 border border-slate-200 bg-white px-3 text-sm font-normal text-slate-800 outline-none focus:border-violet-400 focus:ring-2 focus:ring-violet-400/20 disabled:opacity-60 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
+              className="h-11 rounded-xl border border-slate-200 bg-white px-3 text-sm font-normal text-slate-800 outline-none focus:border-violet-400 focus:ring-2 focus:ring-violet-400/20 disabled:opacity-60 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
             >
               <option value="">เลือกรูปแบบการกระจาย</option>
               {distributionOptions.map((option) => (
@@ -270,7 +307,7 @@ function PurposeCard({
           </label>
 
           {isWeekly && (
-            <fieldset className="mt-3 border border-slate-200 p-3 dark:border-slate-700">
+            <fieldset className="mt-3 rounded-xl border border-slate-200 p-3 dark:border-slate-700">
               <legend className="px-1 text-xs font-semibold text-slate-600 dark:text-slate-300">
                 เลือกวันที่ต้องการทำซ้ำ
               </legend>
@@ -316,7 +353,7 @@ function PurposeCard({
           )}
 
           {isSpecificDates && (
-            <div className="mt-3 border border-slate-200 p-2 dark:border-slate-700">
+            <div className="mt-3 overflow-hidden rounded-xl border border-slate-200 p-2 dark:border-slate-700">
               <p className="px-2 pt-1 text-xs font-semibold text-slate-600 dark:text-slate-300">
                 เลือกวันที่ในช่วง {formatShortDate(windowStart)} - {formatShortDate(windowEnd)}
               </p>
@@ -351,9 +388,9 @@ function PurposeCard({
         </div>
       </div>
 
-      <div className="mt-4 flex flex-wrap items-center justify-between gap-2 border-t border-slate-100 pt-3 text-sm dark:border-slate-800">
+      <div className="mt-4 flex flex-wrap items-center justify-between gap-2 rounded-lg border-t border-slate-100 pt-3 text-sm dark:border-slate-800">
         <p className="text-slate-500 dark:text-slate-400">
-          เลือก {preview.dayCount} วัน · เฉลี่ยประมาณ {formatCurrency(preview.amountPerDay)} / วัน
+          เลือก {preview.dayCount} ครั้ง · {formatCurrency(preview.amountPerOccurrence)} / ครั้ง
         </p>
         <p className="font-semibold text-slate-800 dark:text-slate-100">
           รวม {formatCurrency(preview.total)}
@@ -384,7 +421,7 @@ export default function SpendingPlanEditor({
   const [values, setValues] = useState(initialValues);
   const [errors, setErrors] = useState<SpendingPlanValidationErrors>({});
   const [walletSearch, setWalletSearch] = useState("");
-  const [categorySearch, setCategorySearch] = useState("");
+  const [categorySearches, setCategorySearches] = useState<Record<string, string>>({});
   const dates = useMemo(
     () => getPlanDates(values.start_date, values.end_date),
     [values.end_date, values.start_date],
@@ -406,19 +443,18 @@ export default function SpendingPlanEditor({
         )
       : transactionWallets;
   }, [transactionWallets, walletSearch]);
-  const visibleCategories = useMemo(() => {
+  const selectedWallets = values.wallet_ids
+    .map((walletId) => transactionWallets.find((wallet) => wallet.id === walletId))
+    .filter((wallet): wallet is (typeof transactionWallets)[number] => Boolean(wallet));
+  const getVisibleCategories = (categorySearch: string) => {
     const search = categorySearch.trim().toLocaleLowerCase();
     return search
       ? categories.filter((category) =>
           category.name.toLocaleLowerCase().includes(search),
         )
       : categories;
-  }, [categories, categorySearch]);
-  const purposeTotal = values.purposes.reduce(
-    (total, purpose) => total + Number(purpose.amount || 0),
-    0,
-  );
-  const planAmount = Number(values.amount || 0);
+  };
+  const planTotal = getProjectedPlanTotal(values, windowStart, windowEnd);
   const isRevision = Boolean(effectiveDate);
 
   const update = (next: SpendingPlanFormValues) => {
@@ -453,6 +489,22 @@ export default function SpendingPlanEditor({
     });
   };
 
+  const updateCategorySearch = (purposeId: string, value: string) => {
+    setCategorySearches((current) => ({ ...current, [purposeId]: value }));
+  };
+
+  const removePurpose = (purposeId: string) => {
+    update({
+      ...values,
+      purposes: values.purposes.filter((purpose) => purpose.id !== purposeId),
+    });
+    setCategorySearches((current) => {
+      const next = { ...current };
+      delete next[purposeId];
+      return next;
+    });
+  };
+
   const submit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const result = await onSubmit(values);
@@ -470,17 +522,6 @@ export default function SpendingPlanEditor({
             error={errors.name}
             placeholder="เช่น แผนใช้เงินเที่ยวเชียงใหม่"
             disabled={isSaving}
-          />
-          <FormField
-            label="ยอดรวมที่วางแผน"
-            type="number"
-            min="0.01"
-            step="0.01"
-            inputMode="decimal"
-            value={values.amount}
-            onChange={(event) => update({ ...values, amount: event.target.value })}
-            error={errors.amount}
-            disabled={isSaving || isRevision}
           />
           <FormField
             label="วันเริ่มต้น"
@@ -521,22 +562,45 @@ export default function SpendingPlanEditor({
             เลือกแล้ว {values.wallet_ids.length} ใบ
           </span>
         </div>
-        <div className="relative mt-4">
+        <div
+          role="group"
+          aria-label="กระเป๋าที่เลือก"
+          className="mt-4 flex min-h-11 flex-wrap items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-2.5 py-2 dark:border-slate-700 dark:bg-slate-800"
+        >
           <Search
-            className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400"
+            className="h-4 w-4 shrink-0 text-slate-400"
             aria-hidden
           />
+          {selectedWallets.map((wallet) => (
+            <span
+              key={wallet.id}
+              className="inline-flex max-w-full items-center gap-1 rounded-lg bg-violet-50 px-2 py-1 text-xs text-violet-700 dark:bg-violet-950/40 dark:text-violet-200"
+            >
+              <span className="max-w-56 truncate">{wallet.label}</span>
+              <button
+                type="button"
+                onClick={() => toggleWallet(wallet.id, false)}
+                disabled={isSaving}
+                aria-label={`นำกระเป๋า ${wallet.label} ออก`}
+                title={`นำกระเป๋า ${wallet.label} ออก`}
+                className="shrink-0 p-0.5 text-violet-600 transition hover:bg-violet-100 disabled:cursor-not-allowed disabled:opacity-50 dark:text-violet-300 dark:hover:bg-violet-900/60"
+              >
+                <X className="h-3.5 w-3.5" aria-hidden />
+              </button>
+            </span>
+          ))}
           <input
             value={walletSearch}
             onChange={(event) => setWalletSearch(event.target.value)}
             placeholder="ค้นหากระเป๋า"
+            aria-label="ค้นหากระเป๋าที่ติดตาม"
             disabled={isSaving || isLoadingWallets}
-            className="h-11 w-full border border-slate-200 bg-white pl-10 pr-3 text-sm text-slate-800 outline-none transition focus:border-violet-400 focus:ring-2 focus:ring-violet-400/20 disabled:cursor-not-allowed disabled:opacity-60 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
+            className="h-7 min-w-[10rem] flex-1 border-0 bg-transparent p-0 text-sm text-slate-800 outline-none placeholder:text-slate-400 focus:ring-0 disabled:cursor-not-allowed disabled:opacity-60 dark:text-slate-100"
           />
         </div>
         <div
           data-testid="spending-plan-wallet-options"
-          className="mt-3 max-h-52 overflow-y-auto border border-slate-200 dark:border-slate-700"
+          className="mt-3 max-h-52 overflow-y-auto rounded-xl border border-slate-200 dark:border-slate-700"
         >
           {visibleWallets.map((wallet) => (
             <label
@@ -578,6 +642,7 @@ export default function SpendingPlanEditor({
             </p>
           </div>
           <Button
+            type="button"
             size="sm"
             variant="secondary"
             disabled={isSaving || values.purposes.length >= 10}
@@ -597,9 +662,12 @@ export default function SpendingPlanEditor({
         </header>
 
         <div className="mt-5 space-y-4">
-          {values.purposes.map((purpose) => (
-            <div key={purpose.id} data-testid="spending-plan-purpose-card">
+          {values.purposes.map((purpose) => {
+            const categorySearch = categorySearches[purpose.id] ?? "";
+
+            return (
               <PurposeCard
+                key={purpose.id}
                 purpose={purpose}
                 values={values}
                 dates={dates}
@@ -608,9 +676,12 @@ export default function SpendingPlanEditor({
                 isRevision={isRevision}
                 isSaving={isSaving}
                 isLoadingCategories={isLoadingCategories}
-                visibleCategories={visibleCategories}
+                allCategories={categories}
+                visibleCategories={getVisibleCategories(categorySearch)}
                 categorySearch={categorySearch}
-                onCategorySearchChange={setCategorySearch}
+                onCategorySearchChange={(value) =>
+                  updateCategorySearch(purpose.id, value)
+                }
                 onUpdate={(updater) => updatePurpose(purpose.id, updater)}
                 onToggleCategory={(categoryId, checked) =>
                   updatePurpose(purpose.id, (item) => ({
@@ -620,23 +691,18 @@ export default function SpendingPlanEditor({
                       : item.category_ids.filter((id) => id !== categoryId),
                   }))
                 }
-                onRemove={() =>
-                  update({
-                    ...values,
-                    purposes: values.purposes.filter((item) => item.id !== purpose.id),
-                  })
-                }
+                onRemove={() => removePurpose(purpose.id)}
               />
-            </div>
-          ))}
+            );
+          })}
         </div>
 
         <footer className="mt-5 flex flex-col gap-3 border-t border-slate-200 bg-slate-50/70 pt-5 dark:border-slate-800 dark:bg-slate-950/20 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <p className="text-sm font-semibold text-slate-900 dark:text-slate-50">
               {isRevision
-                ? `ยอดรวม Revision นี้ ${formatCurrency(purposeTotal)} จะคำนวณใหม่ตามช่วงที่มีผล`
-                : `จัดสรรแล้ว ${formatCurrency(purposeTotal)} / ${formatCurrency(planAmount)}`}
+                ? `ยอดรวม Revision นี้ ${formatCurrency(planTotal)} จะคำนวณใหม่ตามช่วงที่มีผล`
+                : `ยอดรวมแผน ${formatCurrency(planTotal)} จากวงเงินต่อครั้ง`}
             </p>
             {errors.purposes && (
               <p role="alert" className="mt-1 text-sm text-red-600 dark:text-red-400">
@@ -650,7 +716,7 @@ export default function SpendingPlanEditor({
             )}
           </div>
           <div className="flex flex-col-reverse gap-2 sm:flex-row">
-            <Button variant="secondary" disabled={isSaving} onClick={onCancel}>
+            <Button type="button" variant="secondary" disabled={isSaving} onClick={onCancel}>
               ยกเลิก
             </Button>
             <Button type="submit" disabled={isSaving || dates.length === 0}>

@@ -10,7 +10,6 @@ describe("spending plan BFF payload", () => {
     expect(
       toBackendSpendingPlanCreateBody({
         name: "  July plan  ",
-        amount: "1200.50",
         startDate: "2026-08-01",
         endDate: "2026-08-07",
         walletIds: ["wallet-1"],
@@ -18,7 +17,7 @@ describe("spending plan BFF payload", () => {
           {
             name: " Food ",
             categoryIds: ["category-1"],
-            amount: "180",
+            targetAmount: "180",
             distribution: {
               type: "specific_dates",
               weekdays: [1, 5],
@@ -31,7 +30,6 @@ describe("spending plan BFF payload", () => {
       }),
     ).toEqual({
       name: "July plan",
-      amount: 1200.5,
       start_date: "2026-08-01",
       end_date: "2026-08-07",
       wallet_ids: ["wallet-1"],
@@ -39,7 +37,7 @@ describe("spending plan BFF payload", () => {
         {
           name: "Food",
           category_ids: ["category-1"],
-          amount: 180,
+          target_amount: 180,
           distribution: {
             type: "specific_dates",
             weekdays: [1, 5],
@@ -54,7 +52,6 @@ describe("spending plan BFF payload", () => {
     expect(
       toBackendSpendingPlanUpdateBody({
         effective_date: "2026-08-03",
-        amount: 999,
         wallet_ids: ["wallet-1"],
         purposes: [],
         start_date: "not-allowed-on-update",
