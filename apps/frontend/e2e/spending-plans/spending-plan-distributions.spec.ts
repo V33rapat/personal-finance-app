@@ -47,7 +47,9 @@ test.describe("Spending Plan distribution rules", () => {
     await openRangeView(page);
     await expect(page.getByRole("table").locator("tbody tr")).toHaveCount(7);
     await expect(plannedCells(page).filter({ hasText: "฿20.00" })).toHaveCount(5);
-    await expect(plannedCells(page).filter({ hasText: "฿0.00" })).toHaveCount(2);
+    await expect(
+      plannedCells(page).filter({ hasText: "฿0.00 / ฿0.00" }),
+    ).toHaveCount(2);
   });
 
   test("creates weekly and biweekly plans with selected weekdays", async ({ page }, testInfo) => {
@@ -87,7 +89,9 @@ test.describe("Spending Plan distribution rules", () => {
     await openRangeView(page);
     await expect(page.getByRole("table").locator("tbody tr")).toHaveCount(7);
     await expect(plannedCells(page).filter({ hasText: "฿50.00" })).toHaveCount(2);
-    await expect(plannedCells(page).filter({ hasText: "฿0.00" })).toHaveCount(5);
+    await expect(
+      plannedCells(page).filter({ hasText: "฿0.00 / ฿0.00" }),
+    ).toHaveCount(5);
   });
 
   test("creates a new revision inside its effective window without sending allocations", async ({

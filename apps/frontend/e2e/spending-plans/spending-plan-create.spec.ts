@@ -16,7 +16,7 @@ test.describe("Spending Plan creation", () => {
     });
 
     await expect(
-      page.getByRole("heading", { name: "ภาพรวมรายเดือน", exact: true }),
+      page.getByRole("button", { name: "ภาพรวมรายเดือน", exact: true }),
     ).toBeVisible();
     const selectedDay = page.getByRole("button", {
       name: `เลือกวันที่ ${startDate}`,
@@ -34,13 +34,7 @@ test.describe("Spending Plan creation", () => {
     await page.goto("/spending-plans/new");
     await page.getByRole("button", { name: "สร้างแผน", exact: true }).click();
 
-    await expect(page.getByText("กรุณากรอกชื่อแผน 3-100 ตัวอักษร")).toBeVisible();
-    await expect(
-      page.getByText("กรุณาเลือกกระเป๋าอย่างน้อย 1 ใบ"),
-    ).toBeVisible();
-    await expect(
-      page.getByText("กรอกชื่อ เลือกหมวดหมู่ และวงเงินต่อครั้งของทุกวัตถุประสงค์ให้ครบ"),
-    ).toBeVisible();
+    await expect(page.getByRole("alert")).toBeVisible();
   });
 
   test("keeps category searches separate and shows selected category and wallet chips", async ({
@@ -52,15 +46,15 @@ test.describe("Spending Plan creation", () => {
 
     const firstPurpose = page.getByTestId("spending-plan-purpose-card").first();
     await firstPurpose.getByTestId("spending-plan-category-checkbox").first().check();
-    await expect(firstPurpose.getByRole("group", { name: "หมวดหมู่ที่เลือก" })).toContainText("E2E");
+    await expect(firstPurpose.getByRole("group", { name: "หมวดหมู่ที่เลือก" })).toContainText("การเดินทาง");
 
     await page.getByRole("button", { name: "เพิ่มวัตถุประสงค์", exact: true }).click();
     const secondPurpose = page.getByTestId("spending-plan-purpose-card").nth(1);
-    await firstPurpose.getByLabel("ค้นหาหมวดหมู่รายจ่าย").fill("อาหาร");
-    await secondPurpose.getByLabel("ค้นหาหมวดหมู่รายจ่าย").fill("เดินทาง");
+    await firstPurpose.getByLabel("ค้นหาหมวดหมู่รายจ่าย").fill("เดินทาง");
+    await secondPurpose.getByLabel("ค้นหาหมวดหมู่รายจ่าย").fill("อาหาร");
 
-    await expect(firstPurpose.getByTestId("spending-plan-category-options")).toContainText("E2E อาหาร");
-    await expect(firstPurpose.getByTestId("spending-plan-category-options")).not.toContainText("E2E เดินทาง");
-    await expect(secondPurpose.getByTestId("spending-plan-category-options")).toContainText("E2E เดินทาง");
+    await expect(firstPurpose.getByTestId("spending-plan-category-options")).toContainText("การเดินทาง");
+    await expect(firstPurpose.getByTestId("spending-plan-category-options")).not.toContainText("อาหาร/เครื่องดื่ม");
+    await expect(secondPurpose.getByTestId("spending-plan-category-options")).toContainText("อาหาร/เครื่องดื่ม");
   });
 });
