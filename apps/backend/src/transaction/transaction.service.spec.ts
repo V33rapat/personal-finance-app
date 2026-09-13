@@ -331,6 +331,68 @@ describe('TransactionService', () => {
     });
   });
 
+  it('adds management metadata to every transaction returned by findAll', async () => {
+    prisma.transactions.findMany.mockResolvedValue([
+      createTransaction({ name: 'Manual transaction' }),
+      createTransaction({
+        id: 'transfer-transaction',
+        name: 'Transfer transaction',
+        transfers_transfers_from_transaction_idTotransactions: {
+          allocation_id: null,
+        },
+        transfers_transfers_to_transaction_idTotransactions: null,
+      }),
+      createTransaction({
+        id: 'allocation-transaction',
+        name: 'Allocation transaction',
+        transfers_transfers_from_transaction_idTotransactions: null,
+        transfers_transfers_to_transaction_idTotransactions: {
+          allocation_id: 'allocation-1',
+        },
+      }),
+    ]);
+
+    const result = await service.findAll(USER_ID);
+
+    expect(result.map((transaction) => transaction.management)).toEqual([
+      'manual',
+      'transfer',
+      'allocation',
+    ]);
+    expect(prisma.transactions.findMany).toHaveBeenCalledWith({
+      where: { wallets: { user_id: USER_ID }, deleted_at: null },
+      include: {
+        categories: true,
+        wallets: true,
+        transfers_transfers_from_transaction_idTotransactions: {
+          select: { allocation_id: true },
+        },
+        transfers_transfers_to_transaction_idTotransactions: {
+          select: { allocation_id: true },
+        },
+      },
+      orderBy: { transaction_date: 'desc' },
+    });
+  });
+
+  it('keeps findAll scoped to the requested user wallet', async () => {
+    prisma.transactions.findMany.mockResolvedValue([]);
+
+    await service.findAll(USER_ID, SOURCE_WALLET_ID);
+
+    expect(prisma.transactions.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: {
+          wallets: {
+            user_id: USER_ID,
+            id: SOURCE_WALLET_ID,
+          },
+          deleted_at: null,
+        },
+      }),
+    );
+  });
+
   it('rejects future transaction dates before creating or updating records', async () => {
     jest.useFakeTimers();
     jest.setSystemTime(Date.parse('2026-07-30T12:00:00.000Z'));
@@ -362,6 +424,18 @@ describe('TransactionService', () => {
     } finally {
       jest.useRealTimers();
     }
+  });
+
+  it('rejects deleting a transaction managed by a money allocation', async () => {
+    prisma.transactions.findFirst.mockResolvedValue(createTransaction());
+    prisma.transfers.findFirst.mockResolvedValue({ id: 'transfer-1' });
+
+    await expect(
+      service.delete(USER_ID, TRANSACTION_ID),
+    ).rejects.toBeInstanceOf(BadRequestException);
+
+    expect(prisma.wallets.findFirst).not.toHaveBeenCalled();
+    expect(prisma.$transaction).not.toHaveBeenCalled();
   });
 
   it('returns one filtered daily page while keeping the summary unfiltered', async () => {
