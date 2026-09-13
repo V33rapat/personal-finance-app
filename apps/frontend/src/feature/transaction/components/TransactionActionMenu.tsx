@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { BookmarkPlus, Copy, MoreHorizontal, Pencil, Trash2 } from "lucide-react";
 import { TH_TEXT } from "@/constants/th";
 import type { Transaction } from "./TransactionItem";
+import { getTransactionActionIds } from "../lib/transactionActions";
 
 interface TransactionActionMenuProps {
   transaction: Transaction;
@@ -36,8 +37,6 @@ export default function TransactionActionMenu({
   const triggerRef = useRef<HTMLButtonElement>(null);
   const firstItemRef = useRef<HTMLButtonElement>(null);
 
-  const isManaged = transaction.management && transaction.management !== "manual";
-
   useEffect(() => {
     if (!isOpen) return;
 
@@ -55,7 +54,7 @@ export default function TransactionActionMenu({
     if (isOpen) firstItemRef.current?.focus();
   }, [isOpen]);
 
-  if (isManaged) return null;
+  if (getTransactionActionIds(transaction).length === 0) return null;
 
   const actions = ([
     onEdit

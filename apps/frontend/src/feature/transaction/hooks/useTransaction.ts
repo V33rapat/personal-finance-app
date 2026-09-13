@@ -3,6 +3,10 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useToast } from "@/components/providers/ToastProvider";
 import type { Transaction, TransactionType } from "../components/TransactionItem";
+import {
+  toTransactionCreatePayload,
+  toTransactionUpdatePayload,
+} from "../lib/transactionActions";
 
 interface UseTransactionOptions {
   walletId?: string | null;
@@ -268,16 +272,7 @@ export function useTransaction(options: UseTransactionOptions = {}) {
       const response = await fetch("/api/transaction", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          wallet_id: targetWalletId,
-          name: values.name.trim(),
-          amount: Number(values.amount),
-          type: values.type,
-          category_id: values.category_id || null,
-          template_id: values.template_id || null,
-          transaction_date: values.transaction_date,
-          note: values.note.trim() || null,
-        }),
+        body: JSON.stringify(toTransactionCreatePayload(values)),
       });
       const data = await readApiResponse(response);
 
@@ -313,15 +308,7 @@ export function useTransaction(options: UseTransactionOptions = {}) {
       const response = await fetch(`/api/transaction/${editingTransaction.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          wallet_id: values.wallet_id,
-          name: values.name.trim(),
-          amount: Number(values.amount),
-          type: values.type,
-          category_id: values.category_id || null,
-          transaction_date: values.transaction_date,
-          note: values.note.trim() || null,
-        }),
+        body: JSON.stringify(toTransactionUpdatePayload(values)),
       });
       const data = await readApiResponse(response);
 

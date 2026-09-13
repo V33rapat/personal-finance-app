@@ -11,6 +11,7 @@ import {
   getTransactionWalletOptions,
   type TransactionWalletOption,
 } from "../lib/transactionWallet";
+import { getDuplicateTransactionValues } from "../lib/transactionActions";
 import type { Wallet } from "@/feature/wallet/hooks/useWallet";
 
 interface TransactionModalProps {
@@ -97,11 +98,7 @@ function getInitialValues(
   };
 
   if (mode === "duplicate") {
-    return {
-      ...values,
-      name: `${values.name}${TH_TEXT.transaction.duplicateSuffix}`,
-      template_id: null,
-    };
+    return getDuplicateTransactionValues(values);
   }
 
   return values;
