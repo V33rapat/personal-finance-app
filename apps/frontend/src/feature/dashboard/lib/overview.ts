@@ -91,6 +91,12 @@ export function buildDashboardChartData(
       type: segment.type,
     }));
 
+  for (const row of rows) {
+    for (const segment of categorySegments) {
+      row[segment.key] ??= 0;
+    }
+  }
+
   return {
     rows,
     incomeSegments: categorySegments.filter((segment) => segment.type === "income"),

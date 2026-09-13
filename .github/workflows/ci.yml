@@ -2,7 +2,6 @@ name: CI
 
 on:
   pull_request:
-    branches: [main]
   push:
     branches: [main]
 
@@ -79,6 +78,9 @@ jobs:
 
       - name: Lint
         run: pnpm run lint
+
+      - name: Type check
+        run: pnpm exec tsc --noEmit
 
       - name: Build
         run: pnpm run build
@@ -195,3 +197,98 @@ jobs:
 
       - name: API integration tests
         run: pnpm exec jest --config ./test/jest-e2e.json --runInBand
+
+  frontend-playwright-e2e:
+    name: Frontend Playwright E2E
+    runs-on: ubuntu-latest
+    env:
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/personal_finance_playwright?schema=public
+      DIRECT_URL: postgresql://postgres:postgres@localhost:5432/personal_finance_playwright?schema=public
+      JWT_SECRET: ci-playwright-e2e-test-secret
+      NEXT_PUBLIC_BACKEND_URL: http://127.0.0.1:3001
+      PLAYWRIGHT_E2E_EMAIL: playwright-e2e@walpaca.test
+      PLAYWRIGHT_E2E_SECONDARY_EMAIL: playwright-e2e-secondary@walpaca.test
+      PLAYWRIGHT_E2E_DAILY_EMAIL: playwright-e2e-daily@walpaca.test
+      PLAYWRIGHT_E2E_PASSWORD: PlaywrightE2E!123
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_DB: personal_finance_playwright
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d personal_finance_playwright"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - name: Set up Node.js for Backend
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: apps/backend/pnpm-lock.yaml
+
+      - name: Install Backend dependencies
+        working-directory: apps/backend
+        run: pnpm install --frozen-lockfile
+
+      - name: Generate Prisma Client
+        working-directory: apps/backend
+        run: pnpm prisma generate
+
+      - name: Apply migrations to the Playwright database
+        working-directory: apps/backend
+        run: pnpm prisma migrate deploy
+
+      - name: Seed Playwright account and budgets
+        working-directory: apps/backend
+        run: pnpm run seed:playwright-e2e
+
+      - name: Build Backend
+        working-directory: apps/backend
+        run: pnpm run build
+
+      - name: Set up Node.js for Frontend
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: apps/frontend/package-lock.json
+
+      - name: Install Frontend dependencies
+        working-directory: apps/frontend
+        run: npm ci
+
+      - name: Build Frontend
+        working-directory: apps/frontend
+        run: npm run build
+
+      - name: Install Chromium
+        working-directory: apps/frontend
+        run: npx playwright install --with-deps chromium
+
+      - name: Run Playwright E2E tests
+        working-directory: apps/frontend
+        run: npm run test:e2e
+
+      - name: Upload Playwright artifacts
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-artifacts
+          path: |
+            apps/frontend/playwright-report
+            apps/frontend/test-results
+          if-no-files-found: ignore

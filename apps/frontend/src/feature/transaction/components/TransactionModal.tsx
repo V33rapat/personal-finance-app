@@ -18,6 +18,7 @@ interface TransactionModalProps {
   transaction?: Transaction | null;
   wallets: Wallet[];
   defaultWalletId?: string | null;
+  defaultTransactionDate?: string;
   isSaving?: boolean;
   error?: string | null;
   onClose: () => void;
@@ -28,14 +29,31 @@ interface TransactionModalProps {
 interface TransactionModalFormProps
   extends Omit<
     TransactionModalProps,
-    "isOpen" | "transaction" | "wallets" | "defaultWalletId"
+    "isOpen" | "transaction" | "wallets" | "defaultWalletId" | "defaultTransactionDate"
   > {
   initialValues: TransactionFormValues;
   isEditMode: boolean;
   walletOptions: TransactionWalletOption[];
 }
 
-function getDefaultValues(defaultWalletId?: string | null): TransactionFormValues {
+function getBangkokToday() {
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone: "Asia/Bangkok",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(new Date());
+  const year = parts.find((part) => part.type === "year")?.value;
+  const month = parts.find((part) => part.type === "month")?.value;
+  const day = parts.find((part) => part.type === "day")?.value;
+
+  return year && month && day ? `${year}-${month}-${day}` : new Date().toISOString().slice(0, 10);
+}
+
+function getDefaultValues(
+  defaultWalletId?: string | null,
+  defaultTransactionDate?: string
+): TransactionFormValues {
   return {
     wallet_id: defaultWalletId ?? "",
     name: "",
@@ -43,7 +61,7 @@ function getDefaultValues(defaultWalletId?: string | null): TransactionFormValue
     type: "expense",
     category_id: null,
     template_id: null,
-    transaction_date: new Date().toISOString().split("T")[0],
+    transaction_date: defaultTransactionDate ?? getBangkokToday(),
     note: "",
   };
 }
@@ -51,13 +69,15 @@ function getDefaultValues(defaultWalletId?: string | null): TransactionFormValue
 function getInitialValues(
   transaction: Transaction | null | undefined,
   defaultWalletId: string | null | undefined,
+  defaultTransactionDate: string | undefined,
   eligibleWalletIds: Set<string>
 ): TransactionFormValues {
   if (!transaction) {
     return getDefaultValues(
       defaultWalletId && eligibleWalletIds.has(defaultWalletId)
         ? defaultWalletId
-        : undefined
+        : undefined,
+      defaultTransactionDate
     );
   }
 
@@ -148,6 +168,12 @@ function TransactionModalForm({
       nextErrors.amount = "กรุณากรอกจำนวนเงินที่ถูกต้อง";
     }
 
+    if (!values.transaction_date) {
+      nextErrors.transaction_date = TH_TEXT.transaction.dateRequired;
+    } else if (values.transaction_date > getBangkokToday()) {
+      nextErrors.transaction_date = TH_TEXT.transaction.futureDate;
+    }
+
     setErrors(nextErrors);
     return Object.keys(nextErrors).length === 0;
   };
@@ -209,9 +235,18 @@ function TransactionModalForm({
         aria-label={TH_TEXT.common.close}
       />
 
-      <div className="relative w-full max-w-md rounded-2xl border border-slate-200 bg-white p-6 shadow-2xl dark:border-slate-800 dark:bg-slate-900">
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="transaction-modal-title"
+        data-testid="transaction-modal"
+        className="relative w-full max-w-md rounded-2xl border border-slate-200 bg-white p-6 shadow-2xl dark:border-slate-800 dark:bg-slate-900"
+      >
         <div className="mb-6 flex items-center justify-between">
-          <h2 className="text-lg font-bold text-slate-800 dark:text-slate-100">
+          <h2
+            id="transaction-modal-title"
+            className="text-lg font-bold text-slate-800 dark:text-slate-100"
+          >
             {isEditMode ? TH_TEXT.common.edit : TH_TEXT.transaction.addTransaction}
           </h2>
           <button
@@ -230,7 +265,7 @@ function TransactionModalForm({
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form noValidate onSubmit={handleSubmit} className="space-y-4">
           {error && (
             <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-900/70 dark:bg-red-950/30 dark:text-red-300">
               {error}
@@ -245,6 +280,8 @@ function TransactionModalForm({
               value={values.wallet_id}
               disabled={isSaving || walletOptions.length === 0}
               onChange={(event) => updateValue("wallet_id", event.target.value)}
+              aria-label={TH_TEXT.transaction.wallet}
+              data-testid="transaction-wallet"
               className="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-800 focus:border-violet-500 focus:outline-none focus:ring-2 focus:ring-violet-500/20 disabled:cursor-not-allowed disabled:opacity-60 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
             >
               <option value="">{TH_TEXT.transaction.selectWallet}</option>
@@ -317,6 +354,8 @@ function TransactionModalForm({
               value={values.name}
               onChange={(event) => updateValue("name", event.target.value)}
               placeholder={TH_TEXT.transaction.namePlaceholder}
+              aria-label={TH_TEXT.transaction.name}
+              data-testid="transaction-name"
               className="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-800 placeholder:text-slate-400 focus:border-violet-500 focus:outline-none focus:ring-2 focus:ring-violet-500/20 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
             />
           </FormField>
@@ -329,6 +368,8 @@ function TransactionModalForm({
               value={values.amount}
               onChange={(event) => updateValue("amount", event.target.value)}
               placeholder={TH_TEXT.transaction.amountPlaceholder}
+              aria-label={TH_TEXT.transaction.amount}
+              data-testid="transaction-amount"
               className="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-800 placeholder:text-slate-400 focus:border-violet-500 focus:outline-none focus:ring-2 focus:ring-violet-500/20 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
             />
           </FormField>
@@ -344,11 +385,14 @@ function TransactionModalForm({
             />
           </FormField>
 
-          <FormField label={TH_TEXT.transaction.date}>
+          <FormField label={TH_TEXT.transaction.date} error={errors.transaction_date}>
             <input
               type="date"
               value={values.transaction_date}
+              max={getBangkokToday()}
               onChange={(event) => updateValue("transaction_date", event.target.value)}
+              aria-label={TH_TEXT.transaction.date}
+              data-testid="transaction-date"
               className="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-800 focus:border-violet-500 focus:outline-none focus:ring-2 focus:ring-violet-500/20 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
             />
           </FormField>
@@ -358,6 +402,8 @@ function TransactionModalForm({
               value={values.note}
               onChange={(event) => updateValue("note", event.target.value)}
               placeholder={TH_TEXT.transaction.notePlaceholder}
+              aria-label={TH_TEXT.transaction.note}
+              data-testid="transaction-note"
               rows={2}
               className="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-800 placeholder:text-slate-400 focus:border-violet-500 focus:outline-none focus:ring-2 focus:ring-violet-500/20 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
             />
@@ -386,6 +432,7 @@ export default function TransactionModal({
   transaction,
   wallets,
   defaultWalletId,
+  defaultTransactionDate,
   ...props
 }: TransactionModalProps) {
   const walletOptions = useMemo(
@@ -401,10 +448,11 @@ export default function TransactionModal({
 
   return (
     <TransactionModalForm
-      key={transaction?.id ?? "new"}
+      key={transaction?.id ?? `new-${defaultTransactionDate ?? ""}`}
       initialValues={getInitialValues(
         transaction,
         defaultWalletId,
+        defaultTransactionDate,
         eligibleWalletIds
       )}
       isEditMode={!!transaction}

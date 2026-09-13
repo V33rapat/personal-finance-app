@@ -103,6 +103,13 @@ describe("dashboard overview helpers", () => {
             },
           ],
         },
+        {
+          date: "2026-07-21",
+          income_total: "0.00",
+          expense_total: "0.00",
+          income_categories: [],
+          expense_categories: [],
+        },
       ],
     });
 
@@ -116,6 +123,14 @@ describe("dashboard overview helpers", () => {
         "income-salary": 1000,
         "expense-other": 120,
         "expense-uncategorized": 180,
+      },
+      {
+        date: "2026-07-21",
+        income_total: 0,
+        expense_total: 0,
+        "income-salary": 0,
+        "expense-other": 0,
+        "expense-uncategorized": 0,
       },
     ]);
     expect(chart.incomeSegments).toMatchObject([
