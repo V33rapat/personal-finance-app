@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { DayPicker } from "react-day-picker";
+import { DayButton, DayPicker, type DayButtonProps } from "react-day-picker";
 import { Plus, Search, X } from "lucide-react";
 import Button from "@/components/ui/Button";
 import Card from "@/components/ui/Card";
@@ -83,6 +83,10 @@ function toDateValue(value: Date) {
   const month = String(value.getMonth() + 1).padStart(2, "0");
   const day = String(value.getDate()).padStart(2, "0");
   return `${year}-${month}-${day}`;
+}
+
+function SpecificDateDayButton({ day, ...props }: DayButtonProps) {
+  return <DayButton {...props} day={day} data-date={toDateValue(day.date)} />;
 }
 
 function PurposeCard({
@@ -359,6 +363,7 @@ function PurposeCard({
               </p>
               <DayPicker
                 data-testid="spending-plan-specific-date-picker"
+                components={{ DayButton: SpecificDateDayButton }}
                 mode="multiple"
                 selected={purpose.distribution.dates.map(toPickerDate)}
                 onSelect={(selected) =>

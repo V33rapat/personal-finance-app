@@ -324,6 +324,9 @@ async function seedPrimaryUser() {
             create: {
               name: 'E2E Legacy Purpose',
               sort_order: 0,
+              target_amount: null,
+              distribution_type: null,
+              distribution_weekdays: [],
               spending_plan_revision_purpose_categories: {
                 create: { category_id: food.id },
               },

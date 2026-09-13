@@ -43,8 +43,7 @@ export async function createPlanThroughUi(
     name: string;
     startDate: string;
     endDate?: string;
-    amount?: string;
-    purposeAmount?: string;
+    targetAmount?: string;
     distribution?: DistributionFixture;
   },
 ) {
@@ -56,9 +55,6 @@ export async function createPlanThroughUi(
   ).toBeVisible();
 
   await page.getByLabel("ชื่อแผน", { exact: true }).fill(options.name);
-  await page
-    .getByLabel("ยอดรวมที่วางแผน", { exact: true })
-    .fill(options.amount ?? "100");
   await page
     .getByLabel("วันเริ่มต้น", { exact: true })
     .fill(options.startDate);
@@ -77,7 +73,7 @@ export async function createPlanThroughUi(
   await purpose.getByTestId("spending-plan-purpose-name").fill("E2E ค่าอาหาร");
   await purpose
     .getByTestId("spending-plan-purpose-amount")
-    .fill(options.purposeAmount ?? options.amount ?? "100");
+    .fill(options.targetAmount ?? "100");
   const categoryOptions = purpose.getByTestId("spending-plan-category-options");
   await expect(categoryOptions).toBeVisible();
   await categoryOptions
@@ -102,18 +98,36 @@ export async function createPlanThroughUi(
     for (const selectedDate of distribution.dates) {
       await purpose
         .getByTestId("spending-plan-specific-date-picker")
-        .locator(`[data-day="${selectedDate}"]`)
+        .locator(`[data-date="${selectedDate}"]`)
         .click();
     }
   }
 
+  const createRequestPromise = page.waitForRequest(
+    (request) =>
+      request.url().endsWith("/api/spending-plan") && request.method() === "POST",
+  );
   const createResponsePromise = page.waitForResponse(
     (response) =>
       response.url().endsWith("/api/spending-plan") &&
       response.request().method() === "POST",
   );
   await page.getByRole("button", { name: "สร้างแผน", exact: true }).click();
-  const createResponse = await createResponsePromise;
+  const [createRequest, createResponse] = await Promise.all([
+    createRequestPromise,
+    createResponsePromise,
+  ]);
+  const payload = JSON.parse(createRequest.postData() ?? "{}");
+  expect(payload).not.toHaveProperty("amount");
+  expect(payload.purposes).toEqual(
+    expect.arrayContaining([
+      expect.objectContaining({
+        target_amount: Number(options.targetAmount ?? "100"),
+        distribution: expect.any(Object),
+      }),
+    ]),
+  );
+  expect(payload.purposes[0]).not.toHaveProperty("allocations");
   if (!createResponse.ok()) {
     throw new Error(
       `Create spending plan failed (${createResponse.status()}): ${await createResponse.text()}`,
