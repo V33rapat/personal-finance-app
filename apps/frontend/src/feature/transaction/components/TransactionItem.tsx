@@ -1,6 +1,7 @@
 "use client";
 
 import { TH_TEXT } from "@/constants/th";
+import TransactionActionMenu from "./TransactionActionMenu";
 
 export type TransactionType = "income" | "expense";
 
@@ -25,7 +26,9 @@ interface TransactionItemProps {
   showWallet?: boolean;
   currency?: string;
   onEdit?: (transaction: Transaction) => void;
+  onDuplicate?: (transaction: Transaction) => void;
   onSaveAsTemplate?: (transaction: Transaction) => void;
+  onDelete?: (transaction: Transaction) => void;
   isSavingTemplate?: boolean;
 }
 
@@ -50,7 +53,9 @@ export default function TransactionItem({
   showWallet = false,
   currency = "THB",
   onEdit,
+  onDuplicate,
   onSaveAsTemplate,
+  onDelete,
   isSavingTemplate = false,
 }: TransactionItemProps) {
   const isIncome = transaction.type === "income";
@@ -107,33 +112,14 @@ export default function TransactionItem({
             {isIncome ? TH_TEXT.transaction.income : TH_TEXT.transaction.expense}
           </p>
         </div>
-        {onSaveAsTemplate && !isManaged && (
-          <button
-            onClick={() => onSaveAsTemplate(transaction)}
-            disabled={isSavingTemplate}
-            className="rounded-lg p-1.5 text-slate-400 opacity-0 transition-opacity hover:bg-violet-50 hover:text-violet-600 disabled:cursor-not-allowed disabled:opacity-40 group-hover:opacity-100 dark:hover:bg-violet-950/30 dark:hover:text-violet-300"
-            aria-label={TH_TEXT.transactionTemplate.saveFromTransaction}
-            title={TH_TEXT.transactionTemplate.saveFromTransaction}
-          >
-            <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} aria-hidden>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M19 21l-7-4-7 4V5a2 2 0 0 1 2-2h6" />
-              <path strokeLinecap="round" strokeLinejoin="round" d="M17 3v8" />
-              <path strokeLinecap="round" strokeLinejoin="round" d="M13 7h8" />
-            </svg>
-          </button>
-        )}
-        {onEdit && !isManaged && (
-          <button
-            onClick={() => onEdit(transaction)}
-            className="rounded-lg p-1.5 text-slate-400 opacity-0 transition-opacity hover:bg-slate-100 hover:text-slate-600 group-hover:opacity-100 dark:hover:bg-slate-800 dark:hover:text-slate-300"
-            aria-label={TH_TEXT.common.edit}
-          >
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="h-4 w-4">
-              <path d="M21.731 2.269a2.625 2.625 0 0 0-3.712 0l-1.157 1.157 3.712 3.712 1.157-1.157a2.625 2.625 0 0 0 0-3.712ZM19.513 8.199l-3.712-3.712-12.15 12.15a5.25 5.25 0 0 0-1.32 2.214l-.8 2.685a.75.75 0 0 0 .933.933l2.685-.8a5.25 5.25 0 0 0 2.214-1.32L19.513 8.2Z" />
-            </svg>
-
-          </button>
-        )}
+        <TransactionActionMenu
+          transaction={transaction}
+          onEdit={onEdit}
+          onDuplicate={onDuplicate}
+          onSaveAsTemplate={onSaveAsTemplate}
+          onDelete={onDelete}
+          isSavingTemplate={isSavingTemplate}
+        />
       </div>
     </div>
   );
