@@ -25,8 +25,7 @@ test.describe("Spending Plan distribution rules", () => {
       name: createPlanName("distribution-equal"),
       startDate,
       endDate: addDays(startDate, 2),
-      amount: "99.99",
-      purposeAmount: "99.99",
+      targetAmount: "33.33",
       distribution: { type: "equal_daily" },
     });
 
@@ -41,6 +40,7 @@ test.describe("Spending Plan distribution rules", () => {
       name: createPlanName("distribution-weekdays"),
       startDate,
       endDate: addDays(startDate, 6),
+      targetAmount: "20",
       distribution: { type: "weekdays" },
     });
 
@@ -56,6 +56,7 @@ test.describe("Spending Plan distribution rules", () => {
       name: createPlanName("distribution-weekly"),
       startDate: weeklyStart,
       endDate: addDays(weeklyStart, 13),
+      targetAmount: "25",
       distribution: { type: "weekly", weekdays: [1, 5] },
     });
     await openRangeView(page);
@@ -79,6 +80,7 @@ test.describe("Spending Plan distribution rules", () => {
       name: createPlanName("distribution-specific"),
       startDate,
       endDate: addDays(startDate, 6),
+      targetAmount: "50",
       distribution: { type: "specific_dates", dates: selectedDates },
     });
 
@@ -105,7 +107,7 @@ test.describe("Spending Plan distribution rules", () => {
     await purpose.getByTestId("spending-plan-distribution-select").selectOption("specific_dates");
     await purpose
       .getByTestId("spending-plan-specific-date-picker")
-      .locator(`[data-day="${effectiveDate}"]`)
+      .locator(`[data-date="${effectiveDate}"]`)
       .click();
     await expect(purpose.getByText("เลือก 1 วัน", { exact: false })).toBeVisible();
 
@@ -132,6 +134,11 @@ test.describe("Spending Plan distribution rules", () => {
     await page.getByRole("link", { name: /E2E Legacy Spending Plan/ }).click();
     await expect(page.getByRole("button", { name: "แก้ไขแผน", exact: true })).toBeVisible();
     await page.getByRole("button", { name: "คัดลอกแผน", exact: true }).click();
+
+    await expect(
+      page.getByRole("heading", { name: "คัดลอกแผนการใช้เงิน", exact: true }),
+    ).toBeVisible();
+    await page.getByRole("button", { name: "ไปเตรียมสำเนา", exact: true }).click();
 
     await expect(page).toHaveURL(/\/spending-plans\/new\?copyFrom=/);
     await expect(page.getByRole("heading", { name: "สร้างสำเนาแผน", exact: true })).toBeVisible();

@@ -8,7 +8,6 @@ test("keeps distribution cards usable on mobile without horizontal overflow", as
   await expect(page.getByRole("heading", { name: "สร้างแผนใหม่", exact: true })).toBeVisible();
 
   await page.getByLabel("ชื่อแผน", { exact: true }).fill(createPlanName("distribution-mobile"));
-  await page.getByLabel("ยอดรวมที่วางแผน", { exact: true }).fill("100");
   const startDate = getPlanTestStartDate(220, testInfo.retry);
   await page.getByLabel("วันเริ่มต้น", { exact: true }).fill(startDate);
   await page.getByLabel("วันสิ้นสุด", { exact: true }).fill(startDate);
