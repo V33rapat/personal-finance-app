@@ -54,7 +54,15 @@ export default function TransactionActionMenu({
     if (isOpen) firstItemRef.current?.focus();
   }, [isOpen]);
 
-  if (getTransactionActionIds(transaction).length === 0) return null;
+  if (getTransactionActionIds(transaction).length === 0) {
+    return (
+      <div
+        aria-hidden="true"
+        data-testid="transaction-action-menu-placeholder"
+        className="h-8 w-8 shrink-0"
+      />
+    );
+  }
 
   const actions = ([
     onEdit
