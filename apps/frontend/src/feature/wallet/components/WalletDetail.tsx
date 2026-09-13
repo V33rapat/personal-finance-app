@@ -194,11 +194,13 @@ export default function WalletDetail({
 
   const {
     modalOpen,
+    modalMode,
     editingTransaction,
     currentWalletId,
     defaultTransactionDate,
     openModal,
     openEditModal,
+    openDuplicateModal,
     closeModal,
     addTransaction,
     updateTransaction,
@@ -391,6 +393,7 @@ export default function WalletDetail({
                 onLoadMore={dailyTransactions.loadMore}
                 empty={dailyTransactions.items.length === 0}
                 onEdit={openEditModal}
+                onDuplicate={openDuplicateModal}
                 onSaveAsTemplate={(transaction) =>
                   createTemplate(toTemplateValuesFromTransaction(transaction))
                 }
@@ -414,6 +417,7 @@ export default function WalletDetail({
 
       <TransactionModal
         isOpen={modalOpen}
+        mode={modalMode}
         transaction={editingTransaction}
         wallets={wallets}
         defaultWalletId={currentWalletId}

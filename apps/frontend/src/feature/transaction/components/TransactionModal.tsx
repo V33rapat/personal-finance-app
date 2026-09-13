@@ -5,7 +5,7 @@ import Button from "@/components/ui/Button";
 import { TH_TEXT } from "@/constants/th";
 import CategoryCombobox, { type CategoryComboboxHandle } from "./CategoryCombobox";
 import type { Transaction, TransactionType } from "./TransactionItem";
-import type { TransactionFormValues } from "../hooks/useTransaction";
+import type { TransactionFormValues, TransactionModalMode } from "../hooks/useTransaction";
 import { useTransactionTemplate } from "../hooks/useTransactionTemplate";
 import {
   getTransactionWalletOptions,
@@ -15,6 +15,7 @@ import type { Wallet } from "@/feature/wallet/hooks/useWallet";
 
 interface TransactionModalProps {
   isOpen: boolean;
+  mode?: TransactionModalMode;
   transaction?: Transaction | null;
   wallets: Wallet[];
   defaultWalletId?: string | null;
@@ -29,10 +30,10 @@ interface TransactionModalProps {
 interface TransactionModalFormProps
   extends Omit<
     TransactionModalProps,
-    "isOpen" | "transaction" | "wallets" | "defaultWalletId" | "defaultTransactionDate"
+    "isOpen" | "mode" | "transaction" | "wallets" | "defaultWalletId" | "defaultTransactionDate"
   > {
   initialValues: TransactionFormValues;
-  isEditMode: boolean;
+  mode: TransactionModalMode;
   walletOptions: TransactionWalletOption[];
 }
 
@@ -68,6 +69,7 @@ function getDefaultValues(
 
 function getInitialValues(
   transaction: Transaction | null | undefined,
+  mode: TransactionModalMode,
   defaultWalletId: string | null | undefined,
   defaultTransactionDate: string | undefined,
   eligibleWalletIds: Set<string>
@@ -81,7 +83,7 @@ function getInitialValues(
     );
   }
 
-  return {
+  const values = {
     wallet_id: eligibleWalletIds.has(transaction.wallet_id)
       ? transaction.wallet_id
       : "",
@@ -93,6 +95,16 @@ function getInitialValues(
     transaction_date: transaction.transaction_date,
     note: transaction.note ?? "",
   };
+
+  if (mode === "duplicate") {
+    return {
+      ...values,
+      name: `${values.name}${TH_TEXT.transaction.duplicateSuffix}`,
+      template_id: null,
+    };
+  }
+
+  return values;
 }
 
 function FormField({
@@ -124,7 +136,7 @@ function FormField({
 
 function TransactionModalForm({
   initialValues,
-  isEditMode,
+  mode,
   walletOptions,
   isSaving = false,
   error,
@@ -132,9 +144,10 @@ function TransactionModalForm({
   onSave,
   onUpdate,
 }: TransactionModalFormProps) {
+  const isEditMode = mode === "edit";
   const categoryComboboxRef = useRef<CategoryComboboxHandle>(null);
   const { templates, isLoading: isTemplateLoading } = useTransactionTemplate({
-    autoLoad: !isEditMode,
+    autoLoad: mode !== "edit",
   });
   const [values, setValues] = useState<TransactionFormValues>(initialValues);
   const [errors, setErrors] = useState<Partial<Record<keyof TransactionFormValues, string>>>({});
@@ -247,7 +260,11 @@ function TransactionModalForm({
             id="transaction-modal-title"
             className="text-lg font-bold text-slate-800 dark:text-slate-100"
           >
-            {isEditMode ? TH_TEXT.common.edit : TH_TEXT.transaction.addTransaction}
+            {mode === "edit"
+              ? TH_TEXT.transaction.editTransaction
+              : mode === "duplicate"
+                ? TH_TEXT.transaction.duplicateTransaction
+                : TH_TEXT.transaction.addTransaction}
           </h2>
           <button
             type="button"
@@ -418,7 +435,7 @@ function TransactionModalForm({
               className="flex-1"
               disabled={isSaving || walletOptions.length === 0}
             >
-              {TH_TEXT.common.save}
+              {mode === "duplicate" ? TH_TEXT.transaction.duplicateSubmit : TH_TEXT.common.save}
             </Button>
           </div>
         </form>
@@ -429,6 +446,7 @@ function TransactionModalForm({
 
 export default function TransactionModal({
   isOpen,
+  mode = "create",
   transaction,
   wallets,
   defaultWalletId,
@@ -448,14 +466,15 @@ export default function TransactionModal({
 
   return (
     <TransactionModalForm
-      key={transaction?.id ?? `new-${defaultTransactionDate ?? ""}`}
+      key={`${mode}-${transaction?.id ?? `new-${defaultTransactionDate ?? ""}`}`}
       initialValues={getInitialValues(
         transaction,
+        mode,
         defaultWalletId,
         defaultTransactionDate,
         eligibleWalletIds
       )}
-      isEditMode={!!transaction}
+      mode={mode}
       walletOptions={walletOptions}
       {...props}
     />

@@ -30,12 +30,14 @@ export default function TransactionsPageContent() {
     isSaving,
     error,
     modalOpen,
+    modalMode,
     editingTransaction,
     currentWalletId,
     updateFilter,
     loadMore,
     openModal,
     openEditModal,
+    openDuplicateModal,
     closeModal,
     addTransaction,
     updateTransaction,
@@ -123,6 +125,7 @@ export default function TransactionsPageContent() {
         isLoading={isLoading}
         empty={transactions.length === 0}
         onEdit={openEditModal}
+        onDuplicate={openDuplicateModal}
         onSaveAsTemplate={(transaction) =>
           createTemplate(toTemplateValuesFromTransaction(transaction))
         }
@@ -136,6 +139,7 @@ export default function TransactionsPageContent() {
 
       <TransactionModal
         isOpen={modalOpen}
+        mode={modalMode}
         transaction={editingTransaction}
         wallets={wallets}
         defaultWalletId={currentWalletId}

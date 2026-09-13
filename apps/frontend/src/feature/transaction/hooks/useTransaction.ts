@@ -20,6 +20,8 @@ export interface TransactionFormValues {
   note: string;
 }
 
+export type TransactionModalMode = "create" | "edit" | "duplicate";
+
 interface TransactionCategory {
   id: string;
   name: string;
@@ -46,6 +48,7 @@ interface ApiTransaction {
   note: string | null;
   transaction_date: string;
   created_at: string;
+  management?: Transaction["management"];
   categories?: { id: string; name: string; type?: TransactionType } | null;
   wallets?: { name: string } | null;
 }
@@ -74,6 +77,7 @@ function mapApiTransaction(transaction: ApiTransaction): Transaction {
     note: transaction.note ?? "",
     transaction_date: transaction.transaction_date.split("T")[0],
     created_at: transaction.created_at,
+    management: transaction.management,
   };
 }
 
@@ -107,6 +111,7 @@ export function useTransaction(options: UseTransactionOptions = {}) {
     searchQuery: "",
   });
   const [modalOpen, setModalOpen] = useState(false);
+  const [modalMode, setModalMode] = useState<TransactionModalMode>("create");
   const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
   const [currentWalletId, setCurrentWalletId] = useState<string | null>(walletId ?? null);
   const [defaultTransactionDate, setDefaultTransactionDate] = useState<string | undefined>();
@@ -216,6 +221,7 @@ export function useTransaction(options: UseTransactionOptions = {}) {
 
   const openModal = (nextWalletId?: string, nextTransactionDate?: string) => {
     setError("");
+    setModalMode("create");
     setCurrentWalletId(nextWalletId ?? null);
     setDefaultTransactionDate(nextTransactionDate);
     setEditingTransaction(null);
@@ -224,6 +230,16 @@ export function useTransaction(options: UseTransactionOptions = {}) {
 
   const openEditModal = (transaction: Transaction) => {
     setError("");
+    setModalMode("edit");
+    setCurrentWalletId(transaction.wallet_id);
+    setDefaultTransactionDate(undefined);
+    setEditingTransaction(transaction);
+    setModalOpen(true);
+  };
+
+  const openDuplicateModal = (transaction: Transaction) => {
+    setError("");
+    setModalMode("duplicate");
     setCurrentWalletId(transaction.wallet_id);
     setDefaultTransactionDate(undefined);
     setEditingTransaction(transaction);
@@ -232,6 +248,7 @@ export function useTransaction(options: UseTransactionOptions = {}) {
 
   const closeModal = () => {
     setModalOpen(false);
+    setModalMode("create");
     setEditingTransaction(null);
     setDefaultTransactionDate(undefined);
   };
@@ -376,6 +393,7 @@ export function useTransaction(options: UseTransactionOptions = {}) {
     categories,
     filters,
     modalOpen,
+    modalMode,
     editingTransaction,
     currentWalletId,
     defaultTransactionDate,
@@ -389,6 +407,7 @@ export function useTransaction(options: UseTransactionOptions = {}) {
 
     openModal,
     openEditModal,
+    openDuplicateModal,
     closeModal,
 
     addTransaction,
