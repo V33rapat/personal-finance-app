@@ -57,7 +57,7 @@ export default function TransactionActionMenu({
 
   if (isManaged) return null;
 
-  const actions: MenuAction[] = [
+  const actions = ([
     onEdit
       ? {
           id: "edit",
@@ -92,7 +92,9 @@ export default function TransactionActionMenu({
           danger: true,
         }
       : null,
-  ].filter((action): action is MenuAction => action !== null);
+  ] as Array<MenuAction | null>).filter(
+    (action): action is MenuAction => action !== null,
+  );
 
   if (actions.length === 0) return null;
 

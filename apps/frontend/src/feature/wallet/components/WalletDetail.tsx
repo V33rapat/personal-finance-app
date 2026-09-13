@@ -7,6 +7,7 @@ import ConfirmationDialog from "@/components/ui/ConfirmationDialog";
 import { TH_TEXT } from "@/constants/th";
 import TransactionList from "@/feature/transaction/components/TransactionList";
 import TransactionModal from "@/feature/transaction/components/TransactionModal";
+import type { Transaction } from "@/feature/transaction/components/TransactionItem";
 import WalletTransactionFilter from "./WalletTransactionFilter";
 import WalletDailyNavigator from "./WalletDailyNavigator";
 import WalletDailySummary from "./WalletDailySummary";
@@ -174,6 +175,7 @@ export default function WalletDetail({
   const searchParams = useSearchParams();
   const [activeTab, setActiveTab] = useState<TabType>("overview");
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<Transaction | null>(null);
   const today = useMemo(() => getBangkokToday(), []);
   const requestedDate = searchParams.get("date");
   const selectedDate =
@@ -209,7 +211,14 @@ export default function WalletDetail({
     error,
   } = useTransaction({ walletId: wallet?.id, autoLoad: false });
   const dailyTransactions = useWalletDailyTransactions(wallet?.id ?? null, selectedDate);
-  const { selectedIds, selectedCount, toggleSelection, clearSelection, selectAll } = useTransactionSelection();
+  const {
+    selectedIds,
+    selectedCount,
+    toggleSelection,
+    clearSelection,
+    removeSelection,
+    selectAll,
+  } = useTransactionSelection();
   const {
     createTemplate,
     isSaving: isSavingTemplate,
@@ -244,6 +253,12 @@ export default function WalletDetail({
   );
 
   const handleDeleteSelected = () => {
+    setDeleteTarget(null);
+    setShowDeleteConfirm(true);
+  };
+
+  const handleDeleteTransaction = (transaction: Transaction) => {
+    setDeleteTarget(transaction);
     setShowDeleteConfirm(true);
   };
 
@@ -273,7 +288,21 @@ export default function WalletDetail({
     setShowDeleteConfirm(false);
   };
 
+  const confirmDeleteTransaction = async () => {
+    if (!deleteTarget) return;
+
+    const success = await deleteTransactions([deleteTarget.id]);
+    if (!success) return;
+
+    removeSelection(deleteTarget.id);
+    await onTransactionsChanged?.();
+    dailyTransactions.reload();
+    setDeleteTarget(null);
+    setShowDeleteConfirm(false);
+  };
+
   const handleDeleteClick = () => {
+    setDeleteTarget(null);
     setShowDeleteConfirm(true);
   };
 
@@ -281,6 +310,7 @@ export default function WalletDetail({
     if (wallet) {
       await onDeleteWallet(wallet.id);
     }
+    setDeleteTarget(null);
     setShowDeleteConfirm(false);
   };
 
@@ -394,6 +424,7 @@ export default function WalletDetail({
                 empty={dailyTransactions.items.length === 0}
                 onEdit={openEditModal}
                 onDuplicate={openDuplicateModal}
+                onDelete={handleDeleteTransaction}
                 onSaveAsTemplate={(transaction) =>
                   createTemplate(toTemplateValuesFromTransaction(transaction))
                 }
@@ -431,13 +462,23 @@ export default function WalletDetail({
 
       <ConfirmationDialog
         isOpen={showDeleteConfirm}
-        title={TH_TEXT.wallet.deleteConfirmTitle}
-        message={selectedCount > 0 
-          ? `คุณต้องการลบ ${selectedCount} รายการ หรือไม่? การดำเนินการนี้ไม่สามารถย้อนกลับได้`
-          : `คุณต้องการลบ "${wallet.name}" หรือไม่? การดำเนินการนี้ไม่สามารถย้อนกลับได้`
-        }
-        onConfirm={selectedCount > 0 ? confirmDeleteSelected : handleConfirmDelete}
-        onCancel={() => setShowDeleteConfirm(false)}
+        title={deleteTarget ? TH_TEXT.transaction.deleteTransaction : TH_TEXT.wallet.deleteConfirmTitle}
+        message={deleteTarget
+          ? `คุณต้องการลบ "${deleteTarget.name}" หรือไม่?\n${TH_TEXT.transaction.deleteTransactionWarning}`
+          : selectedCount > 0
+            ? `คุณต้องการลบ ${selectedCount} รายการ หรือไม่? การดำเนินการนี้ไม่สามารถย้อนกลับได้`
+            : `คุณต้องการลบ "${wallet.name}" หรือไม่? การดำเนินการนี้ไม่สามารถย้อนกลับได้`}
+        onConfirm={deleteTarget
+          ? confirmDeleteTransaction
+          : selectedCount > 0
+            ? confirmDeleteSelected
+            : handleConfirmDelete}
+        onCancel={() => {
+          setDeleteTarget(null);
+          setShowDeleteConfirm(false);
+        }}
+        isLoading={isSaving}
+        error={deleteTarget ? error : undefined}
       />
     </>
   );

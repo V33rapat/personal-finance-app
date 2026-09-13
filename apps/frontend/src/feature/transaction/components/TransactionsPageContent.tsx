@@ -4,6 +4,7 @@ import { useState } from "react";
 import Button from "@/components/ui/Button";
 import { TH_TEXT } from "@/constants/th";
 import TransactionList from "@/feature/transaction/components/TransactionList";
+import type { Transaction } from "@/feature/transaction/components/TransactionItem";
 import TransactionFilter from "@/feature/transaction/components/TransactionFilter";
 import TransactionModal from "@/feature/transaction/components/TransactionModal";
 import ConfirmationDialog from "@/components/ui/ConfirmationDialog";
@@ -16,6 +17,7 @@ import { useWallet } from "@/feature/wallet/hooks/useWallet";
 
 export default function TransactionsPageContent() {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<Transaction | null>(null);
   const {
     wallets,
     isLoading: isWalletLoading,
@@ -48,9 +50,22 @@ export default function TransactionsPageContent() {
     isSaving: isSavingTemplate,
   } = useTransactionTemplate({ autoLoad: false });
 
-  const { selectedIds, selectedCount, toggleSelection, clearSelection, selectAll } = useTransactionSelection();
+  const {
+    selectedIds,
+    selectedCount,
+    toggleSelection,
+    clearSelection,
+    removeSelection,
+    selectAll,
+  } = useTransactionSelection();
 
   const handleDeleteSelected = () => {
+    setDeleteTarget(null);
+    setShowDeleteConfirm(true);
+  };
+
+  const handleDeleteTransaction = (transaction: Transaction) => {
+    setDeleteTarget(transaction);
     setShowDeleteConfirm(true);
   };
 
@@ -71,6 +86,17 @@ export default function TransactionsPageContent() {
     if (!success) return;
 
     clearSelection();
+    setShowDeleteConfirm(false);
+  };
+
+  const confirmDeleteTransaction = async () => {
+    if (!deleteTarget) return;
+
+    const success = await deleteTransactions([deleteTarget.id]);
+    if (!success) return;
+
+    removeSelection(deleteTarget.id);
+    setDeleteTarget(null);
     setShowDeleteConfirm(false);
   };
 
@@ -126,6 +152,7 @@ export default function TransactionsPageContent() {
         empty={transactions.length === 0}
         onEdit={openEditModal}
         onDuplicate={openDuplicateModal}
+        onDelete={handleDeleteTransaction}
         onSaveAsTemplate={(transaction) =>
           createTemplate(toTemplateValuesFromTransaction(transaction))
         }
@@ -152,10 +179,17 @@ export default function TransactionsPageContent() {
 
       <ConfirmationDialog
         isOpen={showDeleteConfirm}
-        title={TH_TEXT.wallet.deleteConfirmTitle}
-        message={`คุณต้องการลบ ${selectedCount} รายการ หรือไม่? การดำเนินการนี้ไม่สามารถย้อนกลับได้`}
-        onConfirm={confirmDeleteSelected}
-        onCancel={() => setShowDeleteConfirm(false)}
+        title={deleteTarget ? TH_TEXT.transaction.deleteTransaction : TH_TEXT.wallet.deleteConfirmTitle}
+        message={deleteTarget
+          ? `คุณต้องการลบ "${deleteTarget.name}" หรือไม่?\n${TH_TEXT.transaction.deleteTransactionWarning}`
+          : `คุณต้องการลบ ${selectedCount} รายการ หรือไม่? การดำเนินการนี้ไม่สามารถย้อนกลับได้`}
+        onConfirm={deleteTarget ? confirmDeleteTransaction : confirmDeleteSelected}
+        onCancel={() => {
+          setDeleteTarget(null);
+          setShowDeleteConfirm(false);
+        }}
+        isLoading={isSaving}
+        error={error}
       />
     </div>
   );
