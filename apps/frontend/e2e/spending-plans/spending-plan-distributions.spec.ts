@@ -113,7 +113,7 @@ test.describe("Spending Plan distribution rules", () => {
       .getByTestId("spending-plan-specific-date-picker")
       .locator(`[data-date="${effectiveDate}"]`)
       .click();
-    await expect(purpose.getByText("เลือก 1 วัน", { exact: false })).toBeVisible();
+    await expect(purpose.getByText("เลือก 1 ครั้ง", { exact: false })).toBeVisible();
 
     const request = page.waitForRequest((candidate) => {
       if (!candidate.url().includes("/api/spending-plan/") || candidate.method() !== "PATCH") {
@@ -152,9 +152,11 @@ test.describe("Spending Plan distribution rules", () => {
       }),
     ).toBeVisible();
 
-    await page
-      .getByTestId("spending-plan-purpose-card")
-      .first()
+    const copiedPurpose = page.getByTestId("spending-plan-purpose-card").first();
+    await copiedPurpose
+      .getByTestId("spending-plan-purpose-amount")
+      .fill("100");
+    await copiedPurpose
       .getByTestId("spending-plan-distribution-select")
       .selectOption("equal_daily");
     await page.getByRole("button", { name: "สร้างแผน", exact: true }).click();
