@@ -8,3 +8,8 @@ docker-compose.yml
 
 apps/frontend/playwright-report/
 apps/frontend/test-results/
+apps/frontend/playwright/.auth/
+
+docs/plans
+docs/prototype
+docs/test_plan
