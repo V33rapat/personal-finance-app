@@ -36,6 +36,7 @@ async function resetUserData(userId: string) {
     where: { user_id: userId },
   });
   await prisma.spending_budgets.deleteMany({ where: { user_id: userId } });
+  await prisma.spending_plans.deleteMany({ where: { user_id: userId } });
 
   if (walletIds.length > 0) {
     await prisma.transfers.deleteMany({
