@@ -15,6 +15,7 @@ import {
   openDailyTransactionModal,
   saveTransactionModal,
 } from "./wallet-daily-mutations.helpers";
+import { openActionMenu } from "./transaction-action-menu.helpers";
 
 test.describe("Daily Transaction View mutations and managed transactions", () => {
   test("creates a historical transaction with the selected date and refreshes its summary", async ({ page }) => {
@@ -60,7 +61,7 @@ test.describe("Daily Transaction View mutations and managed transactions", () =>
     await expectSummary(page, 0, 40);
 
     const row = getDailyRow(page, name);
-    await row.getByRole("button", { name: "แก้ไข", exact: true }).click();
+    await (await openActionMenu(row)).menu.getByTestId("transaction-action-edit").click();
     const editDialog = page.getByTestId("transaction-modal");
     await expect(editDialog.getByTestId("transaction-date")).toHaveValue(sourceDate);
     await editDialog.getByTestId("transaction-date").fill(destinationDate);
