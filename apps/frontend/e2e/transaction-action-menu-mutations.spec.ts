@@ -156,7 +156,7 @@ test.describe("Transaction Action Menu mutations", () => {
     });
 
     await openTransactions(page);
-    const row = getTransactionRow(page, ACTION_MANUAL_INCOME);
+    const row = getTransactionRow(page, "E2E Action Error Delete Target");
     await (await openActionMenu(row)).menu.getByTestId("transaction-action-delete").click();
     const dialog = getConfirmationDialog(page);
     await dialog.getByRole("button", { name: "ลบ", exact: true }).click();

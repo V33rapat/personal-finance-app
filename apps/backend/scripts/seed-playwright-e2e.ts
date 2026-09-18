@@ -362,6 +362,15 @@ async function seedPrimaryUser() {
         note: 'E2E delete fixture',
         transaction_date: reportingDate,
       },
+      {
+        wallet_id: cash.id,
+        category_id: food.id,
+        name: 'E2E Action Error Delete Target',
+        type: transaction_type.expense,
+        amount: 30,
+        note: 'E2E delete error fixture',
+        transaction_date: reportingDate,
+      },
     ],
   });
 
