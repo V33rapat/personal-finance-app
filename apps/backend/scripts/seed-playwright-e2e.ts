@@ -299,6 +299,53 @@ async function seedPrimaryUser() {
     },
   });
 
+  const existingTemplate = await prisma.transaction_templates.create({
+    data: {
+      user_id: user.id,
+      wallet_id: cash.id,
+      category_id: food.id,
+      name: 'E2E Action Existing Template',
+      type: transaction_type.expense,
+      default_amount: 45,
+      note: 'E2E existing template note',
+    },
+  });
+  await prisma.transaction_templates.create({
+    data: {
+      user_id: user.id,
+      wallet_id: cash.id,
+      category_id: food.id,
+      name: 'E2E Action Replacement Template',
+      type: transaction_type.expense,
+      default_amount: 75,
+      note: 'E2E replacement template note',
+    },
+  });
+
+  await prisma.transactions.createMany({
+    data: [
+      {
+        wallet_id: cash.id,
+        category_id: food.id,
+        template_id: existingTemplate.id,
+        name: 'E2E Action Manual Expense',
+        type: transaction_type.expense,
+        amount: 45,
+        note: 'E2E action menu fixture',
+        transaction_date: reportingDate,
+      },
+      {
+        wallet_id: cash.id,
+        category_id: salary.id,
+        name: 'E2E Action Manual Income',
+        type: transaction_type.income,
+        amount: 500,
+        note: 'E2E action income fixture',
+        transaction_date: reportingDate,
+      },
+    ],
+  });
+
   return {
     user,
     cash,
