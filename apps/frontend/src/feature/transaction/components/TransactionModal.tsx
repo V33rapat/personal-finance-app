@@ -318,6 +318,7 @@ function TransactionModalForm({
                 value={values.template_id ?? ""}
                 disabled={isSaving || isTemplateLoading}
                 onChange={(event) => applyTemplate(event.target.value)}
+                data-testid="transaction-template"
                 className="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-800 focus:border-violet-500 focus:outline-none focus:ring-2 focus:ring-violet-500/20 disabled:cursor-not-allowed disabled:opacity-60 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
               >
                 <option value="">
