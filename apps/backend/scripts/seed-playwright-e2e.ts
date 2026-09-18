@@ -300,89 +300,6 @@ async function seedPrimaryUser() {
     },
   });
 
-  const existingTemplate = await prisma.transaction_templates.create({
-    data: {
-      user_id: user.id,
-      wallet_id: cash.id,
-      category_id: food.id,
-      name: 'E2E Action Existing Template',
-      type: transaction_type.expense,
-      default_amount: 45,
-      note: 'E2E existing template note',
-    },
-  });
-  await prisma.transaction_templates.create({
-    data: {
-      user_id: user.id,
-      wallet_id: cash.id,
-      category_id: food.id,
-      name: 'E2E Action Replacement Template',
-      type: transaction_type.expense,
-      default_amount: 75,
-      note: 'E2E replacement template note',
-    },
-  });
-
-  await prisma.transactions.createMany({
-    data: [
-      {
-        wallet_id: cash.id,
-        category_id: food.id,
-        template_id: existingTemplate.id,
-        name: 'E2E Action Manual Expense',
-        type: transaction_type.expense,
-        amount: 45,
-        note: 'E2E action menu fixture',
-        transaction_date: reportingDate,
-      },
-      {
-        wallet_id: cash.id,
-        category_id: salary.id,
-        name: 'E2E Action Manual Income',
-        type: transaction_type.income,
-        amount: 500,
-        note: 'E2E action income fixture',
-        transaction_date: reportingDate,
-      },
-      {
-        wallet_id: cash.id,
-        category_id: food.id,
-        name: 'E2E Action Edit Target',
-        type: transaction_type.expense,
-        amount: 35,
-        note: 'E2E edit fixture',
-        transaction_date: reportingDate,
-      },
-      {
-        wallet_id: cash.id,
-        category_id: food.id,
-        name: 'E2E Action Delete Target',
-        type: transaction_type.expense,
-        amount: 25,
-        note: 'E2E delete fixture',
-        transaction_date: reportingDate,
-      },
-      {
-        wallet_id: cash.id,
-        category_id: food.id,
-        name: 'E2E Action Error Delete Target',
-        type: transaction_type.expense,
-        amount: 30,
-        note: 'E2E delete error fixture',
-        transaction_date: reportingDate,
-      },
-      {
-        wallet_id: cash.id,
-        category_id: food.id,
-        name: 'E2E Action Interaction Target',
-        type: transaction_type.expense,
-        amount: 20,
-        note: 'E2E interaction fixture',
-        transaction_date: reportingDate,
-      },
-    ],
-  });
-
   return {
     user,
     cash,
@@ -591,6 +508,90 @@ async function seedDailyUser() {
       transfer_date: reportingDate,
       note: 'E2E daily allocation transfer pair',
     },
+  });
+
+  const actionDate = new Date('2026-07-19T00:00:00.000Z');
+  const existingTemplate = await prisma.transaction_templates.create({
+    data: {
+      user_id: user.id,
+      wallet_id: dailyWallet.id,
+      category_id: dailyFood.id,
+      name: 'E2E Action Existing Template',
+      type: transaction_type.expense,
+      default_amount: 45,
+      note: 'E2E existing template note',
+    },
+  });
+  await prisma.transaction_templates.create({
+    data: {
+      user_id: user.id,
+      wallet_id: dailyWallet.id,
+      category_id: dailyFood.id,
+      name: 'E2E Action Replacement Template',
+      type: transaction_type.expense,
+      default_amount: 75,
+      note: 'E2E replacement template note',
+    },
+  });
+
+  await prisma.transactions.createMany({
+    data: [
+      {
+        wallet_id: dailyWallet.id,
+        category_id: dailyFood.id,
+        template_id: existingTemplate.id,
+        name: 'E2E Action Manual Expense',
+        type: transaction_type.expense,
+        amount: 45,
+        note: 'E2E action menu fixture',
+        transaction_date: actionDate,
+      },
+      {
+        wallet_id: dailyWallet.id,
+        category_id: dailyIncome.id,
+        name: 'E2E Action Manual Income',
+        type: transaction_type.income,
+        amount: 500,
+        note: 'E2E action income fixture',
+        transaction_date: actionDate,
+      },
+      {
+        wallet_id: dailyWallet.id,
+        category_id: dailyFood.id,
+        name: 'E2E Action Edit Target',
+        type: transaction_type.expense,
+        amount: 35,
+        note: 'E2E edit fixture',
+        transaction_date: actionDate,
+      },
+      {
+        wallet_id: dailyWallet.id,
+        category_id: dailyFood.id,
+        name: 'E2E Action Delete Target',
+        type: transaction_type.expense,
+        amount: 25,
+        note: 'E2E delete fixture',
+        transaction_date: actionDate,
+      },
+      {
+        wallet_id: dailyWallet.id,
+        category_id: dailyFood.id,
+        name: 'E2E Action Error Delete Target',
+        type: transaction_type.expense,
+        amount: 30,
+        note: 'E2E delete error fixture',
+        transaction_date: actionDate,
+      },
+      {
+        wallet_id: dailyWallet.id,
+        category_id: dailyFood.id,
+        name: 'E2E Action Interaction Target',
+        type: transaction_type.expense,
+        amount: 20,
+        note: 'E2E interaction fixture',
+        transaction_date: actionDate,
+      },
+    ],
   });
 
   return { user, dailyWallet, dailyDestination, parentWithActiveChild };

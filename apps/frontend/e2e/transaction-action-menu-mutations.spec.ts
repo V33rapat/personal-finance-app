@@ -53,7 +53,7 @@ test.describe("Transaction Action Menu mutations", () => {
     await expect(dialog.getByTestId("transaction-name")).toHaveValue(
       `${ACTION_MANUAL_EXPENSE} (สำเนา)`,
     );
-    await expect(dialog.getByTestId("transaction-date")).toHaveValue("2026-07-20");
+    await expect(dialog.getByTestId("transaction-date")).toHaveValue("2026-07-19");
     await expect(dialog.getByTestId("transaction-template")).toHaveValue("");
     await dialog.getByTestId("transaction-name").fill("E2E Action Created Copy");
 
@@ -64,7 +64,7 @@ test.describe("Transaction Action Menu mutations", () => {
     await response;
 
     expect(payload.name).toBe("E2E Action Created Copy");
-    expect(payload.transaction_date).toBe("2026-07-20");
+    expect(payload.transaction_date).toBe("2026-07-19");
     expect(payload.template_id).toBeNull();
     expect(payload.id).toBeUndefined();
     expect(payload.created_at).toBeUndefined();

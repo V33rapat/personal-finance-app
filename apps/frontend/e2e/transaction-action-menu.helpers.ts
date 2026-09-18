@@ -5,7 +5,7 @@ export const ACTION_MANUAL_INCOME = "E2E Action Manual Income";
 export const ACTION_INTERACTION_TARGET = "E2E Action Interaction Target";
 export const ACTION_EXISTING_TEMPLATE = "E2E Action Existing Template";
 export const ACTION_REPLACEMENT_TEMPLATE = "E2E Action Replacement Template";
-export const ACTION_DATE = "2026-07-20";
+export const ACTION_DATE = "2026-07-19";
 
 export type TransactionAction = "edit" | "duplicate" | "template" | "delete";
 

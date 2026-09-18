@@ -37,7 +37,7 @@ export default defineConfig({
         /.*\.user-b\.spec\.ts/,
         /.*wallet-summary-default\.spec\.ts/,
         /wallet-daily-(navigation|mutations|wallet-state)\.spec\.ts/,
-        /transaction-action-menu-managed\.spec\.ts/,
+        /transaction-action-menu(?:-mutations|-managed)?\.spec\.ts/,
       ],
     },
     {
@@ -76,7 +76,7 @@ export default defineConfig({
       },
       dependencies: ["setup"],
       testMatch:
-        /(wallet-daily-(navigation|mutations|wallet-state)|transaction-action-menu-managed)\.spec\.ts/,
+        /(wallet-daily-(navigation|mutations|wallet-state)|transaction-action-menu(?:-mutations|-managed)?)\.spec\.ts/,
     },
     {
       name: "chromium-mobile-daily",
