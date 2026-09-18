@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 import {
-  ACTION_MANUAL_EXPENSE,
+  ACTION_INTERACTION_TARGET,
   getActionMenuItem,
   getTransactionRow,
   openActionMenu,
@@ -11,7 +11,7 @@ test.describe("Transaction Action Menu", () => {
   test("shows four actions for a manual transaction", async ({ page }) => {
     await openTransactions(page);
 
-    const row = getTransactionRow(page, ACTION_MANUAL_EXPENSE);
+    const row = getTransactionRow(page, ACTION_INTERACTION_TARGET);
     const { menu } = await openActionMenu(row);
 
     await expect(menu.getByTestId("transaction-action-edit")).toContainText("แก้ไขรายการ");
@@ -24,7 +24,7 @@ test.describe("Transaction Action Menu", () => {
   test("closes when pressing Escape or clicking outside", async ({ page }) => {
     await openTransactions(page);
 
-    const row = getTransactionRow(page, ACTION_MANUAL_EXPENSE);
+    const row = getTransactionRow(page, ACTION_INTERACTION_TARGET);
     const { menu, trigger } = await openActionMenu(row);
     await page.keyboard.press("Escape");
     await expect(menu).toBeHidden();
@@ -38,7 +38,7 @@ test.describe("Transaction Action Menu", () => {
   test("supports keyboard navigation and returns focus to the trigger", async ({ page }) => {
     await openTransactions(page);
 
-    const row = getTransactionRow(page, ACTION_MANUAL_EXPENSE);
+    const row = getTransactionRow(page, ACTION_INTERACTION_TARGET);
     const trigger = row.getByTestId("transaction-action-menu-trigger");
     await trigger.focus();
     await trigger.press("ArrowDown");

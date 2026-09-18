@@ -2,6 +2,7 @@ import { expect, type Locator, type Page } from "@playwright/test";
 
 export const ACTION_MANUAL_EXPENSE = "E2E Action Manual Expense";
 export const ACTION_MANUAL_INCOME = "E2E Action Manual Income";
+export const ACTION_INTERACTION_TARGET = "E2E Action Interaction Target";
 export const ACTION_EXISTING_TEMPLATE = "E2E Action Existing Template";
 export const ACTION_REPLACEMENT_TEMPLATE = "E2E Action Replacement Template";
 export const ACTION_DATE = "2026-07-20";
@@ -72,4 +73,3 @@ export function getConfirmationDialog(page: Page) {
 export function getActionMenuItem(row: Locator, action: TransactionAction) {
   return row.getByTestId(`transaction-action-${action}`);
 }
-
