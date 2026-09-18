@@ -132,30 +132,56 @@ export async function openPeriodPicker(page: Page, period: BudgetPeriod) {
   return dialog;
 }
 
-function getInitialCalendarDate(period: "daily" | "weekly") {
-  if (period === "daily") {
-    return getBangkokToday();
-  }
+const thaiMonthNames = [
+  "มกราคม",
+  "กุมภาพันธ์",
+  "มีนาคม",
+  "เมษายน",
+  "พฤษภาคม",
+  "มิถุนายน",
+  "กรกฎาคม",
+  "สิงหาคม",
+  "กันยายน",
+  "ตุลาคม",
+  "พฤศจิกายน",
+  "ธันวาคม",
+];
 
-  return getCurrentWeek().start;
-}
-
-async function showCalendarMonth(
-  dialog: Locator,
-  initialDate: string,
-  targetDate: string,
-) {
-  const initial = toUtcDate(initialDate);
+async function showCalendarMonth(dialog: Locator, targetDate: string) {
   const target = toUtcDate(targetDate);
-  const offset =
-    (target.getUTCFullYear() - initial.getUTCFullYear()) * 12 +
-    target.getUTCMonth() -
-    initial.getUTCMonth();
-  const navigationLabel = offset >= 0 ? "แสดงเดือนถัดไป" : "แสดงเดือนก่อนหน้า";
+  const targetButton = dialog.getByRole("button", {
+    name: `เลือกวันที่ ${targetDate}`,
+  });
 
-  for (let index = 0; index < Math.abs(offset); index += 1) {
-    await dialog.getByRole("button", { name: navigationLabel }).click();
+  for (let index = 0; index < 24; index += 1) {
+    if ((await targetButton.count()) > 0) return;
+
+    const calendarLabel = (await dialog.getByRole("status").textContent()) ?? "";
+    const currentMonth = thaiMonthNames.findIndex((month) =>
+      calendarLabel.includes(month),
+    );
+    const yearMatch = calendarLabel.match(/\d{4}/);
+    const currentYear = yearMatch ? Number(yearMatch[0]) : NaN;
+
+    if (currentMonth < 0 || !Number.isFinite(currentYear)) {
+      throw new Error(`Unable to read calendar month from: ${calendarLabel}`);
+    }
+
+    const currentCalendarDate = new Date(
+      Date.UTC(currentYear, currentMonth, 1),
+    );
+    const targetCalendarDate = new Date(
+      Date.UTC(target.getUTCFullYear(), target.getUTCMonth(), 1),
+    );
+    const navigationLabel =
+      targetCalendarDate > currentCalendarDate
+        ? "แสดงเดือนถัดไป"
+        : "แสดงเดือนก่อนหน้า";
+
+    await dialog.getByRole("button", { name: navigationLabel, exact: true }).click();
   }
+
+  throw new Error(`Unable to show calendar month for: ${targetDate}`);
 }
 
 export async function selectCalendarDate(
@@ -163,7 +189,7 @@ export async function selectCalendarDate(
   period: "daily" | "weekly",
   date: string,
 ) {
-  await showCalendarMonth(dialog, getInitialCalendarDate(period), date);
+  await showCalendarMonth(dialog, date);
   await dialog.getByRole("button", { name: `เลือกวันที่ ${date}` }).click();
 }
 
@@ -173,15 +199,12 @@ export async function selectCalendarRange(
   end: string,
 ) {
   const dialog = await openPeriodPicker(page, "weekly");
+  await showCalendarMonth(dialog, start);
   const startButton = dialog.getByRole("button", {
     name: `เลือกวันที่ ${start}`,
   });
-
-  if ((await startButton.count()) === 0) {
-    await showCalendarMonth(dialog, getInitialCalendarDate("weekly"), start);
-  }
-
   await startButton.click();
+  await showCalendarMonth(dialog, end);
   await dialog.getByRole("button", { name: `เลือกวันที่ ${end}` }).click();
   return dialog;
 }
