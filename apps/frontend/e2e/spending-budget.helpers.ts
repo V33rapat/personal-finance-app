@@ -173,8 +173,15 @@ export async function selectCalendarRange(
   end: string,
 ) {
   const dialog = await openPeriodPicker(page, "weekly");
-  await showCalendarMonth(dialog, getInitialCalendarDate("weekly"), start);
-  await dialog.getByRole("button", { name: `เลือกวันที่ ${start}` }).click();
+  const startButton = dialog.getByRole("button", {
+    name: `เลือกวันที่ ${start}`,
+  });
+
+  if ((await startButton.count()) === 0) {
+    await showCalendarMonth(dialog, getInitialCalendarDate("weekly"), start);
+  }
+
+  await startButton.click();
   await dialog.getByRole("button", { name: `เลือกวันที่ ${end}` }).click();
   return dialog;
 }
