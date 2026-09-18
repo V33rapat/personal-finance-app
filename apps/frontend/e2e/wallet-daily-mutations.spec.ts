@@ -156,8 +156,12 @@ test.describe("Daily Transaction View mutations and managed transactions", () =>
     }
 
     await expectSummary(page, 0, 30);
-    await getDailyRow(page, firstName).getByRole("button", { name: new RegExp(`${firstName}$`) }).click();
-    await getDailyRow(page, secondName).getByRole("button", { name: new RegExp(`${secondName}$`) }).click();
+    await getDailyRow(page, firstName)
+      .getByRole("button", { name: `เลือกรายการ: ${firstName}`, exact: true })
+      .click();
+    await getDailyRow(page, secondName)
+      .getByRole("button", { name: `เลือกรายการ: ${secondName}`, exact: true })
+      .click();
 
     await page.getByRole("button", { name: "ลบรายการ", exact: true }).click();
     const confirmDialog = page.getByRole("dialog");
