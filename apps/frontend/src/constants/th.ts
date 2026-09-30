@@ -36,6 +36,11 @@ export const TH_TEXT = {
     optionalNote: "บันทึกเพิ่มเติม",
     loading: "กำลังโหลด",
     retry: "ลองใหม่",
+    invalidDateFormat: "กรุณากรอกวันที่รูปแบบ DD/MM/YYYY ให้ถูกต้อง",
+    selectDateFromCalendar: "เลือกวันที่จากปฏิทิน",
+    date: "วันที่",
+    dateFrom: "วันที่เริ่มต้น",
+    dateTo: "วันที่สิ้นสุด",
   },
   dashboard: {
     metadataTitle: "แดชบอร์ด | Walpaca",
