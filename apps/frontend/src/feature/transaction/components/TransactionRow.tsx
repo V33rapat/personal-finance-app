@@ -1,6 +1,7 @@
 "use client";
 
 import { TH_TEXT } from "@/constants/th";
+import { formatDisplayDate } from "@/lib/dateFormat";
 import type { Transaction } from "./TransactionItem";
 import TransactionActionMenu from "./TransactionActionMenu";
 
@@ -23,14 +24,6 @@ function formatMoney(amount: string, currency: string = "THB") {
     currency,
     maximumFractionDigits: 2,
   }).format(Number(amount));
-}
-
-function formatDate(dateString: string) {
-  return new Date(dateString).toLocaleDateString("th-TH", {
-    day: "numeric",
-    month: "short",
-    year: "numeric",
-  });
 }
 
 export default function TransactionRow({
@@ -107,7 +100,7 @@ export default function TransactionRow({
               <span>·</span>
             </>
           )}
-          <span>{formatDate(transaction.transaction_date)}</span>
+          <span>{formatDisplayDate(transaction.transaction_date)}</span>
           {isManaged && (
             <span className="rounded-full bg-slate-100 px-2 py-0.5 font-medium text-slate-600 dark:bg-slate-800 dark:text-slate-300">
               {managementLabel}

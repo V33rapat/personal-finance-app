@@ -4,6 +4,7 @@ import Button from "@/components/ui/Button";
 import { TH_TEXT } from "@/constants/th";
 import type { MoneyAllocation } from "../hooks/useAllocation";
 import { formatWalletMoney } from "../lib/allocationWallet";
+import { formatDisplayDate } from "@/lib/dateFormat";
 
 interface AllocationHistoryProps {
   allocations: MoneyAllocation[];
@@ -15,9 +16,7 @@ interface AllocationHistoryProps {
 }
 
 function formatDate(value: string) {
-  const [year, month, day] = value.split("-");
-
-  return year && month && day ? `${day}/${month}/${year}` : value;
+  return formatDisplayDate(value);
 }
 
 export default function AllocationHistory({

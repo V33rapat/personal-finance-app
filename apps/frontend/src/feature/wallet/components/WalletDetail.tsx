@@ -18,6 +18,7 @@ import { toTemplateValuesFromTransaction } from "@/feature/transaction/lib/trans
 import type { Wallet } from "../hooks/useWallet";
 import { useWalletDailyTransactions } from "../hooks/useWalletDailyTransactions";
 import { getBangkokToday, isCalendarDate } from "../lib/dailyTransactionDate";
+import { formatDisplayDate } from "@/lib/dateFormat";
 
 type TabType = "overview" | "transactions";
 
@@ -146,13 +147,13 @@ function OverviewTab({
           <div>
             <dt className="text-xs font-semibold uppercase tracking-widest text-slate-400">{TH_TEXT.common.created}</dt>
             <dd className="mt-1 font-medium text-slate-700 dark:text-slate-200">
-              {new Date(wallet.created_at).toLocaleDateString("th-TH")}
+              {formatDisplayDate(wallet.created_at)}
             </dd>
           </div>
           <div>
             <dt className="text-xs font-semibold uppercase tracking-widest text-slate-400">{TH_TEXT.common.updated}</dt>
             <dd className="mt-1 font-medium text-slate-700 dark:text-slate-200">
-              {new Date(wallet.updated_at).toLocaleDateString("th-TH")}
+              {formatDisplayDate(wallet.updated_at)}
             </dd>
           </div>
         </dl>

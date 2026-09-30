@@ -3,6 +3,7 @@
 import Link from "next/link";
 import Button from "@/components/ui/Button";
 import { TH_TEXT } from "@/constants/th";
+import { formatDisplayDate } from "@/lib/dateFormat";
 import type { Transfer } from "../hooks/useTransfer";
 
 interface TransferHistoryProps {
@@ -23,13 +24,7 @@ function formatMoney(amount: string) {
 }
 
 function formatDate(date: string) {
-  const [year, month, day] = date.split("-");
-
-  if (!year || !month || !day) {
-    return date || TH_TEXT.common.none;
-  }
-
-  return `${day}/${month}/${year}`;
+  return date ? formatDisplayDate(date) : TH_TEXT.common.none;
 }
 
 function getTransferLabel(transfer: Transfer) {

@@ -1,5 +1,5 @@
+import { formatDisplayDateRange } from "../../../lib/dateFormat";
 import {
-  formatThaiDateRange,
   formatThaiMonth,
   formatThaiYear,
   toDateString,
@@ -101,11 +101,11 @@ export function formatSpendingBudgetPeriodSelection(
   selection: SpendingBudgetPeriodSelection,
 ) {
   if (selection.period === "daily") {
-    return formatThaiDateRange(selection.date, selection.date);
+    return formatDisplayDateRange(selection.date, selection.date);
   }
 
   if (selection.period === "weekly") {
-    return formatThaiDateRange(selection.start, selection.end);
+    return formatDisplayDateRange(selection.start, selection.end);
   }
 
   if (selection.period === "monthly") {

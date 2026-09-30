@@ -6,8 +6,8 @@ import { th } from "date-fns/locale";
 import { CalendarDays, RotateCcw } from "lucide-react";
 import Button from "@/components/ui/Button";
 import { TH_TEXT } from "@/constants/th";
+import { formatDisplayDateRange } from "@/lib/dateFormat";
 import {
-  formatThaiDateRange,
   getBangkokToday,
   getDayCount,
   toDateString,
@@ -74,10 +74,10 @@ export default function DashboardDateRangePicker({
         disabled={disabled}
         aria-expanded={isOpen}
         aria-haspopup="dialog"
-        aria-label={`${TH_TEXT.dashboard.selectDateRange}: ${formatThaiDateRange(range.start, range.end)}`}
+        aria-label={`${TH_TEXT.dashboard.selectDateRange}: ${formatDisplayDateRange(range.start, range.end)}`}
         className="flex min-h-[46px] w-full items-center justify-between gap-3 rounded-xl border border-slate-200 bg-white px-3 text-left text-sm font-semibold text-slate-700 transition hover:border-violet-300 disabled:cursor-not-allowed disabled:opacity-60 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:hover:border-violet-600"
       >
-        <span className="min-w-0 truncate">{formatThaiDateRange(range.start, range.end)}</span>
+        <span className="min-w-0 truncate">{formatDisplayDateRange(range.start, range.end)}</span>
         <CalendarDays className="h-4 w-4 shrink-0 text-violet-600 dark:text-violet-300" aria-hidden />
       </button>
 
