@@ -2,6 +2,7 @@
 
 import { useMemo, useRef, useState } from "react";
 import Button from "@/components/ui/Button";
+import DateField from "@/components/ui/DateField";
 import { TH_TEXT } from "@/constants/th";
 import CategoryCombobox, { type CategoryComboboxHandle } from "./CategoryCombobox";
 import type { Transaction, TransactionType } from "./TransactionItem";
@@ -148,6 +149,7 @@ function TransactionModalForm({
   });
   const [values, setValues] = useState<TransactionFormValues>(initialValues);
   const [errors, setErrors] = useState<Partial<Record<keyof TransactionFormValues, string>>>({});
+  const [isDateDraftValid, setIsDateDraftValid] = useState(true);
 
   const updateValue = <Key extends keyof TransactionFormValues>(
     field: Key,
@@ -178,7 +180,9 @@ function TransactionModalForm({
       nextErrors.amount = "กรุณากรอกจำนวนเงินที่ถูกต้อง";
     }
 
-    if (!values.transaction_date) {
+    if (!isDateDraftValid) {
+      nextErrors.transaction_date = TH_TEXT.common.invalidDateFormat;
+    } else if (!values.transaction_date) {
       nextErrors.transaction_date = TH_TEXT.transaction.dateRequired;
     } else if (values.transaction_date > getBangkokToday()) {
       nextErrors.transaction_date = TH_TEXT.transaction.futureDate;
@@ -400,17 +404,15 @@ function TransactionModalForm({
             />
           </FormField>
 
-          <FormField label={TH_TEXT.transaction.date} error={errors.transaction_date}>
-            <input
-              type="date"
-              value={values.transaction_date}
-              max={getBangkokToday()}
-              onChange={(event) => updateValue("transaction_date", event.target.value)}
-              aria-label={TH_TEXT.transaction.date}
-              data-testid="transaction-date"
-              className="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-800 focus:border-violet-500 focus:outline-none focus:ring-2 focus:ring-violet-500/20 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
-            />
-          </FormField>
+          <DateField
+            label={TH_TEXT.transaction.date}
+            value={values.transaction_date}
+            max={getBangkokToday()}
+            onChange={(date) => updateValue("transaction_date", date)}
+            onDraftValidityChange={setIsDateDraftValid}
+            error={errors.transaction_date}
+            testId="transaction-date"
+          />
 
           <FormField label={TH_TEXT.transaction.note}>
             <textarea

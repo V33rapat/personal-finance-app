@@ -2,6 +2,7 @@
 
 import { FormEvent, useMemo, useState } from "react";
 import Button from "@/components/ui/Button";
+import DateField from "@/components/ui/DateField";
 import FormField from "@/components/ui/FormField";
 import { TH_TEXT } from "@/constants/th";
 import type { Wallet } from "@/feature/wallet/hooks/useWallet";
@@ -64,12 +65,13 @@ export default function AllocationForm({
   );
   const [submitted, setSubmitted] = useState(false);
   const [hasInteracted, setHasInteracted] = useState(false);
+  const [isDateDraftValid, setIsDateDraftValid] = useState(true);
   const eligibleWallets = useMemo(() => getEligibleAllocationWallets(wallets), [wallets]);
   const fieldErrors = useMemo(
     () => getAllocationValidationErrors(values, wallets, editingAllocation),
     [editingAllocation, values, wallets]
   );
-  const hasFieldErrors = Object.values(fieldErrors).some(Boolean);
+  const hasFieldErrors = Object.values(fieldErrors).some(Boolean) || !isDateDraftValid;
   const showValidationErrors = submitted || hasInteracted;
   const destinationErrors = [
     fieldErrors.destinationWallet,
@@ -233,15 +235,16 @@ export default function AllocationForm({
               error={showValidationErrors ? fieldErrors.amount : undefined}
             />
 
-            <FormField
+            <DateField
               id="allocation-date"
               label={TH_TEXT.allocation.date}
-              type="date"
               max={getTodayDateString()}
               value={values.allocation_date}
               disabled={isSaving}
-              onChange={(event) => updateValue("allocation_date", event.target.value)}
+              onChange={(date) => updateValue("allocation_date", date)}
+              onDraftValidityChange={setIsDateDraftValid}
               error={showValidationErrors ? fieldErrors.date : undefined}
+              testId="allocation-date"
             />
 
             <div className="flex flex-col gap-1.5">

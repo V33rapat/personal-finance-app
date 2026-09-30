@@ -5,7 +5,10 @@ import { DayPicker } from "react-day-picker";
 import { Plus, Search, X } from "lucide-react";
 import Button from "@/components/ui/Button";
 import Card from "@/components/ui/Card";
+import DateField from "@/components/ui/DateField";
 import FormField from "@/components/ui/FormField";
+import { TH_TEXT } from "@/constants/th";
+import { formatDisplayDate } from "@/lib/dateFormat";
 import { useCategory } from "@/feature/transaction/hooks/useCategory";
 import { getTransactionWalletOptions } from "@/feature/transaction/lib/transactionWallet";
 import { useWallet } from "@/feature/wallet/hooks/useWallet";
@@ -56,12 +59,8 @@ const weekdayOptions = [
   { value: 7, label: "อาทิตย์" },
 ];
 
-function formatShortDate(date: string) {
-  return new Intl.DateTimeFormat("th-TH", {
-    day: "numeric",
-    month: "short",
-    timeZone: "UTC",
-  }).format(new Date(`${date}T00:00:00.000Z`));
+function formatPlanDate(date: string) {
+  return formatDisplayDate(date);
 }
 
 function formatCurrency(value: string | number) {
@@ -344,7 +343,7 @@ function PurposeCard({
           {isSpecificDates && (
             <div className="mt-3 overflow-hidden rounded-xl border border-slate-200 p-2 dark:border-slate-700">
               <p className="px-2 pt-1 text-xs font-semibold text-slate-600 dark:text-slate-300">
-                เลือกวันที่ในช่วง {formatShortDate(windowStart)} - {formatShortDate(windowEnd)}
+                เลือกวันที่ในช่วง {formatPlanDate(windowStart)} - {formatPlanDate(windowEnd)}
               </p>
               <DayPicker
                 mode="multiple"
@@ -410,6 +409,7 @@ export default function SpendingPlanEditor({
   const [errors, setErrors] = useState<SpendingPlanValidationErrors>({});
   const [walletSearch, setWalletSearch] = useState("");
   const [categorySearches, setCategorySearches] = useState<Record<string, string>>({});
+  const [dateDraftsValid, setDateDraftsValid] = useState({ start: true, end: true });
   const dates = useMemo(
     () => getPlanDates(values.start_date, values.end_date),
     [values.end_date, values.start_date],
@@ -495,6 +495,10 @@ export default function SpendingPlanEditor({
 
   const submit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    if (!dateDraftsValid.start || !dateDraftsValid.end) {
+      setErrors((current) => ({ ...current, dates: TH_TEXT.common.invalidDateFormat }));
+      return;
+    }
     const result = await onSubmit(values);
     setErrors(result.validationErrors);
   };
@@ -511,27 +515,35 @@ export default function SpendingPlanEditor({
             placeholder="เช่น แผนใช้เงินเที่ยวเชียงใหม่"
             disabled={isSaving}
           />
-          <FormField
+          <DateField
+            id="spending-plan-start-date"
             label="วันเริ่มต้น"
-            type="date"
             value={values.start_date}
-            onChange={(event) => updateDates("start_date", event.target.value)}
+            onChange={(date) => updateDates("start_date", date)}
+            onDraftValidityChange={(isValid) =>
+              setDateDraftsValid((current) => ({ ...current, start: isValid }))
+            }
             error={errors.dates}
             disabled={isSaving || isRevision}
+            testId="spending-plan-start-date"
           />
-          <FormField
+          <DateField
+            id="spending-plan-end-date"
             label="วันสิ้นสุด"
-            type="date"
             min={values.start_date}
             value={values.end_date}
-            onChange={(event) => updateDates("end_date", event.target.value)}
+            onChange={(date) => updateDates("end_date", date)}
+            onDraftValidityChange={(isValid) =>
+              setDateDraftsValid((current) => ({ ...current, end: isValid }))
+            }
             error={errors.dates}
             disabled={isSaving || isRevision}
+            testId="spending-plan-end-date"
           />
         </div>
         {effectiveDate && (
           <p className="mt-4 border-l-2 border-violet-500 pl-3 text-sm text-slate-600 dark:text-slate-300">
-            การแก้ไขนี้มีผลตั้งแต่ {formatShortDate(effectiveDate)} ถึง {formatShortDate(effectiveEndDate ?? values.end_date)} ข้อมูลนอกช่วงยังคงเป็น Revision เดิม
+            การแก้ไขนี้มีผลตั้งแต่ {formatPlanDate(effectiveDate)} ถึง {formatPlanDate(effectiveEndDate ?? values.end_date)} ข้อมูลนอกช่วงยังคงเป็น Revision เดิม
           </p>
         )}
       </Card>

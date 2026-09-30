@@ -2,6 +2,7 @@
 
 import { FormEvent, useMemo, useState } from "react";
 import Button from "@/components/ui/Button";
+import DateField from "@/components/ui/DateField";
 import FormField from "@/components/ui/FormField";
 import { TH_TEXT } from "@/constants/th";
 import type { Wallet } from "@/feature/wallet/hooks/useWallet";
@@ -168,6 +169,7 @@ export default function TransferForm({
   );
   const [touched, setTouched] = useState<TouchedFields>({});
   const [submitted, setSubmitted] = useState(false);
+  const [isDateDraftValid, setIsDateDraftValid] = useState(true);
 
   const sourceWallet = useMemo(
     () => wallets.find((wallet) => wallet.id === values.from_wallet_id) ?? null,
@@ -185,7 +187,7 @@ export default function TransferForm({
     () => getVisibleErrors(fieldErrors, touched, submitted),
     [fieldErrors, submitted, touched]
   );
-  const hasErrors = Object.keys(fieldErrors).length > 0;
+  const hasErrors = Object.keys(fieldErrors).length > 0 || !isDateDraftValid;
   const submitDisabled = isSaving || hasErrors;
   const submitLabel = isSaving
     ? isEditMode
@@ -355,19 +357,15 @@ export default function TransferForm({
             onBlur={() => setTouched((current) => ({ ...current, amount: true }))}
           />
 
-          <FormField
+          <DateField
             id="transfer-date"
             label={TH_TEXT.transfer.date}
-            type="date"
             max={getTodayDateString()}
             value={values.transfer_date}
             error={visibleErrors.transfer_date}
-            onChange={(event) =>
-              updateValue("transfer_date", event.target.value)
-            }
-            onBlur={() =>
-              setTouched((current) => ({ ...current, transfer_date: true }))
-            }
+            onChange={(date) => updateValue("transfer_date", date)}
+            onDraftValidityChange={setIsDateDraftValid}
+            testId="transfer-date"
           />
         </div>
 

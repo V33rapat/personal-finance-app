@@ -7,7 +7,10 @@ import { ChevronLeft, ChevronRight, Pencil, Plus, Settings2, X } from "lucide-re
 import Button from "@/components/ui/Button";
 import Card from "@/components/ui/Card";
 import ConfirmationDialog from "@/components/ui/ConfirmationDialog";
+import DateField from "@/components/ui/DateField";
+import { TH_TEXT } from "@/constants/th";
 import { getBangkokToday } from "@/feature/dashboard/lib/date";
+import { formatDisplayDate } from "@/lib/dateFormat";
 import {
   createPurpose,
   type SpendingPlanDistributionType,
@@ -32,12 +35,7 @@ function formatCurrency(value: string | number) {
 }
 
 function formatThaiDate(value: string) {
-  return new Intl.DateTimeFormat("th-TH", {
-    day: "numeric",
-    month: "short",
-    year: "numeric",
-    timeZone: "UTC",
-  }).format(new Date(`${value}T00:00:00.000Z`));
+  return formatDisplayDate(value);
 }
 
 function getMonthLabel(month: string) {
@@ -385,7 +383,9 @@ export default function SpendingPlanDetailPage() {
   const [isCancelOpen, setIsCancelOpen] = useState(false);
   const [isCopyOpen, setIsCopyOpen] = useState(false);
   const [copyStartDate, setCopyStartDate] = useState(getBangkokToday());
+  const [isCopyDateDraftValid, setIsCopyDateDraftValid] = useState(true);
   const [revisionEffectiveDate, setRevisionEffectiveDate] = useState("");
+  const [isRevisionDateDraftValid, setIsRevisionDateDraftValid] = useState(true);
 
   const load = useCallback(async (requestedMonth?: string) => {
     const next = await loadPlan(params.id, requestedMonth);
@@ -453,7 +453,7 @@ export default function SpendingPlanDetailPage() {
   };
 
   const submitCopy = () => {
-    if (!copyStartDate || isSaving) return;
+    if (!copyStartDate || !isCopyDateDraftValid || isSaving) return;
 
     void copyPlan(detail.id, { start_date: copyStartDate, end_date: copyEndDate }).then((plan) => {
       if (plan) {
@@ -466,7 +466,22 @@ export default function SpendingPlanDetailPage() {
   if (isEditing) {
     return (
       <div className="flex flex-col gap-6">
-        <header><p className="text-xs font-semibold uppercase tracking-widest text-violet-600 dark:text-violet-400">แผนการใช้เงิน</p><h1 className="mt-2 text-3xl font-bold text-slate-900 dark:text-slate-50">แก้ไข {detail.name}</h1><label className="mt-4 inline-flex flex-col gap-1 text-sm font-semibold text-slate-700 dark:text-slate-200">ให้ Revision มีผลตั้งแต่<input type="date" min={minimumEffectiveDate} max={detail.end_date} value={effectiveDate} onChange={(event) => setRevisionEffectiveDate(event.target.value)} className="h-10 rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-800 outline-none focus:border-violet-400 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100" /></label></header>
+        <header>
+          <p className="text-xs font-semibold uppercase tracking-widest text-violet-600 dark:text-violet-400">แผนการใช้เงิน</p>
+          <h1 className="mt-2 text-3xl font-bold text-slate-900 dark:text-slate-50">แก้ไข {detail.name}</h1>
+          <div className="mt-4 max-w-xs">
+            <DateField
+              id="spending-plan-revision-date"
+              label="ให้ Revision มีผลตั้งแต่"
+              min={minimumEffectiveDate}
+              max={detail.end_date}
+              value={effectiveDate}
+              onChange={setRevisionEffectiveDate}
+              onDraftValidityChange={setIsRevisionDateDraftValid}
+              testId="spending-plan-revision-date"
+            />
+          </div>
+        </header>
         <SpendingPlanEditor
           key={effectiveDate}
           initialValues={getEditorValues(detail, effectiveDate)}
@@ -475,6 +490,12 @@ export default function SpendingPlanDetailPage() {
           isSaving={isSaving}
           submitLabel="บันทึกเป็น Revision ใหม่"
           onSubmit={async (values) => {
+            if (!isRevisionDateDraftValid) {
+              return {
+                success: false,
+                validationErrors: { dates: TH_TEXT.common.invalidDateFormat },
+              };
+            }
             const result = await updatePlan(
               detail.id,
               effectiveDate,
@@ -570,16 +591,15 @@ export default function SpendingPlanDetailPage() {
                   }}
                   className="space-y-4"
                 >
-                  <label className="flex flex-col gap-1.5 text-sm font-semibold text-slate-700 dark:text-slate-200">
-                    วันเริ่มต้นของแผนใหม่
-                    <input
-                      type="date"
-                      value={copyStartDate}
-                      onChange={(event) => setCopyStartDate(event.target.value)}
-                      disabled={isSaving}
-                      className="h-11 rounded-xl border border-slate-200 bg-white px-3 text-sm font-normal text-slate-800 outline-none transition focus:border-violet-400 focus:ring-2 focus:ring-violet-400/20 disabled:cursor-not-allowed disabled:opacity-60 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
-                    />
-                  </label>
+                  <DateField
+                    id="spending-plan-copy-start-date"
+                    label="วันเริ่มต้นของแผนใหม่"
+                    value={copyStartDate}
+                    onChange={setCopyStartDate}
+                    onDraftValidityChange={setIsCopyDateDraftValid}
+                    disabled={isSaving}
+                    testId="spending-plan-copy-start-date"
+                  />
                   <p className="text-sm text-slate-500 dark:text-slate-400">
                     แผนใหม่จะสิ้นสุดวันที่ {formatThaiDate(copyEndDate)} โดยคงความยาวเท่ากับแผนต้นฉบับ
                   </p>
@@ -587,7 +607,7 @@ export default function SpendingPlanDetailPage() {
                     <Button type="button" variant="secondary" disabled={isSaving} onClick={() => setIsCopyOpen(false)}>
                       ยกเลิก
                     </Button>
-                    <Button type="submit" disabled={isSaving || !copyStartDate}>
+                    <Button type="submit" disabled={isSaving || !copyStartDate || !isCopyDateDraftValid}>
                       {isSaving ? "กำลังสร้างสำเนา" : "ยืนยันคัดลอกแผน"}
                     </Button>
                   </div>
