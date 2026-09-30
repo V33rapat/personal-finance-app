@@ -37,12 +37,8 @@ export function getBangkokToday() {
 }
 
 export function formatThaiDate(value: string) {
-  return new Intl.DateTimeFormat("th-TH", {
-    day: "numeric",
-    month: "long",
-    year: "numeric",
-    timeZone: "UTC",
-  }).format(toUtcDate(value));
+  const [year, month, day] = value.split("-");
+  return `${day}/${month}/${year}`;
 }
 
 export function formatMoney(value: number) {

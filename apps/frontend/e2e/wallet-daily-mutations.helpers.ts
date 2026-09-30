@@ -1,4 +1,5 @@
 import { expect, type Locator, type Page } from "@playwright/test";
+import { dateFieldValue } from "./date-format.helpers";
 
 export const CREATE_DATE = "2026-07-26";
 
@@ -25,7 +26,7 @@ export async function fillTransactionModal(
 ) {
   await dialog.getByTestId("transaction-name").fill(name);
   await dialog.getByTestId("transaction-amount").fill(amount);
-  await dialog.getByTestId("transaction-date").fill(date);
+  await dialog.getByTestId("transaction-date").fill(dateFieldValue(date));
   await dialog.getByTestId("transaction-note").fill(note);
 
   if (category) {

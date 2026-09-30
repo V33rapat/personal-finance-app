@@ -20,7 +20,7 @@ test.describe("Dashboard chart empty days", () => {
       DASHBOARD_CHART_RANGE.end,
     );
 
-    await expect(tooltip).toContainText("21 ก.ค.");
+    await expect(tooltip).toContainText("21/07/2026");
     await expect(tooltip).not.toContainText("E2E เงินเดือน");
     await expect(tooltip).not.toContainText("E2E อาหาร");
     await expectTooltipTotal(tooltip, "income", "รวมรายรับ", 0);

@@ -59,18 +59,16 @@ export function getCurrentWeek() {
 }
 
 export function formatThaiDateRange(start: string, end: string) {
-  const formatter = new Intl.DateTimeFormat("th-TH", {
-    day: "numeric",
-    month: "short",
-    year: "numeric",
-    timeZone: "UTC",
-  });
+  const formatDate = (value: string) => {
+    const [year, month, day] = value.split("-");
+    return `${day}/${month}/${year}`;
+  };
 
   if (start === end) {
-    return formatter.format(toUtcDate(start));
+    return formatDate(start);
   }
 
-  return `${formatter.format(toUtcDate(start))} - ${formatter.format(toUtcDate(end))}`;
+  return `${formatDate(start)} - ${formatDate(end)}`;
 }
 
 export function formatThaiMonth(month: string) {

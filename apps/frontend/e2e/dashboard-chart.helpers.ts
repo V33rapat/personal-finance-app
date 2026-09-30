@@ -17,15 +17,12 @@ export const DASHBOARD_CHART_RANGE = {
 };
 
 function formatThaiDateRange(start: string, end: string) {
-  const formatter = new Intl.DateTimeFormat("th-TH", {
-    day: "numeric",
-    month: "short",
-    year: "numeric",
-    timeZone: "UTC",
-  });
-  const toDate = (value: string) => new Date(`${value}T00:00:00.000Z`);
+  const formatDate = (value: string) => {
+    const [year, month, day] = value.split("-");
+    return `${day}/${month}/${year}`;
+  };
 
-  return `${formatter.format(toDate(start))} - ${formatter.format(toDate(end))}`;
+  return `${formatDate(start)} - ${formatDate(end)}`;
 }
 
 export function formatCurrency(value: number) {

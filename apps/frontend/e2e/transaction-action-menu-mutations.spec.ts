@@ -11,6 +11,7 @@ import {
   waitForTransactionRequest,
   waitForTransactionResponse,
 } from "./transaction-action-menu.helpers";
+import { dateFieldValue } from "./date-format.helpers";
 
 function waitForTransactionMutation(page: Page, method: string) {
   return page.waitForResponse((response) => {
@@ -53,7 +54,7 @@ test.describe("Transaction Action Menu mutations", () => {
     await expect(dialog.getByTestId("transaction-name")).toHaveValue(
       `${ACTION_MANUAL_EXPENSE} (สำเนา)`,
     );
-    await expect(dialog.getByTestId("transaction-date")).toHaveValue("2026-07-19");
+    await expect(dialog.getByTestId("transaction-date")).toHaveValue(dateFieldValue("2026-07-19"));
     await expect(dialog.getByTestId("transaction-template")).toHaveValue("");
     await dialog.getByTestId("transaction-name").fill("E2E Action Created Copy");
 
