@@ -5,9 +5,11 @@ import {
   formatDateInput,
   formatDisplayDate,
   formatDisplayDateRange,
+  fromLocalCalendarDate,
   getDateDraftCaretPosition,
   isValidIsoDate,
   parseDisplayDate,
+  toLocalCalendarDate,
 } from "./dateFormat";
 
 describe("date format helpers", () => {
@@ -45,5 +47,12 @@ describe("date format helpers", () => {
   it("formats timestamps using the Bangkok calendar day", () => {
     expect(formatDisplayDate("2026-09-17T20:15:00.000Z")).toBe("18/09/2026");
     expect(formatDisplayDate("2026-12-31T20:00:00.000Z")).toBe("01/01/2027");
+  });
+
+  it("round-trips a calendar date without shifting its day", () => {
+    const localDate = toLocalCalendarDate("2026-07-20");
+
+    expect(localDate).toBeInstanceOf(Date);
+    expect(fromLocalCalendarDate(localDate!)).toBe("2026-07-20");
   });
 });

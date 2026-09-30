@@ -237,7 +237,7 @@ export default function DateField({
           spellCheck={false}
           maxLength={10}
           placeholder="DD/MM/YYYY"
-          pattern="\\d{2}/\\d{2}/\\d{4}"
+          pattern={"\\d{2}/\\d{2}/\\d{4}"}
           value={draft}
           disabled={disabled}
           aria-label={ariaLabel ?? (label ? undefined : TH_TEXT.common.date)}
