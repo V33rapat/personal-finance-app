@@ -8,7 +8,8 @@ import {
 function createWallet(
   id: string,
   parentWalletId: string | null = null,
-  isActive = true
+  isActive = true,
+  deletedAt: string | null = null
 ): Wallet {
   return {
     id,
@@ -25,7 +26,7 @@ function createWallet(
     is_active: isActive,
     created_at: "2026-01-01T00:00:00.000Z",
     updated_at: "2026-01-01T00:00:00.000Z",
-    deleted_at: null,
+    deleted_at: deletedAt,
   };
 }
 
@@ -53,9 +54,37 @@ describe("getTransferSelectableWallets", () => {
       getTransferSelectableWallets(wallets).map((wallet) => wallet.id)
     ).toEqual(["parent"]);
   });
+
+  it("hides deleted wallets without mutating the wallet data", () => {
+    const wallets = [
+      createWallet("active"),
+      createWallet("deleted", null, true, "2026-01-02T00:00:00.000Z"),
+    ];
+    const originalWallets = structuredClone(wallets);
+
+    expect(
+      getTransferSelectableWallets(wallets).map((wallet) => wallet.id)
+    ).toEqual(["active"]);
+    expect(wallets).toEqual(originalWallets);
+  });
+
+  it("returns an empty list when no wallet is available", () => {
+    expect(
+      getTransferSelectableWallets([
+        createWallet("inactive", null, false),
+        createWallet("deleted", null, true, "2026-01-02T00:00:00.000Z"),
+      ])
+    ).toEqual([]);
+  });
 });
 
 describe("getTransferWalletDisplayName", () => {
+  it("falls back to the sub-wallet name when its parent is unavailable", () => {
+    const subWallet = createWallet("Travel", "missing-parent");
+
+    expect(getTransferWalletDisplayName(subWallet, [subWallet])).toBe("Travel");
+  });
+
   it("shows parent and sub-wallet names for a nested wallet", () => {
     const parent = createWallet("เงินเก็บ");
     const subWallet = createWallet("เที่ยวญี่ปุ่น", parent.id);
