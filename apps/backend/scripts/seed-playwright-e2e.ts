@@ -187,8 +187,80 @@ async function seedPrimaryUser() {
       created_at: seededWalletCreatedAt,
     },
   });
+  const transferSource = await prisma.wallets.create({
+    data: {
+      user_id: user.id,
+      name: 'E2E Transfer Source',
+      wallet_type: wallet_type.normal,
+      balance: 1_000,
+      created_at: seededWalletCreatedAt,
+    },
+  });
+  const transferDestination = await prisma.wallets.create({
+    data: {
+      user_id: user.id,
+      name: 'E2E Transfer Destination',
+      wallet_type: wallet_type.normal,
+      balance: 250,
+      created_at: seededWalletCreatedAt,
+    },
+  });
+  const transferParent = await prisma.wallets.create({
+    data: {
+      user_id: user.id,
+      name: 'E2E Transfer Parent',
+      wallet_type: wallet_type.normal,
+      balance: 300,
+      created_at: seededWalletCreatedAt,
+    },
+  });
+  const transferChild = await prisma.wallets.create({
+    data: {
+      user_id: user.id,
+      parent_wallet_id: transferParent.id,
+      name: 'E2E Transfer Child',
+      wallet_type: wallet_type.normal,
+      balance: 300,
+      created_at: seededWalletCreatedAt,
+    },
+  });
+  const transferInactive = await prisma.wallets.create({
+    data: {
+      user_id: user.id,
+      name: 'E2E Transfer Inactive',
+      wallet_type: wallet_type.normal,
+      is_active: false,
+      balance: 500,
+      created_at: seededWalletCreatedAt,
+    },
+  });
+  const transferDeleted = await prisma.wallets.create({
+    data: {
+      id: '90000000-0000-4000-8000-000000000001',
+      user_id: user.id,
+      name: 'E2E Transfer Deleted',
+      wallet_type: wallet_type.normal,
+      balance: 700,
+      deleted_at: new Date('2026-07-01T00:00:00.000Z'),
+      created_at: seededWalletCreatedAt,
+    },
+  });
   await prisma.transactions.createMany({
     data: [
+      ...[
+        { wallet: transferSource, amount: 1_000 },
+        { wallet: transferDestination, amount: 250 },
+        { wallet: transferChild, amount: 300 },
+        { wallet: transferInactive, amount: 500 },
+        { wallet: transferDeleted, amount: 700 },
+      ].map(({ wallet, amount }) => ({
+        wallet_id: wallet.id,
+        category_id: salary.id,
+        name: `E2E opening balance ${wallet.name}`,
+        type: transaction_type.income,
+        amount,
+        transaction_date: new Date('2025-12-15T00:00:00.000Z'),
+      })),
       {
         wallet_id: cash.id,
         category_id: food.id,
