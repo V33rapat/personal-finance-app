@@ -8,20 +8,8 @@ import DashboardWalletSummary from "./DashboardWalletSummary";
 import SpendingBudgetOverview from "./SpendingBudgetOverview";
 import DashboardWeeklyOverview from "./DashboardWeeklyOverview";
 import DashboardSpendingPlans from "@/feature/spending-plan/components/DashboardSpendingPlans";
-
-function formatMonth(month: string) {
-  const [year, monthNumber] = month.split("-").map(Number);
-
-  if (!year || !monthNumber) {
-    return "";
-  }
-
-  return new Intl.DateTimeFormat("th-TH", {
-    month: "long",
-    year: "numeric",
-    timeZone: "UTC",
-  }).format(new Date(Date.UTC(year, monthNumber - 1, 1)));
-}
+import DashboardMonthPicker from "./DashboardMonthPicker";
+import { formatMonthValue } from "../lib/dashboardMonth";
 
 function formatCurrency(value: string | undefined) {
   const amount = Number(value ?? 0);
@@ -65,7 +53,8 @@ export default function DashboardPageContent() {
     selectMonth,
     retry,
   } = useDashboardSummary();
-  const monthLabel = formatMonth(selectedMonth);
+  const dashboardLocale = "th-TH";
+  const monthLabel = formatMonthValue(selectedMonth, dashboardLocale);
 
   return (
     <div className="flex flex-col gap-6">
@@ -82,22 +71,19 @@ export default function DashboardPageContent() {
           </p>
         </div>
 
-        <div className="flex flex-col gap-1.5 sm:w-[190px]">
-          <label
-            htmlFor="dashboard-reporting-month"
-            className="text-xs font-semibold uppercase tracking-widest text-slate-500 dark:text-slate-400"
-          >
-            {TH_TEXT.dashboard.reportingPeriod}
-          </label>
-          <input
-            id="dashboard-reporting-month"
-            type="month"
-            value={selectedMonth}
-            max={currentMonth}
-            onChange={(event) => selectMonth(event.target.value)}
-            className="h-[46px] w-full rounded-xl border border-slate-200 bg-white/60 px-3 text-sm font-medium text-slate-800 outline-none transition focus:border-violet-400 focus:bg-white focus:ring-2 focus:ring-violet-400/20 dark:border-slate-700 dark:bg-slate-800/60 dark:text-slate-100 dark:focus:border-violet-500 dark:focus:bg-slate-800 dark:focus:ring-violet-500/20"
-          />
-        </div>
+        <DashboardMonthPicker
+          value={selectedMonth}
+          maximum={currentMonth}
+          locale={dashboardLocale}
+          labels={{
+            reportingPeriod: TH_TEXT.dashboard.reportingPeriod,
+            selectMonth: TH_TEXT.dashboard.selectReportingMonth,
+            previousYear: TH_TEXT.dashboard.previousYear,
+            nextYear: TH_TEXT.dashboard.nextYear,
+            monthOptions: TH_TEXT.dashboard.monthOptions,
+          }}
+          onChange={selectMonth}
+        />
       </header>
 
       {error && (
