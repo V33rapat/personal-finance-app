@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest";
 import type { Wallet } from "@/feature/wallet/hooks/useWallet";
-import { getTransferSelectableWallets } from "./transferWallets";
+import {
+  getTransferSelectableWallets,
+  getTransferWalletDisplayName,
+} from "./transferWallets";
 
 function createWallet(
   id: string,
@@ -48,5 +51,22 @@ describe("getTransferSelectableWallets", () => {
     expect(
       getTransferSelectableWallets(wallets).map((wallet) => wallet.id)
     ).toEqual(["parent", "inactive-child"]);
+  });
+});
+
+describe("getTransferWalletDisplayName", () => {
+  it("shows parent and sub-wallet names for a nested wallet", () => {
+    const parent = createWallet("เงินเก็บ");
+    const subWallet = createWallet("เที่ยวญี่ปุ่น", parent.id);
+
+    expect(getTransferWalletDisplayName(subWallet, [parent, subWallet])).toBe(
+      "เงินเก็บ : เที่ยวญี่ปุ่น"
+    );
+  });
+
+  it("shows only the wallet name for a standalone wallet", () => {
+    const wallet = createWallet("เงินสด");
+
+    expect(getTransferWalletDisplayName(wallet, [wallet])).toBe("เงินสด");
   });
 });

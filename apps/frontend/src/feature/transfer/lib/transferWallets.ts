@@ -15,3 +15,13 @@ export function getTransferSelectableWallets(wallets: Wallet[]) {
 
   return wallets.filter((wallet) => !parentWalletIds.has(wallet.id));
 }
+
+export function getTransferWalletDisplayName(wallet: Wallet, wallets: Wallet[]) {
+  const parentWallet = wallet.parent_wallet_id
+    ? wallets.find((candidate) => candidate.id === wallet.parent_wallet_id)
+    : null;
+
+  return parentWallet
+    ? `${parentWallet.name} : ${wallet.name}`
+    : wallet.name;
+}

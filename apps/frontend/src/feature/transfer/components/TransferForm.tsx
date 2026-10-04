@@ -7,7 +7,10 @@ import FormField from "@/components/ui/FormField";
 import { TH_TEXT } from "@/constants/th";
 import type { Wallet } from "@/feature/wallet/hooks/useWallet";
 import type { Transfer, TransferFormValues } from "../hooks/useTransfer";
-import { getTransferSelectableWallets } from "../lib/transferWallets";
+import {
+  getTransferSelectableWallets,
+  getTransferWalletDisplayName,
+} from "../lib/transferWallets";
 import TransferBalancePreview from "./TransferBalancePreview";
 
 interface TransferFormProps {
@@ -288,7 +291,7 @@ export default function TransferForm({
               <option value="">{TH_TEXT.transfer.selectSourceWallet}</option>
               {selectableWallets.map((wallet) => (
                 <option key={wallet.id} value={wallet.id}>
-                  {wallet.name} - {formatMoney(wallet.balance, wallet.currency)}
+                  {getTransferWalletDisplayName(wallet, wallets)} - {formatMoney(wallet.balance, wallet.currency)}
                 </option>
               ))}
             </select>
@@ -333,7 +336,7 @@ export default function TransferForm({
               <option value="">{TH_TEXT.transfer.selectDestinationWallet}</option>
               {selectableWallets.map((wallet) => (
                 <option key={wallet.id} value={wallet.id}>
-                  {wallet.name} - {formatMoney(wallet.balance, wallet.currency)}
+                  {getTransferWalletDisplayName(wallet, wallets)} - {formatMoney(wallet.balance, wallet.currency)}
                 </option>
               ))}
             </select>
