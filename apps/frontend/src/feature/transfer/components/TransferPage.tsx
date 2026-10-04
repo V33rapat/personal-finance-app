@@ -13,6 +13,7 @@ import {
 } from "../hooks/useTransfer";
 import TransferForm from "./TransferForm";
 import TransferHistory from "./TransferHistory";
+import { getTransferSelectableWallets } from "../lib/transferWallets";
 
 function TransferSkeleton() {
   return (
@@ -157,6 +158,7 @@ export default function TransferPage() {
       wallet.parent_wallet_id ? sum : sum + Number(wallet.balance || 0),
     0
   );
+  const selectableWalletCount = getTransferSelectableWallets(wallets).length;
 
   const handleEditTransfer = (transfer: Transfer) => {
     setEditingTransfer(transfer);
@@ -220,7 +222,7 @@ export default function TransferPage() {
 
       {isWalletLoading ? (
         <TransferSkeleton />
-      ) : wallets.length < 2 ? (
+      ) : selectableWalletCount < 2 ? (
         <WalletRequirementEmptyState />
       ) : (
         <>

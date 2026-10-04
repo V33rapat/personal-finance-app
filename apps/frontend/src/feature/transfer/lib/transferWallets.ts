@@ -1,19 +1,18 @@
 import type { Wallet } from "@/feature/wallet/hooks/useWallet";
 
 export function getTransferSelectableWallets(wallets: Wallet[]) {
+  const activeWallets = wallets.filter(
+    (wallet) => wallet.is_active && wallet.deleted_at === null
+  );
   const parentWalletIds = new Set<string>();
 
-  wallets.forEach((wallet) => {
-    if (
-      wallet.is_active &&
-      wallet.deleted_at === null &&
-      wallet.parent_wallet_id
-    ) {
+  activeWallets.forEach((wallet) => {
+    if (wallet.parent_wallet_id) {
       parentWalletIds.add(wallet.parent_wallet_id);
     }
   });
 
-  return wallets.filter((wallet) => !parentWalletIds.has(wallet.id));
+  return activeWallets.filter((wallet) => !parentWalletIds.has(wallet.id));
 }
 
 export function getTransferWalletDisplayName(wallet: Wallet, wallets: Wallet[]) {

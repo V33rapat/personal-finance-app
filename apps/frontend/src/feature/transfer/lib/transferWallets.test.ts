@@ -42,15 +42,16 @@ describe("getTransferSelectableWallets", () => {
     ).toEqual(["sub-wallet", "standalone"]);
   });
 
-  it("does not treat an inactive sub-wallet as an active parent relationship", () => {
+  it("hides inactive wallets and ignores inactive sub-wallet relationships", () => {
     const wallets = [
       createWallet("parent"),
       createWallet("inactive-child", "parent", false),
+      createWallet("inactive-standalone", null, false),
     ];
 
     expect(
       getTransferSelectableWallets(wallets).map((wallet) => wallet.id)
-    ).toEqual(["parent", "inactive-child"]);
+    ).toEqual(["parent"]);
   });
 });
 
