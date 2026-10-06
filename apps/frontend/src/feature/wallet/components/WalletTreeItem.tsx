@@ -1,6 +1,7 @@
 "use client";
 
 import { TH_TEXT } from "@/constants/th";
+import { formatMoneyAmount } from "@/lib/currencyFormat";
 import type { WalletNode } from "../hooks/useWallet";
 
 interface WalletTreeItemProps {
@@ -89,7 +90,7 @@ export default function WalletTreeItem({
           <span className="min-w-0 flex-1">
             <span className="block truncate text-sm font-semibold">{wallet.name}</span>
             <span className="block truncate text-xs text-slate-400 dark:text-slate-500">
-              {wallet.currency} {Number(wallet.balance).toLocaleString("en-US")}
+              {wallet.currency} {formatMoneyAmount(wallet.balance)}
             </span>
           </span>
         </button>

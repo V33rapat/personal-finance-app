@@ -5,6 +5,7 @@ import Link from "next/link";
 import Button from "@/components/ui/Button";
 import ConfirmationDialog from "@/components/ui/ConfirmationDialog";
 import { TH_TEXT } from "@/constants/th";
+import { formatCurrency } from "@/lib/currencyFormat";
 import { useWallet } from "@/feature/wallet/hooks/useWallet";
 import {
   type Transfer,
@@ -74,11 +75,7 @@ function WalletSummaryPanel({
   walletCount: number;
   totalBalance: number;
 }) {
-  const formattedTotal = new Intl.NumberFormat("th-TH", {
-    style: "currency",
-    currency: "THB",
-    maximumFractionDigits: 0,
-  }).format(totalBalance);
+  const formattedTotal = formatCurrency(totalBalance);
 
   return (
     <aside className="rounded-2xl border border-slate-200/80 bg-white/85 p-6 shadow-xl shadow-slate-200/50 backdrop-blur-xl dark:border-slate-800 dark:bg-slate-900/80 dark:shadow-slate-950/40">

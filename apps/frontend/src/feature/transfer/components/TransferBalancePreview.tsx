@@ -1,6 +1,7 @@
 "use client";
 
 import { TH_TEXT } from "@/constants/th";
+import { formatCurrency } from "@/lib/currencyFormat";
 import type { Wallet } from "@/feature/wallet/hooks/useWallet";
 import type { Transfer } from "../hooks/useTransfer";
 
@@ -19,14 +20,6 @@ function toMoneyNumber(value: string | number | null | undefined) {
   const numberValue = typeof value === "number" ? value : Number(value);
 
   return Number.isFinite(numberValue) ? numberValue : 0;
-}
-
-function formatMoney(amount: number, currency = "THB") {
-  return new Intl.NumberFormat("th-TH", {
-    style: "currency",
-    currency,
-    maximumFractionDigits: 0,
-  }).format(amount);
 }
 
 function getEditableBaseBalance(wallet: Wallet | null, editingTransfer?: Transfer | null) {
@@ -90,7 +83,7 @@ function BalancePanel({
             {TH_TEXT.transfer.currentBalance}
           </p>
           <p className="mt-1 text-base font-bold text-slate-900 dark:text-slate-50">
-            {formatMoney(currentBalance, currency)}
+            {formatCurrency(currentBalance, currency)}
           </p>
         </div>
         <div>
@@ -98,7 +91,7 @@ function BalancePanel({
             {TH_TEXT.transfer.afterTransfer}
           </p>
           <p className="mt-1 text-base font-bold text-slate-900 dark:text-slate-50">
-            {formatMoney(nextBalance, currency)}
+            {formatCurrency(nextBalance, currency)}
           </p>
         </div>
       </div>

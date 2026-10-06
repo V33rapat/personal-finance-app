@@ -3,6 +3,7 @@
 import Link from "next/link";
 import Button from "@/components/ui/Button";
 import { TH_TEXT } from "@/constants/th";
+import { formatCurrency } from "@/lib/currencyFormat";
 import { formatDisplayDate } from "@/lib/dateFormat";
 import type { Transfer } from "../hooks/useTransfer";
 
@@ -13,14 +14,6 @@ interface TransferHistoryProps {
   editingTransferId?: string | null;
   onEdit: (transfer: Transfer) => void;
   onDelete: (transfer: Transfer) => void;
-}
-
-function formatMoney(amount: string) {
-  return new Intl.NumberFormat("th-TH", {
-    style: "currency",
-    currency: "THB",
-    maximumFractionDigits: 2,
-  }).format(Number(amount || 0));
 }
 
 function formatDate(date: string) {
@@ -117,7 +110,7 @@ export default function TransferHistory({
                       {TH_TEXT.transfer.amount}
                     </p>
                     <p className="mt-1 text-base font-bold text-slate-900 dark:text-slate-50">
-                      {formatMoney(transfer.amount)}
+                      {formatCurrency(transfer.amount)}
                     </p>
                   </div>
 

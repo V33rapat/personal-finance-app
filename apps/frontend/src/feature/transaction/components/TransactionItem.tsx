@@ -1,6 +1,7 @@
 "use client";
 
 import { TH_TEXT } from "@/constants/th";
+import { formatCurrency } from "@/lib/currencyFormat";
 import { formatDisplayDate } from "@/lib/dateFormat";
 import TransactionActionMenu from "./TransactionActionMenu";
 
@@ -31,14 +32,6 @@ interface TransactionItemProps {
   onSaveAsTemplate?: (transaction: Transaction) => void;
   onDelete?: (transaction: Transaction) => void;
   isSavingTemplate?: boolean;
-}
-
-function formatMoney(amount: string, currency: string = "THB") {
-  return new Intl.NumberFormat("th-TH", {
-    style: "currency",
-    currency,
-    maximumFractionDigits: 2,
-  }).format(Number(amount));
 }
 
 export default function TransactionItem({
@@ -99,7 +92,7 @@ export default function TransactionItem({
         <div className="text-right">
           <p className={["font-semibold", isIncome ? "text-emerald-600 dark:text-emerald-400" : "text-rose-600 dark:text-rose-400"].join(" ")}>
             {isIncome ? "+" : "-"}
-            {formatMoney(transaction.amount, currency)}
+            {formatCurrency(transaction.amount, currency)}
           </p>
           <p className="text-xs text-slate-400 dark:text-slate-500">
             {isIncome ? TH_TEXT.transaction.income : TH_TEXT.transaction.expense}

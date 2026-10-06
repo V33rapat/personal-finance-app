@@ -6,6 +6,7 @@ import DateField from "@/components/ui/DateField";
 import FormField from "@/components/ui/FormField";
 import { TH_TEXT } from "@/constants/th";
 import type { Wallet } from "@/feature/wallet/hooks/useWallet";
+import { formatCurrency } from "@/lib/currencyFormat";
 import type { Transfer, TransferFormValues } from "../hooks/useTransfer";
 import {
   getTransferSelectableWallets,
@@ -42,14 +43,6 @@ function getTodayDateString() {
   const timezoneOffsetMs = now.getTimezoneOffset() * 60_000;
 
   return new Date(now.getTime() - timezoneOffsetMs).toISOString().split("T")[0];
-}
-
-function formatMoney(balance: string, currency: string) {
-  return new Intl.NumberFormat("th-TH", {
-    style: "currency",
-    currency,
-    maximumFractionDigits: 0,
-  }).format(Number(balance));
 }
 
 function toMoneyNumber(value: string | number | null | undefined) {
@@ -291,7 +284,7 @@ export default function TransferForm({
               <option value="">{TH_TEXT.transfer.selectSourceWallet}</option>
               {selectableWallets.map((wallet) => (
                 <option key={wallet.id} value={wallet.id}>
-                  {getTransferWalletDisplayName(wallet, wallets)} - {formatMoney(wallet.balance, wallet.currency)}
+                  {getTransferWalletDisplayName(wallet, wallets)} - {formatCurrency(wallet.balance, wallet.currency)}
                 </option>
               ))}
             </select>
@@ -336,7 +329,7 @@ export default function TransferForm({
               <option value="">{TH_TEXT.transfer.selectDestinationWallet}</option>
               {selectableWallets.map((wallet) => (
                 <option key={wallet.id} value={wallet.id}>
-                  {getTransferWalletDisplayName(wallet, wallets)} - {formatMoney(wallet.balance, wallet.currency)}
+                  {getTransferWalletDisplayName(wallet, wallets)} - {formatCurrency(wallet.balance, wallet.currency)}
                 </option>
               ))}
             </select>

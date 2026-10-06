@@ -4,6 +4,7 @@ import { useMemo, useRef, useState } from "react";
 import Button from "@/components/ui/Button";
 import DateField from "@/components/ui/DateField";
 import { TH_TEXT } from "@/constants/th";
+import { formatMoneyAmount } from "@/lib/currencyFormat";
 import CategoryCombobox, { type CategoryComboboxHandle } from "./CategoryCombobox";
 import type { Transaction, TransactionType } from "./TransactionItem";
 import type { TransactionFormValues, TransactionModalMode } from "../hooks/useTransaction";
@@ -330,7 +331,7 @@ function TransactionModalForm({
                 </option>
                 {templates.map((template) => (
                   <option key={template.id} value={template.id}>
-                    {template.name} - {Number(template.default_amount).toLocaleString("th-TH")}
+                    {template.name} - {formatMoneyAmount(template.default_amount)}
                   </option>
                 ))}
               </select>

@@ -19,6 +19,7 @@ import type { Wallet } from "../hooks/useWallet";
 import { useWalletDailyTransactions } from "../hooks/useWalletDailyTransactions";
 import { getBangkokToday, isCalendarDate } from "../lib/dailyTransactionDate";
 import { formatDisplayDate } from "@/lib/dateFormat";
+import { formatCurrency } from "@/lib/currencyFormat";
 
 type TabType = "overview" | "transactions";
 
@@ -31,14 +32,6 @@ interface WalletDetailProps {
   onAddSubWallet: (parentId: string) => void;
   onCreateWallet: () => void;
   onTransactionsChanged?: () => void | Promise<void>;
-}
-
-function formatMoney(balance: string, currency: string) {
-  return new Intl.NumberFormat("th-TH", {
-    style: "currency",
-    currency,
-    maximumFractionDigits: 0,
-  }).format(Number(balance));
 }
 
 function TypeBadge({ type }: { type: Wallet["wallet_type"] }) {
@@ -113,7 +106,7 @@ function OverviewTab({
         <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-950/40">
           <p className="text-xs font-semibold uppercase tracking-widest text-slate-400">{TH_TEXT.wallet.balance}</p>
           <p className="mt-3 text-2xl font-bold tracking-tight text-slate-900 dark:text-slate-50">
-            {formatMoney(wallet.balance, wallet.currency)}
+            {formatCurrency(wallet.balance, wallet.currency)}
           </p>
         </div>
 
