@@ -140,6 +140,28 @@ _Avoid_: Expense category, service charge transaction
 A grouped movement of an existing Amount from one Source Wallet to one or more Destination Wallets. Its related Transfers are managed together as one financial action.
 _Avoid_: Income, recurring transfer, individual transfer
 
+### Release Communications
+
+**Release Announcement**:
+A versioned, published summary of Walpaca features, improvements, and fixes. Announcements are maintained in the application release catalog and deployed with the code.
+_Avoid_: In-app user message, notification
+
+**Release Baseline**:
+The first release an account should receive in the automatic popup. When a new account first opens the popup, its baseline is the latest published release; earlier announcements remain available in history.
+_Avoid_: Installed version, last-seen version
+
+**Seen Announcement**:
+A Release Announcement whose details have been opened from either the popup or update history. Seen state is stored for the User Account and shared across its devices.
+_Avoid_: Dismissed announcement, delivered announcement
+
+**Dismissed Announcement**:
+A Release Announcement hidden account-wide when the user chooses not to show the popup's current snapshot again. Dismissed announcements remain available in update history.
+_Avoid_: Seen announcement, deleted announcement
+
+**Temporary Popup Close**:
+Closing the update popup without choosing account-wide dismissal. It suppresses only that popup snapshot in the current browser tab and does not affect other devices or update history.
+_Avoid_: Dismissal, read state
+
 ### Reporting And Analysis
 
 **Dashboard**:
