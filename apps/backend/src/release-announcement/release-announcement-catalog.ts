@@ -12,6 +12,17 @@ const RELEASE_ID_PATTERN = /^[a-z0-9][a-z0-9.-]{1,99}$/;
 const ISO_UTC_PATTERN = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,3})?Z$/;
 const INTERNAL_PATH_PATTERN =
   /^\/(?!\/)[\p{L}\p{N}/_-]*(?:\?[\p{L}\p{N}._~%=&-]*)?(?:#[\p{L}\p{N}._~-]*)?$/u;
+const ALLOWED_INTERNAL_ROUTES = new Set([
+  '/allocation',
+  '/dashboard',
+  '/profile',
+  '/spending-plans',
+  '/transaction-templates',
+  '/transactions',
+  '/transfer',
+  '/wallet',
+  '/whats-new',
+]);
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
@@ -28,7 +39,10 @@ function isInternalHref(value: string): boolean {
 
   try {
     const parsed = new URL(value, 'https://walpaca.invalid');
-    return parsed.origin === 'https://walpaca.invalid';
+    return (
+      parsed.origin === 'https://walpaca.invalid' &&
+      ALLOWED_INTERNAL_ROUTES.has(parsed.pathname)
+    );
   } catch {
     return false;
   }
@@ -182,10 +196,18 @@ export class ReleaseAnnouncementCatalog {
   private readonly releases: ReleaseAnnouncement[];
 
   constructor() {
+    const isE2eTestMode = process.env.WALPACA_E2E_TEST_MODE === 'true';
+    if (isE2eTestMode && process.env.NODE_ENV === 'production') {
+      throw new Error('WALPACA_E2E_TEST_MODE is not allowed in production');
+    }
+
     const testCatalogPath =
-      process.env.NODE_ENV === 'test'
+      process.env.NODE_ENV === 'test' || isE2eTestMode
         ? process.env.RELEASE_ANNOUNCEMENT_TEST_CATALOG_PATH
         : undefined;
+    if (isE2eTestMode && !testCatalogPath) {
+      throw new Error('E2E release catalog path must be configured');
+    }
     const catalogPath = testCatalogPath
       ? isAbsolute(testCatalogPath)
         ? testCatalogPath

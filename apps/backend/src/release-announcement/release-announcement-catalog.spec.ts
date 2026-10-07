@@ -77,6 +77,19 @@ describe('validateReleaseCatalog', () => {
       ],
       /internal paths/,
     ],
+    [
+      'unregistered application routes',
+      [
+        release({
+          updates: {
+            features: [{ text: 'เปิดเว็บ', href: '/not-a-real-page' }],
+            improvements: [],
+            fixes: [],
+          },
+        }),
+      ],
+      /internal paths/,
+    ],
   ])('rejects %s', (_name, catalog, error) => {
     expect(() => validateReleaseCatalog(catalog)).toThrow(error);
   });
