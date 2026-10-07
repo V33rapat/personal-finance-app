@@ -1,0 +1,41 @@
+[
+  {
+    "id": "walpaca-1.0.0",
+    "version": "1.0.0",
+    "release_order": 1,
+    "published_at": "2026-10-01T00:00:00.000Z",
+    "title": "Walpaca 1.0.0",
+    "summary": "ประกาศเก่าสำหรับทดสอบประวัติ",
+    "updates": {
+      "features": [{ "text": "เพิ่มรายการธุรกรรม" }],
+      "improvements": [],
+      "fixes": []
+    }
+  },
+  {
+    "id": "walpaca-1.1.0",
+    "version": "1.1.0",
+    "release_order": 2,
+    "published_at": "2026-10-02T00:00:00.000Z",
+    "title": "Walpaca 1.1.0",
+    "summary": "ประกาศล่าสุดที่เผยแพร่แล้ว",
+    "updates": {
+      "features": [],
+      "improvements": [{ "text": "ปรับปรุงแดชบอร์ด", "href": "/dashboard" }],
+      "fixes": []
+    }
+  },
+  {
+    "id": "walpaca-9.9.9",
+    "version": "9.9.9",
+    "release_order": 3,
+    "published_at": "2099-01-01T00:00:00.000Z",
+    "title": "Future release",
+    "summary": "Must not be visible before publication",
+    "updates": {
+      "features": [{ "text": "Future feature" }],
+      "improvements": [],
+      "fixes": []
+    }
+  }
+]

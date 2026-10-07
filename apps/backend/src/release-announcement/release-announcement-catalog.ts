@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { readFileSync } from 'node:fs';
-import { join } from 'node:path';
+import { isAbsolute, join, resolve } from 'node:path';
 import type {
   ReleaseAnnouncement,
   ReleaseUpdateItem,
@@ -182,7 +182,15 @@ export class ReleaseAnnouncementCatalog {
   private readonly releases: ReleaseAnnouncement[];
 
   constructor() {
-    const catalogPath = join(__dirname, 'data', 'releases.json');
+    const testCatalogPath =
+      process.env.NODE_ENV === 'test'
+        ? process.env.RELEASE_ANNOUNCEMENT_TEST_CATALOG_PATH
+        : undefined;
+    const catalogPath = testCatalogPath
+      ? isAbsolute(testCatalogPath)
+        ? testCatalogPath
+        : resolve(process.cwd(), testCatalogPath)
+      : join(__dirname, 'data', 'releases.json');
     this.releases = validateReleaseCatalog(
       JSON.parse(readFileSync(catalogPath, 'utf8')) as unknown,
     );
