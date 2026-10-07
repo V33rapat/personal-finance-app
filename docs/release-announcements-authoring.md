@@ -16,6 +16,6 @@ Once an announcement is published, keep its `id`, `version`, `release_order`, an
 
 ## Verify
 
-After editing the catalog, run the Backend lint, build, and unit tests. The catalog validator checks required fields, unique identity values, release ordering, update content, dates, and allowed internal links. Run the Playwright suite when the user-facing release flow or its destinations change.
+After editing the catalog, run the Backend lint, build, and unit tests. CI compares it with the target branch and rejects removing a published release, changing its identity metadata, or inserting a new release before the highest published order. The catalog validator also checks required fields, unique identity values, update content, dates, and allowed internal links. Run the Playwright suite when the user-facing release flow or its destinations change.
 
 The catalog is data, not HTML. Keep update text plain and do not add external links, markup, images, or executable content.
