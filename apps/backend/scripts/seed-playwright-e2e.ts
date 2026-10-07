@@ -18,6 +18,24 @@ const defaultSummaryEmail =
   'playwright-dashboard-summary@walpaca.test';
 const dailyEmail =
   process.env.PLAYWRIGHT_E2E_DAILY_EMAIL ?? 'playwright-e2e-daily@walpaca.test';
+const announcementDefaultEmail =
+  process.env.PLAYWRIGHT_E2E_ANNOUNCEMENT_DEFAULT_EMAIL ??
+  'playwright-announcement-default@walpaca.test';
+const announcementMissedEmail =
+  process.env.PLAYWRIGHT_E2E_ANNOUNCEMENT_MISSED_EMAIL ??
+  'playwright-announcement-missed@walpaca.test';
+const announcementDismissalEmail =
+  process.env.PLAYWRIGHT_E2E_ANNOUNCEMENT_DISMISSAL_EMAIL ??
+  'playwright-announcement-dismissal@walpaca.test';
+const announcementHistoryEmail =
+  process.env.PLAYWRIGHT_E2E_ANNOUNCEMENT_HISTORY_EMAIL ??
+  'playwright-announcement-history@walpaca.test';
+const announcementSafetyEmail =
+  process.env.PLAYWRIGHT_E2E_ANNOUNCEMENT_SAFETY_EMAIL ??
+  'playwright-announcement-safety@walpaca.test';
+const announcementMobileEmail =
+  process.env.PLAYWRIGHT_E2E_ANNOUNCEMENT_MOBILE_EMAIL ??
+  'playwright-announcement-mobile@walpaca.test';
 const password = process.env.PLAYWRIGHT_E2E_PASSWORD ?? 'PlaywrightE2E!123';
 const reportingDate = new Date('2026-07-20T00:00:00.000Z');
 const paginationDate = new Date('2026-07-24T00:00:00.000Z');
@@ -35,7 +53,14 @@ async function resetUserData(userId: string) {
   await prisma.dashboard_wallet_summary_preferences.deleteMany({
     where: { user_id: userId },
   });
+  await prisma.release_announcement_user_states.deleteMany({
+    where: { user_id: userId },
+  });
+  await prisma.release_announcement_preferences.deleteMany({
+    where: { user_id: userId },
+  });
   await prisma.spending_budgets.deleteMany({ where: { user_id: userId } });
+  await prisma.spending_plans.deleteMany({ where: { user_id: userId } });
 
   if (walletIds.length > 0) {
     await prisma.transfers.deleteMany({
@@ -645,6 +670,99 @@ async function seedDefaultSummaryUser() {
   };
 }
 
+async function createAnnouncementUser(email: string, fullName: string) {
+  return upsertUser(email, fullName);
+}
+
+async function setAnnouncementBaseline(userId: string, releaseOrder: number) {
+  await prisma.release_announcement_preferences.create({
+    data: {
+      user_id: userId,
+      baseline_release_id: `walpaca-1.${releaseOrder - 1}.0`,
+      baseline_release_order: releaseOrder,
+    },
+  });
+}
+
+async function dismissSeedAnnouncements(userId: string) {
+  await setAnnouncementBaseline(userId, 1);
+  const dismissedAt = new Date('2026-10-04T00:00:00.000Z');
+  await prisma.release_announcement_user_states.createMany({
+    data: ['walpaca-1.0.0', 'walpaca-1.1.0', 'walpaca-1.2.0'].map(
+      (releaseId) => ({
+        user_id: userId,
+        release_id: releaseId,
+        dismissed_at: dismissedAt,
+      }),
+    ),
+  });
+}
+
+async function seedAnnouncementUsers() {
+  const [fresh, missed, dismissal, history, safety, mobile] = await Promise.all(
+    [
+      createAnnouncementUser(
+        announcementDefaultEmail,
+        'Playwright Release Announcement New User',
+      ),
+      createAnnouncementUser(
+        announcementMissedEmail,
+        'Playwright Release Announcement Missed Releases',
+      ),
+      createAnnouncementUser(
+        announcementDismissalEmail,
+        'Playwright Release Announcement Dismissal',
+      ),
+      createAnnouncementUser(
+        announcementHistoryEmail,
+        'Playwright Release Announcement History',
+      ),
+      createAnnouncementUser(
+        announcementSafetyEmail,
+        'Playwright Release Announcement Safety',
+      ),
+      createAnnouncementUser(
+        announcementMobileEmail,
+        'Playwright Release Announcement Mobile',
+      ),
+    ],
+  );
+
+  await Promise.all([
+    setAnnouncementBaseline(missed.id, 1),
+    setAnnouncementBaseline(dismissal.id, 1),
+    setAnnouncementBaseline(history.id, 3),
+    setAnnouncementBaseline(safety.id, 1),
+    setAnnouncementBaseline(mobile.id, 1),
+  ]);
+  await prisma.release_announcement_user_states.createMany({
+    data: [missed, mobile].map((user) => ({
+      user_id: user.id,
+      release_id: 'walpaca-1.0.0',
+      seen_at: new Date('2026-10-04T00:00:00.000Z'),
+    })),
+  });
+  await prisma.release_announcement_user_states.create({
+    data: {
+      user_id: history.id,
+      release_id: 'walpaca-1.0.0',
+      dismissed_at: new Date('2026-10-04T00:00:00.000Z'),
+    },
+  });
+
+  await prisma.wallets.create({
+    data: {
+      user_id: safety.id,
+      name: 'E2E Wallet for Announcement Focus',
+      wallet_type: wallet_type.normal,
+      balance: 0,
+      created_at: seededWalletCreatedAt,
+    },
+  });
+
+  return { fresh, missed, dismissal, history, safety, mobile };
+}
+
 async function seed() {
   const [primary, secondary, daily, defaultSummary] = await Promise.all([
     seedPrimaryUser(),
@@ -653,8 +771,19 @@ async function seed() {
     seedDefaultSummaryUser(),
   ]);
 
+  await Promise.all(
+    [primary.user, secondary.user, daily.user, defaultSummary.user].map(
+      (user) => dismissSeedAnnouncements(user.id),
+    ),
+  );
+  const announcementUsers = await seedAnnouncementUsers();
+
   console.log(
-    `Seeded Playwright accounts: ${primary.user.email}, ${secondary.user.email}, ${daily.user.email}, ${defaultSummary.user.email}`,
+    `Seeded Playwright accounts: ${primary.user.email}, ${secondary.user.email}, ${daily.user.email}, ${defaultSummary.user.email}, ${Object.values(
+      announcementUsers,
+    )
+      .map((user) => user.email)
+      .join(', ')}`,
   );
 }
 

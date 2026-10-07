@@ -79,9 +79,9 @@ describe('Release announcements API (e2e)', () => {
       .expect(200);
     const popupBody = popup.body as AnnouncementResponse;
 
-    expect(popupBody.baseline_release_order).toBe(2);
+    expect(popupBody.baseline_release_order).toBe(3);
     expect(popupBody.announcements.map(({ id }) => id)).toEqual([
-      'walpaca-1.1.0',
+      'walpaca-1.2.0',
     ]);
 
     const historyAfterInitialization = await request(
@@ -94,7 +94,7 @@ describe('Release announcements API (e2e)', () => {
       (
         historyAfterInitialization.body as AnnouncementResponse
       ).announcements.map(({ id }) => id),
-    ).toEqual(['walpaca-1.1.0', 'walpaca-1.0.0']);
+    ).toEqual(['walpaca-1.2.0', 'walpaca-1.1.0', 'walpaca-1.0.0']);
   });
 
   it('persists seen and dismissed states for one account without changing another account', async () => {
@@ -116,7 +116,7 @@ describe('Release announcements API (e2e)', () => {
     await request(context.app.getHttpServer())
       .post('/release-announcement/dismiss')
       .set('Authorization', bearerToken(userA))
-      .send({ release_ids: ['walpaca-1.1.0'] })
+      .send({ release_ids: ['walpaca-1.2.0'] })
       .expect(201, { success: true });
 
     const persistedStates =
@@ -130,11 +130,11 @@ describe('Release announcements API (e2e)', () => {
         ?.seen_at,
     ).toBeInstanceOf(Date);
     expect(
-      persistedStates.find(({ release_id }) => release_id === 'walpaca-1.1.0')
+      persistedStates.find(({ release_id }) => release_id === 'walpaca-1.2.0')
         ?.seen_at,
     ).toBeNull();
     expect(
-      persistedStates.find(({ release_id }) => release_id === 'walpaca-1.1.0')
+      persistedStates.find(({ release_id }) => release_id === 'walpaca-1.2.0')
         ?.dismissed_at,
     ).toBeInstanceOf(Date);
 
@@ -151,7 +151,7 @@ describe('Release announcements API (e2e)', () => {
     expect(popupB.status).toBe(200);
     expect(
       (popupB.body as AnnouncementResponse).announcements.map(({ id }) => id),
-    ).toEqual(['walpaca-1.1.0']);
+    ).toEqual(['walpaca-1.2.0']);
     expect(
       await context.prisma.release_announcement_user_states.findMany({
         where: { user_id: userB.id },

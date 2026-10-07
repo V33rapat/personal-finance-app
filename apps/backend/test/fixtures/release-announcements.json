@@ -26,9 +26,22 @@
     }
   },
   {
+    "id": "walpaca-1.2.0",
+    "version": "1.2.0",
+    "release_order": 3,
+    "published_at": "2026-10-03T00:00:00.000Z",
+    "title": "Walpaca 1.2.0",
+    "summary": "ประกาศเวอร์ชันใหม่สำหรับทดสอบการติดตามหลายเวอร์ชัน",
+    "updates": {
+      "features": [{ "text": "เพิ่มหน้าประวัติการอัปเดต", "href": "/whats-new" }],
+      "improvements": [],
+      "fixes": []
+    }
+  },
+  {
     "id": "walpaca-9.9.9",
     "version": "9.9.9",
-    "release_order": 3,
+    "release_order": 4,
     "published_at": "2099-01-01T00:00:00.000Z",
     "title": "Future release",
     "summary": "Must not be visible before publication",

@@ -8,3 +8,4 @@ docker-compose.yml
 
 apps/frontend/playwright-report/
 apps/frontend/test-results/
+apps/frontend/debug.log
