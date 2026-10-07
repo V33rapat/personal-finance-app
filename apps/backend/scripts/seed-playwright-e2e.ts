@@ -192,7 +192,7 @@ async function seedPrimaryUser() {
       user_id: user.id,
       name: 'E2E Transfer Source',
       wallet_type: wallet_type.normal,
-      balance: 1_000,
+      balance: 1_234.5,
       created_at: seededWalletCreatedAt,
     },
   });
@@ -201,7 +201,7 @@ async function seedPrimaryUser() {
       user_id: user.id,
       name: 'E2E Transfer Destination',
       wallet_type: wallet_type.normal,
-      balance: 250,
+      balance: 250.25,
       created_at: seededWalletCreatedAt,
     },
   });
@@ -248,8 +248,8 @@ async function seedPrimaryUser() {
   await prisma.transactions.createMany({
     data: [
       ...[
-        { wallet: transferSource, amount: 1_000 },
-        { wallet: transferDestination, amount: 250 },
+        { wallet: transferSource, amount: 1_234.5 },
+        { wallet: transferDestination, amount: 250.25 },
         { wallet: transferChild, amount: 300 },
         { wallet: transferInactive, amount: 500 },
         { wallet: transferDeleted, amount: 700 },
