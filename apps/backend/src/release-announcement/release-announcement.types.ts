@@ -14,4 +14,3 @@ export interface ReleaseAnnouncement {
   summary: string;
   updates: Record<ReleaseUpdateKind, ReleaseUpdateItem[]>;
 }
-
