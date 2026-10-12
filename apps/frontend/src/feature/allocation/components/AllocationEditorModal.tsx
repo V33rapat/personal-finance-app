@@ -79,7 +79,7 @@ export default function AllocationEditorModal({
         role="dialog"
         aria-modal="true"
         aria-labelledby="allocation-editor-title"
-        className="w-full max-w-[720px] overflow-hidden rounded-xl border border-slate-200 bg-white shadow-2xl dark:border-slate-800 dark:bg-slate-900"
+        className="w-full max-w-[960px] overflow-hidden rounded-xl border border-slate-200 bg-white shadow-2xl dark:border-slate-800 dark:bg-slate-900"
       >
         <AllocationForm
           key={`${mode}-${allocation.id}`}

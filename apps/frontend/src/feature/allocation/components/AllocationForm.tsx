@@ -1,7 +1,7 @@
 "use client";
 
 import { FormEvent, useMemo, useState } from "react";
-import { X } from "lucide-react";
+import { ChevronDown, X } from "lucide-react";
 import Button from "@/components/ui/Button";
 import FormField from "@/components/ui/FormField";
 import { TH_TEXT } from "@/constants/th";
@@ -207,7 +207,12 @@ export default function AllocationForm({
           </div>
         )}
 
-      <div className="mt-6 grid gap-6 lg:grid-cols-2">
+      <div className={[
+        "mt-6 grid gap-6",
+        isModal
+          ? "lg:grid-cols-[minmax(0,0.85fr)_minmax(0,1.15fr)]"
+          : "lg:grid-cols-2",
+      ].join(" ")}>
         <section className="border-b border-slate-200 pb-6 dark:border-slate-800 lg:border-b-0 lg:border-r lg:pb-0 lg:pr-6">
           <p className={labelClassName}>{TH_TEXT.allocation.sourcePanel}</p>
           <div className="mt-4 grid gap-4">
@@ -316,55 +321,95 @@ export default function AllocationForm({
           </div>
 
           <div className="mt-4 grid gap-3">
-            {values.destinations.map((destination, index) => (
-              <div key={index} className="grid gap-3 rounded-xl border border-slate-200 bg-slate-50/80 p-3 dark:border-slate-800 dark:bg-slate-950/30 sm:grid-cols-[minmax(0,1fr)_132px_auto] sm:items-end">
-                <div className="flex flex-col gap-1.5">
-                  <label htmlFor={`${idPrefix}-destination-${index}`} className={labelClassName}>
-                    {TH_TEXT.allocation.destinationWallet}
-                  </label>
-                  <select
-                    id={`${idPrefix}-destination-${index}`}
-                    value={destination.wallet_id}
+            {values.destinations.map((destination, index) => {
+              const destinationWallets = getDestinationWallets(index);
+              const selectedWallet = destinationWallets.find(
+                (wallet) => wallet.id === destination.wallet_id
+              );
+              const selectedWalletLabel = selectedWallet
+                ? `${getAllocationWalletLabel(selectedWallet, wallets)} (${formatWalletMoney(
+                    selectedWallet.balance,
+                    selectedWallet.currency
+                  )})`
+                : TH_TEXT.allocation.selectDestinationWallet;
+
+              return (
+                <div key={index} className="grid gap-3 rounded-xl border border-slate-200 bg-slate-50/80 p-3 dark:border-slate-800 dark:bg-slate-950/30 sm:grid-cols-[minmax(0,1fr)_132px_auto] sm:items-start">
+                  <div className="flex min-w-0 flex-col gap-1.5">
+                    <label
+                      id={`${idPrefix}-destination-label-${index}`}
+                      htmlFor={`${idPrefix}-destination-${index}`}
+                      className={`${labelClassName} flex min-h-8 items-end leading-4`}
+                    >
+                      {TH_TEXT.allocation.destinationWallet}
+                    </label>
+                    <div className="relative h-14 w-full min-w-0 rounded-xl border border-slate-200 bg-white/60 text-sm text-slate-800 transition focus-within:border-violet-400 focus-within:ring-2 focus-within:ring-violet-400/20 dark:border-slate-700 dark:bg-slate-800/60 dark:text-slate-100 dark:focus-within:border-violet-500">
+                      <span
+                        aria-hidden="true"
+                        title={selectedWallet ? selectedWalletLabel : undefined}
+                        className="pointer-events-none absolute inset-y-0 left-4 right-10 flex min-w-0 items-center"
+                      >
+                        <span
+                          className={[
+                            "line-clamp-2 w-full break-words leading-5",
+                            selectedWallet ? "text-slate-800 dark:text-slate-100" : "text-slate-400 dark:text-slate-500",
+                          ].join(" ")}
+                        >
+                          {selectedWalletLabel}
+                        </span>
+                      </span>
+                      <ChevronDown
+                        aria-hidden="true"
+                        className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500 dark:text-slate-400"
+                      />
+                      <select
+                        id={`${idPrefix}-destination-${index}`}
+                        aria-labelledby={`${idPrefix}-destination-label-${index}`}
+                        value={destination.wallet_id}
+                        disabled={isSaving}
+                        onChange={(event) => updateDestination(index, "wallet_id", event.target.value)}
+                        className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
+                      >
+                        <option value="">{TH_TEXT.allocation.selectDestinationWallet}</option>
+                        {destinationWallets.map((wallet) => (
+                          <option key={wallet.id} value={wallet.id}>
+                            {getAllocationWalletLabel(wallet, wallets)} ({formatWalletMoney(wallet.balance, wallet.currency)})
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+
+                  <FormField
+                    id={`${idPrefix}-destination-amount-${index}`}
+                    label={TH_TEXT.allocation.destinationAmount}
+                    labelClassName="flex min-h-8 items-end leading-4"
+                    type="number"
+                    inputMode="decimal"
+                    min="0"
+                    step="0.01"
+                    className="h-14 py-0"
+                    value={destination.amount}
+                    placeholder={TH_TEXT.transaction.amountPlaceholder}
                     disabled={isSaving}
-                    onChange={(event) => updateDestination(index, "wallet_id", event.target.value)}
-                    className={selectClassName}
+                    onChange={(event) => updateDestination(index, "amount", event.target.value)}
+                  />
+
+                  <button
+                    type="button"
+                    disabled={isSaving || values.destinations.length === 1}
+                    onClick={() => removeDestination(index)}
+                    aria-label={`${TH_TEXT.allocation.removeDestination} ${index + 1}`}
+                    title={TH_TEXT.allocation.removeDestination}
+                    className="flex h-[46px] w-[46px] items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-500 transition hover:border-red-200 hover:bg-red-50 hover:text-red-600 disabled:cursor-not-allowed disabled:opacity-50 sm:mt-[38px] sm:h-14 sm:w-14 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-400 dark:hover:border-red-900 dark:hover:bg-red-950/30 dark:hover:text-red-300"
                   >
-                    <option value="">{TH_TEXT.allocation.selectDestinationWallet}</option>
-                    {getDestinationWallets(index).map((wallet) => (
-                      <option key={wallet.id} value={wallet.id}>
-                        {getAllocationWalletLabel(wallet, wallets)} ({formatWalletMoney(wallet.balance, wallet.currency)})
-                      </option>
-                    ))}
-                  </select>
+                    <svg className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor" aria-hidden>
+                      <path d="M6.06 4.5 4.5 6.06 8.44 10 4.5 13.94 6.06 15.5 10 11.56l3.94 3.94 1.56-1.56L11.56 10l3.94-3.94-1.56-1.56L10 8.44 6.06 4.5Z" />
+                    </svg>
+                  </button>
                 </div>
-
-                <FormField
-                  id={`${idPrefix}-destination-amount-${index}`}
-                  label={TH_TEXT.allocation.destinationAmount}
-                  type="number"
-                  inputMode="decimal"
-                  min="0"
-                  step="0.01"
-                  value={destination.amount}
-                  placeholder={TH_TEXT.transaction.amountPlaceholder}
-                  disabled={isSaving}
-                  onChange={(event) => updateDestination(index, "amount", event.target.value)}
-                />
-
-                <button
-                  type="button"
-                  disabled={isSaving || values.destinations.length === 1}
-                  onClick={() => removeDestination(index)}
-                  aria-label={`${TH_TEXT.allocation.removeDestination} ${index + 1}`}
-                  title={TH_TEXT.allocation.removeDestination}
-                  className="flex h-[46px] w-[46px] items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-500 transition hover:border-red-200 hover:bg-red-50 hover:text-red-600 disabled:cursor-not-allowed disabled:opacity-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-400 dark:hover:border-red-900 dark:hover:bg-red-950/30 dark:hover:text-red-300"
-                >
-                  <svg className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor" aria-hidden>
-                    <path d="M6.06 4.5 4.5 6.06 8.44 10 4.5 13.94 6.06 15.5 10 11.56l3.94 3.94 1.56-1.56L11.56 10l3.94-3.94-1.56-1.56L10 8.44 6.06 4.5Z" />
-                  </svg>
-                </button>
-              </div>
-            ))}
+              );
+            })}
           </div>
 
           <div className="mt-5 grid grid-cols-2 gap-3">
