@@ -452,6 +452,7 @@ export const TH_TEXT = {
     cancelEdit: "ยกเลิกการแก้ไข",
     confirmCreateTitle: "ยืนยันการจัดสรรเงิน?",
     confirmUpdateTitle: "ยืนยันการแก้ไข?",
+    confirmDuplicateTitle: "ยืนยันทำสำเนาการจัดสรรเงิน?",
     historyTitle: "ประวัติการจัดสรรเงิน",
     historyDescription: "การจัดสรรแต่ละครั้งจัดการเป็นหนึ่งชุด",
     historyEmptyTitle: "ยังไม่มีประวัติการจัดสรรเงิน",

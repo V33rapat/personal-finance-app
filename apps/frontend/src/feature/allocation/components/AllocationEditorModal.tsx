@@ -1,12 +1,13 @@
 "use client";
 
-import { useEffect, useRef } from "react";
-import { AllocationFormValues, MoneyAllocation } from "../hooks/useAllocation";
+import { useEffect, useRef, type KeyboardEvent } from "react";
+import type { AllocationFormValues, MoneyAllocation } from "../hooks/useAllocation";
 import type { Wallet } from "@/feature/wallet/hooks/useWallet";
 import AllocationForm from "./AllocationForm";
 
 interface AllocationEditorModalProps {
   allocation: MoneyAllocation;
+  mode: "edit" | "duplicate";
   initialValues: AllocationFormValues;
   wallets: Wallet[];
   isSaving: boolean;
@@ -17,6 +18,7 @@ interface AllocationEditorModalProps {
 
 export default function AllocationEditorModal({
   allocation,
+  mode,
   initialValues,
   wallets,
   isSaving,
@@ -38,7 +40,7 @@ export default function AllocationEditorModal({
     };
   }, []);
 
-  const handleKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
+  const handleKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
     if (event.key === "Escape") {
       event.preventDefault();
       if (!isSaving) onClose();
@@ -75,15 +77,15 @@ export default function AllocationEditorModal({
         className="w-full max-w-[720px] overflow-hidden rounded-xl border border-slate-200 bg-white shadow-2xl dark:border-slate-800 dark:bg-slate-900"
       >
         <AllocationForm
-          key={allocation.id}
+          key={`${mode}-${allocation.id}`}
           wallets={wallets}
           isSaving={isSaving}
           error={error}
-          mode="edit"
+          mode={mode}
           presentation="modal"
           idPrefix="allocation-editor"
           initialValues={initialValues}
-          editingAllocation={allocation}
+          editingAllocation={mode === "edit" ? allocation : null}
           onCancelEdit={onClose}
           onSubmit={onSubmit}
         />

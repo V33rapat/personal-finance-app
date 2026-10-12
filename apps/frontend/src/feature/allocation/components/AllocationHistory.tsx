@@ -10,6 +10,7 @@ interface AllocationHistoryProps {
   isLoading: boolean;
   isSaving: boolean;
   onEdit: (allocation: MoneyAllocation) => void;
+  onDuplicate: (allocation: MoneyAllocation) => void;
   onDelete: (allocation: MoneyAllocation) => void;
 }
 
@@ -24,6 +25,7 @@ export default function AllocationHistory({
   isLoading,
   isSaving,
   onEdit,
+  onDuplicate,
   onDelete,
 }: AllocationHistoryProps) {
   return (
@@ -107,6 +109,7 @@ export default function AllocationHistory({
                     label={TH_TEXT.allocation.actionsFor.replace("%s", formatDate(allocation.allocation_date))}
                     disabled={isSaving}
                     onEdit={() => onEdit(allocation)}
+                    onDuplicate={() => onDuplicate(allocation)}
                     onDelete={() => onDelete(allocation)}
                   />
                 </div>
