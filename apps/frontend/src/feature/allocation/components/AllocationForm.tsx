@@ -1,6 +1,7 @@
 "use client";
 
 import { FormEvent, useMemo, useState } from "react";
+import { X } from "lucide-react";
 import Button from "@/components/ui/Button";
 import FormField from "@/components/ui/FormField";
 import { TH_TEXT } from "@/constants/th";
@@ -23,7 +24,9 @@ interface AllocationFormProps {
   wallets: Wallet[];
   isSaving: boolean;
   error: string | null;
-  mode: "create" | "edit";
+  mode: "create" | "edit" | "duplicate";
+  presentation?: "page" | "modal";
+  idPrefix?: string;
   initialValues?: AllocationFormValues;
   editingAllocation?: MoneyAllocation | null;
   onCancelEdit?: () => void;
@@ -54,6 +57,8 @@ export default function AllocationForm({
   isSaving,
   error,
   mode,
+  presentation = "page",
+  idPrefix = "allocation",
   initialValues,
   editingAllocation,
   onCancelEdit,
@@ -82,6 +87,17 @@ export default function AllocationForm({
     0
   );
   const isEditMode = mode === "edit";
+  const isModal = presentation === "modal";
+  const title = isEditMode
+    ? TH_TEXT.allocation.editTitle
+    : mode === "duplicate"
+      ? TH_TEXT.allocation.duplicateTitle
+      : TH_TEXT.allocation.formTitle;
+  const description = isEditMode
+    ? TH_TEXT.allocation.editDescription
+    : mode === "duplicate"
+      ? TH_TEXT.allocation.duplicateDescription
+      : TH_TEXT.allocation.formDescription;
 
   const updateValue = <Key extends keyof AllocationFormValues>(
     key: Key,
@@ -151,29 +167,45 @@ export default function AllocationForm({
   return (
     <form
       onSubmit={handleSubmit}
-      className="rounded-2xl border border-slate-200/80 bg-white/85 p-6 shadow-xl shadow-slate-200/50 backdrop-blur-xl dark:border-slate-800 dark:bg-slate-900/80 dark:shadow-slate-950/40"
+      className={[
+        "flex min-h-0 flex-col",
+        isModal
+          ? "max-h-[calc(100dvh-2rem)]"
+          : "rounded-2xl border border-slate-200/80 bg-white/85 p-6 shadow-xl shadow-slate-200/50 backdrop-blur-xl dark:border-slate-800 dark:bg-slate-900/80 dark:shadow-slate-950/40",
+      ].join(" ")}
     >
-      <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+      <div className={[
+        "flex shrink-0 items-start justify-between gap-4",
+        isModal ? "px-5 pt-5 sm:px-6 sm:pt-6" : "",
+      ].join(" ")}>
         <div>
-          <h2 className="text-lg font-bold text-slate-900 dark:text-slate-50">
-            {isEditMode ? TH_TEXT.allocation.editTitle : TH_TEXT.allocation.formTitle}
+          <h2 id={`${idPrefix}-title`} className="text-lg font-bold text-slate-900 dark:text-slate-50">
+            {title}
           </h2>
           <p className="mt-1 text-sm leading-6 text-slate-500 dark:text-slate-400">
-            {isEditMode ? TH_TEXT.allocation.editDescription : TH_TEXT.allocation.formDescription}
+            {description}
           </p>
         </div>
-        {isEditMode && onCancelEdit && (
-          <Button type="button" variant="secondary" size="sm" disabled={isSaving} onClick={onCancelEdit}>
-            {TH_TEXT.allocation.cancelEdit}
-          </Button>
+        {isModal && onCancelEdit && (
+          <button
+            type="button"
+            aria-label={TH_TEXT.allocation.closeEditor}
+            title={TH_TEXT.allocation.closeEditor}
+            disabled={isSaving}
+            onClick={onCancelEdit}
+            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-slate-500 transition hover:bg-slate-100 hover:text-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-500 disabled:cursor-not-allowed disabled:opacity-50 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-white"
+          >
+            <X className="h-5 w-5" aria-hidden="true" />
+          </button>
         )}
       </div>
 
-      {error && (
-        <div className="mt-5 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-900/70 dark:bg-red-950/30 dark:text-red-300">
-          {error}
-        </div>
-      )}
+      <div className={isModal ? "min-h-0 flex-1 overflow-y-auto px-5 pb-5 sm:px-6" : ""}>
+        {error && (
+          <div className="mt-5 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-900/70 dark:bg-red-950/30 dark:text-red-300">
+            {error}
+          </div>
+        )}
 
       <div className="mt-6 grid gap-6 lg:grid-cols-2">
         <section className="border-b border-slate-200 pb-6 dark:border-slate-800 lg:border-b-0 lg:border-r lg:pb-0 lg:pr-6">
@@ -184,7 +216,7 @@ export default function AllocationForm({
                 {TH_TEXT.allocation.sourceWallet}
               </label>
               <select
-                id="allocation-source-wallet"
+                id={`${idPrefix}-source-wallet`}
                 value={values.source_wallet_id}
                 onChange={(event) => updateValue("source_wallet_id", event.target.value)}
                 disabled={isSaving}
@@ -220,7 +252,7 @@ export default function AllocationForm({
             </div>
 
             <FormField
-              id="allocation-amount"
+              id={`${idPrefix}-amount`}
               label={TH_TEXT.allocation.amount}
               type="number"
               inputMode="decimal"
@@ -234,7 +266,7 @@ export default function AllocationForm({
             />
 
             <FormField
-              id="allocation-date"
+              id={`${idPrefix}-date`}
               label={TH_TEXT.allocation.date}
               type="date"
               max={getTodayDateString()}
@@ -245,11 +277,11 @@ export default function AllocationForm({
             />
 
             <div className="flex flex-col gap-1.5">
-              <label htmlFor="allocation-note" className={labelClassName}>
+              <label htmlFor={`${idPrefix}-note`} className={labelClassName}>
                 {TH_TEXT.allocation.note}
               </label>
               <textarea
-                id="allocation-note"
+                id={`${idPrefix}-note`}
                 value={values.note}
                 rows={3}
                 disabled={isSaving}
@@ -287,11 +319,11 @@ export default function AllocationForm({
             {values.destinations.map((destination, index) => (
               <div key={index} className="grid gap-3 rounded-xl border border-slate-200 bg-slate-50/80 p-3 dark:border-slate-800 dark:bg-slate-950/30 sm:grid-cols-[minmax(0,1fr)_132px_auto] sm:items-end">
                 <div className="flex flex-col gap-1.5">
-                  <label htmlFor={`allocation-destination-${index}`} className={labelClassName}>
+                  <label htmlFor={`${idPrefix}-destination-${index}`} className={labelClassName}>
                     {TH_TEXT.allocation.destinationWallet}
                   </label>
                   <select
-                    id={`allocation-destination-${index}`}
+                    id={`${idPrefix}-destination-${index}`}
                     value={destination.wallet_id}
                     disabled={isSaving}
                     onChange={(event) => updateDestination(index, "wallet_id", event.target.value)}
@@ -307,7 +339,7 @@ export default function AllocationForm({
                 </div>
 
                 <FormField
-                  id={`allocation-destination-amount-${index}`}
+                  id={`${idPrefix}-destination-amount-${index}`}
                   label={TH_TEXT.allocation.destinationAmount}
                   type="number"
                   inputMode="decimal"
@@ -365,14 +397,28 @@ export default function AllocationForm({
           )}
         </section>
       </div>
+      </div>
 
-      <div className="mt-7 flex justify-end">
+      <div className={[
+        "flex shrink-0 gap-3",
+        isModal
+          ? "border-t border-slate-200 bg-white px-5 py-4 dark:border-slate-800 dark:bg-slate-900 sm:px-6"
+          : "mt-7 justify-end",
+        isModal ? "flex-col-reverse sm:flex-row sm:justify-end" : "",
+      ].join(" ")}>
+        {isModal && onCancelEdit && (
+          <Button type="button" variant="secondary" disabled={isSaving} onClick={onCancelEdit}>
+            {TH_TEXT.common.cancel}
+          </Button>
+        )}
         <Button type="submit" disabled={isSaving || hasFieldErrors}>
           {isSaving
             ? TH_TEXT.allocation.saving
             : isEditMode
               ? TH_TEXT.allocation.saveChanges
-              : TH_TEXT.allocation.submit}
+              : mode === "duplicate"
+                ? TH_TEXT.allocation.duplicateSubmit
+                : TH_TEXT.allocation.submit}
         </Button>
       </div>
     </form>
