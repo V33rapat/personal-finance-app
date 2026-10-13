@@ -84,15 +84,20 @@ export async function setWalletSummarySelection(
   }
 }
 
-export async function clearWalletSummarySelection(
-  dialog: Locator,
-  walletNames: string[],
-) {
-  for (const walletName of walletNames) {
-    const checkbox = getWalletSummaryCheckbox(dialog, walletName);
+export async function clearWalletSummarySelection(dialog: Locator) {
+  const checkboxes = dialog.getByRole("checkbox");
+  for (let index = 0; index < await checkboxes.count(); index += 1) {
+    const checkbox = checkboxes.nth(index);
     if (await checkbox.isChecked()) {
       await checkbox.uncheck();
     }
+  }
+
+  const removeButtons = dialog.getByRole("button", {
+    name: new RegExp(`^${escapeRegExp(DASHBOARD_WALLET_SUMMARY_TEXT.remove)} `),
+  });
+  while (await removeButtons.count()) {
+    await removeButtons.first().click();
   }
 }
 
