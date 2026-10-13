@@ -4,20 +4,8 @@ import Link from "next/link";
 import { Plus } from "lucide-react";
 import Button from "@/components/ui/Button";
 import Card from "@/components/ui/Card";
+import { formatDisplayDateRange } from "@/lib/dateFormat";
 import { useSpendingPlan, type SpendingPlan } from "../hooks/useSpendingPlan";
-
-function formatThaiDateRange(start: string, end: string) {
-  const formatter = new Intl.DateTimeFormat("th-TH", {
-    day: "numeric",
-    month: "short",
-    year: "numeric",
-    timeZone: "UTC",
-  });
-
-  const startDate = new Date(`${start}T00:00:00.000Z`);
-  const endDate = new Date(`${end}T00:00:00.000Z`);
-  return start === end ? formatter.format(startDate) : `${formatter.format(startDate)} - ${formatter.format(endDate)}`;
-}
 
 function formatCurrency(value: string) {
   return new Intl.NumberFormat("th-TH", {
@@ -63,7 +51,7 @@ function SpendingPlanCard({ plan }: { plan: SpendingPlan }) {
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
             <h2 className="truncate text-lg font-bold text-slate-900 dark:text-slate-50">{plan.name}</h2>
-            <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">{formatThaiDateRange(plan.start_date, plan.end_date)}</p>
+            <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">{formatDisplayDateRange(plan.start_date, plan.end_date)}</p>
           </div>
           <span className={`shrink-0 px-2.5 py-1 text-xs font-semibold ${statusClassName(plan.status)}`}>{statusLabel(plan.status)}</span>
         </div>

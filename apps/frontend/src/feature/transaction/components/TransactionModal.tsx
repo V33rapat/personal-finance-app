@@ -2,19 +2,23 @@
 
 import { useMemo, useRef, useState } from "react";
 import Button from "@/components/ui/Button";
+import DateField from "@/components/ui/DateField";
 import { TH_TEXT } from "@/constants/th";
+import { formatMoneyAmount } from "@/lib/currencyFormat";
 import CategoryCombobox, { type CategoryComboboxHandle } from "./CategoryCombobox";
 import type { Transaction, TransactionType } from "./TransactionItem";
-import type { TransactionFormValues } from "../hooks/useTransaction";
+import type { TransactionFormValues, TransactionModalMode } from "../hooks/useTransaction";
 import { useTransactionTemplate } from "../hooks/useTransactionTemplate";
 import {
   getTransactionWalletOptions,
   type TransactionWalletOption,
 } from "../lib/transactionWallet";
+import { getDuplicateTransactionValues } from "../lib/transactionActions";
 import type { Wallet } from "@/feature/wallet/hooks/useWallet";
 
 interface TransactionModalProps {
   isOpen: boolean;
+  mode?: TransactionModalMode;
   transaction?: Transaction | null;
   wallets: Wallet[];
   defaultWalletId?: string | null;
@@ -29,10 +33,10 @@ interface TransactionModalProps {
 interface TransactionModalFormProps
   extends Omit<
     TransactionModalProps,
-    "isOpen" | "transaction" | "wallets" | "defaultWalletId" | "defaultTransactionDate"
+    "isOpen" | "mode" | "transaction" | "wallets" | "defaultWalletId" | "defaultTransactionDate"
   > {
   initialValues: TransactionFormValues;
-  isEditMode: boolean;
+  mode: TransactionModalMode;
   walletOptions: TransactionWalletOption[];
 }
 
@@ -68,6 +72,7 @@ function getDefaultValues(
 
 function getInitialValues(
   transaction: Transaction | null | undefined,
+  mode: TransactionModalMode,
   defaultWalletId: string | null | undefined,
   defaultTransactionDate: string | undefined,
   eligibleWalletIds: Set<string>
@@ -81,7 +86,7 @@ function getInitialValues(
     );
   }
 
-  return {
+  const values = {
     wallet_id: eligibleWalletIds.has(transaction.wallet_id)
       ? transaction.wallet_id
       : "",
@@ -93,6 +98,12 @@ function getInitialValues(
     transaction_date: transaction.transaction_date,
     note: transaction.note ?? "",
   };
+
+  if (mode === "duplicate") {
+    return getDuplicateTransactionValues(values);
+  }
+
+  return values;
 }
 
 function FormField({
@@ -124,7 +135,7 @@ function FormField({
 
 function TransactionModalForm({
   initialValues,
-  isEditMode,
+  mode,
   walletOptions,
   isSaving = false,
   error,
@@ -132,12 +143,14 @@ function TransactionModalForm({
   onSave,
   onUpdate,
 }: TransactionModalFormProps) {
+  const isEditMode = mode === "edit";
   const categoryComboboxRef = useRef<CategoryComboboxHandle>(null);
   const { templates, isLoading: isTemplateLoading } = useTransactionTemplate({
-    autoLoad: !isEditMode,
+    autoLoad: mode !== "edit",
   });
   const [values, setValues] = useState<TransactionFormValues>(initialValues);
   const [errors, setErrors] = useState<Partial<Record<keyof TransactionFormValues, string>>>({});
+  const [isDateDraftValid, setIsDateDraftValid] = useState(true);
 
   const updateValue = <Key extends keyof TransactionFormValues>(
     field: Key,
@@ -168,7 +181,9 @@ function TransactionModalForm({
       nextErrors.amount = "กรุณากรอกจำนวนเงินที่ถูกต้อง";
     }
 
-    if (!values.transaction_date) {
+    if (!isDateDraftValid) {
+      nextErrors.transaction_date = TH_TEXT.common.invalidDateFormat;
+    } else if (!values.transaction_date) {
       nextErrors.transaction_date = TH_TEXT.transaction.dateRequired;
     } else if (values.transaction_date > getBangkokToday()) {
       nextErrors.transaction_date = TH_TEXT.transaction.futureDate;
@@ -247,7 +262,11 @@ function TransactionModalForm({
             id="transaction-modal-title"
             className="text-lg font-bold text-slate-800 dark:text-slate-100"
           >
-            {isEditMode ? TH_TEXT.common.edit : TH_TEXT.transaction.addTransaction}
+            {mode === "edit"
+              ? TH_TEXT.transaction.editTransaction
+              : mode === "duplicate"
+                ? TH_TEXT.transaction.duplicateTransaction
+                : TH_TEXT.transaction.addTransaction}
           </h2>
           <button
             type="button"
@@ -304,6 +323,7 @@ function TransactionModalForm({
                 value={values.template_id ?? ""}
                 disabled={isSaving || isTemplateLoading}
                 onChange={(event) => applyTemplate(event.target.value)}
+                data-testid="transaction-template"
                 className="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-800 focus:border-violet-500 focus:outline-none focus:ring-2 focus:ring-violet-500/20 disabled:cursor-not-allowed disabled:opacity-60 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
               >
                 <option value="">
@@ -311,7 +331,7 @@ function TransactionModalForm({
                 </option>
                 {templates.map((template) => (
                   <option key={template.id} value={template.id}>
-                    {template.name} - {Number(template.default_amount).toLocaleString("th-TH")}
+                    {template.name} - {formatMoneyAmount(template.default_amount)}
                   </option>
                 ))}
               </select>
@@ -385,17 +405,15 @@ function TransactionModalForm({
             />
           </FormField>
 
-          <FormField label={TH_TEXT.transaction.date} error={errors.transaction_date}>
-            <input
-              type="date"
-              value={values.transaction_date}
-              max={getBangkokToday()}
-              onChange={(event) => updateValue("transaction_date", event.target.value)}
-              aria-label={TH_TEXT.transaction.date}
-              data-testid="transaction-date"
-              className="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-800 focus:border-violet-500 focus:outline-none focus:ring-2 focus:ring-violet-500/20 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
-            />
-          </FormField>
+          <DateField
+            label={TH_TEXT.transaction.date}
+            value={values.transaction_date}
+            max={getBangkokToday()}
+            onChange={(date) => updateValue("transaction_date", date)}
+            onDraftValidityChange={setIsDateDraftValid}
+            error={errors.transaction_date}
+            testId="transaction-date"
+          />
 
           <FormField label={TH_TEXT.transaction.note}>
             <textarea
@@ -418,7 +436,7 @@ function TransactionModalForm({
               className="flex-1"
               disabled={isSaving || walletOptions.length === 0}
             >
-              {TH_TEXT.common.save}
+              {mode === "duplicate" ? TH_TEXT.transaction.duplicateSubmit : TH_TEXT.common.save}
             </Button>
           </div>
         </form>
@@ -429,6 +447,7 @@ function TransactionModalForm({
 
 export default function TransactionModal({
   isOpen,
+  mode = "create",
   transaction,
   wallets,
   defaultWalletId,
@@ -448,14 +467,15 @@ export default function TransactionModal({
 
   return (
     <TransactionModalForm
-      key={transaction?.id ?? `new-${defaultTransactionDate ?? ""}`}
+      key={`${mode}-${transaction?.id ?? `new-${defaultTransactionDate ?? ""}`}`}
       initialValues={getInitialValues(
         transaction,
+        mode,
         defaultWalletId,
         defaultTransactionDate,
         eligibleWalletIds
       )}
-      isEditMode={!!transaction}
+      mode={mode}
       walletOptions={walletOptions}
       {...props}
     />

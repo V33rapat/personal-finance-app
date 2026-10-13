@@ -69,8 +69,68 @@ A Wallet used for everyday cash, spending, saving, or goal-based money.
 _Avoid_: Cash account, basic wallet
 
 **Investment Portfolio**:
-A Wallet used for money allocated to investment assets, including stock-focused portfolios.
+A Wallet that represents one investment account at one broker, used for money allocated to investment assets, including stock-focused portfolios.
 _Avoid_: Stock account, brokerage account, portfolio as a separate object
+
+**Investment Holding**:
+An individual investment asset held inside one Investment Portfolio, such as a stock, ETF, or future supported asset.
+_Avoid_: Portfolio, stock wallet, asset wallet
+
+**Investment Instrument**:
+A system-recognized United States stock or ETF selected from a searchable directory using its ticker, name, market, and currency. It is the reference asset used by an Investment Holding.
+_Avoid_: Free-text ticker, Investment Holding, Investment Portfolio
+
+**Investment Lot**:
+A separately recorded purchase of an Investment Holding, preserving its quantity, price, date, fees, and Investment Exchange Rate. Lots support fractional quantities and are the source record used to calculate realized gains when shares are sold.
+_Avoid_: Average Cost record, blended purchase, Holding
+
+**Investment Cost Basis**:
+The recorded cost assigned to Investment Holdings or sold shares. Walpaca keeps individual Investment Lots, uses first-in first-out (FIFO) by default for realized gains, and may show Average Cost only as a simplified view of the remaining Holding.
+_Avoid_: Current market value, sale price, Wallet Balance
+
+**United States Equity Market**:
+The initial supported market for long-only Investment Holdings, covering United States stocks and ETFs quoted in United States dollars. Margin, short selling, options, and leverage are outside version 1.
+_Avoid_: Global market, Thailand stock market
+
+**Portfolio Market Value**:
+The current estimated value of all Investment Holdings in an Investment Portfolio using their latest available market prices. It is distinct from the Wallet Balance.
+_Avoid_: Wallet Balance, invested cash, purchase total
+
+**Market Quote**:
+The latest available market price and its source timestamp for an Investment Holding. Version 1 may use delayed data and must show when the quote was last updated.
+_Avoid_: Guaranteed real-time price, purchase price, Investment Exchange Rate
+
+**Market Data Provider**:
+An external service used to supply Investment Instruments, Market Quotes, historical prices, and supported corporate-action data. Version 1 uses one primary provider behind a Backend interface so the provider can be replaced later, beginning with a monitored free-tier quota and allowing a future paid plan.
+_Avoid_: Investment Portfolio, broker, permanent data source
+
+**Stale Market Data**:
+The state where a Market Quote or Market Exchange Rate cannot be refreshed. Walpaca keeps showing the last known value with its timestamp and a warning rather than replacing the Portfolio Market Value with zero.
+_Avoid_: Zero value, missing Holding, real-time data
+
+**Market Data Refresh**:
+The Backend policy that reuses cached Market Quotes until they are 15 minutes old when a portfolio is viewed, and records a Portfolio Value Snapshot once after the United States market closes each trading day.
+_Avoid_: Browser polling, real-time stream, unlimited provider requests
+
+**Portfolio Value Snapshot**:
+An end-of-day record of an Investment Portfolio's market value, using the available Market Quotes and Market Exchange Rate for a United States market trading date. Snapshots provide the historical portfolio value chart.
+_Avoid_: Live quote, Wallet Balance, Investment Lot
+
+**United States Market Day**:
+The trading date in the United States market calendar used for Market Quotes and Portfolio Value Snapshots. The Thai user interface describes it as the United States market close and separately shows the Thai local update time.
+_Avoid_: Thailand calendar day, browser date, America/New_York in user-facing text
+
+**Investment Return**:
+The performance of an Investment Portfolio after Investment Fees. It is shown as unrealized gain or loss for open Holdings, realized gain or loss for shares sold using FIFO, and total return including dividends.
+_Avoid_: Portfolio Market Value, Wallet Balance, purchase total
+
+**Investment Tax Data**:
+The transaction, lot, fee, and exchange-rate records retained for a user's future reconciliation or export. Version 1 does not calculate or file tax obligations.
+_Avoid_: Tax advice, tax filing, guaranteed taxable gain
+
+**Dashboard Investment Summary**:
+A compact Dashboard view of total Investment Portfolio market value, total Investment Return, and Market Quote freshness. Detailed charts, Holdings, lots, and Investment Transactions remain in the related Investment Portfolio.
+_Avoid_: Full portfolio detail, Wallet Balance, Spending Budget
 
 **Sub-portfolio**:
 An Investment Portfolio nested under another Investment Portfolio to separate investment strategies or goals.
@@ -89,6 +149,38 @@ _Avoid_: Parent Wallet transaction, summary transaction
 **Transaction**:
 A dated record of money entering or leaving a Wallet for a real-life event.
 _Avoid_: Transfer, movement, entry
+
+**Investment Transaction**:
+A dated record of buying, selling, or receiving dividends for an Investment Holding in an Investment Portfolio. It is distinct from the related movement of money between Wallets.
+_Avoid_: Normal Transaction, Transfer, Holding
+
+**Investment Transaction Recalculation**:
+The recomputation of lots, FIFO realized gains, Investment Cash, Portfolio Value Snapshots, and derived returns after a user corrects or deletes an Investment Transaction.
+_Avoid_: Editing only the visible row, fixed historical result, manual database adjustment
+
+**Manual Investment Entry**:
+An Investment Transaction entered by the user with its broker-confirmed details. Version 1 uses Manual Investment Entries; importing broker files is a future capability.
+_Avoid_: Broker import, estimated transaction, Market Quote
+
+**Investment Cash**:
+Cash held inside an Investment Portfolio. Dividends and stock-sale proceeds enter as Investment Cash and may remain available for a later purchase or be transferred to a Normal Wallet.
+_Avoid_: Portfolio Market Value, invested amount, Wallet Balance
+
+**Investment Exchange Rate**:
+The Thai baht amount per United States dollar recorded with an Investment Transaction to preserve the actual Thai baht cash movement and show equivalent portfolio values.
+_Avoid_: Stock price, current exchange rate, Wallet Balance
+
+**Investment Fee**:
+A broker commission, exchange fee, or other charge recorded with an Investment Transaction. A purchase fee increases the Investment Lot cost; a sale fee reduces sale proceeds.
+_Avoid_: Stock price, Market Exchange Rate, dividend
+
+**Investment Stock Split**:
+A user-recorded corporate action that changes the quantity and per-share cost of existing Investment Lots by a stated ratio without changing their total cost.
+_Avoid_: Buy, Sell, Market Quote
+
+**Market Exchange Rate**:
+The latest available United States dollar to Thai baht exchange rate used to convert current Portfolio Market Value into Thai baht. It is distinct from the historical Investment Exchange Rate recorded with an Investment Transaction.
+_Avoid_: Investment Exchange Rate, purchase exchange rate, fixed portfolio rate
 
 **Transaction Date**:
 The calendar date the Transaction belongs to. It may be today or a past date, but not a future date.

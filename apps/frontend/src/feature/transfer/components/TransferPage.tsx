@@ -5,6 +5,7 @@ import Link from "next/link";
 import Button from "@/components/ui/Button";
 import ConfirmationDialog from "@/components/ui/ConfirmationDialog";
 import { TH_TEXT } from "@/constants/th";
+import { formatCurrency } from "@/lib/currencyFormat";
 import { useWallet } from "@/feature/wallet/hooks/useWallet";
 import {
   type Transfer,
@@ -13,6 +14,7 @@ import {
 } from "../hooks/useTransfer";
 import TransferForm from "./TransferForm";
 import TransferHistory from "./TransferHistory";
+import { getTransferSelectableWallets } from "../lib/transferWallets";
 
 function TransferSkeleton() {
   return (
@@ -73,11 +75,7 @@ function WalletSummaryPanel({
   walletCount: number;
   totalBalance: number;
 }) {
-  const formattedTotal = new Intl.NumberFormat("th-TH", {
-    style: "currency",
-    currency: "THB",
-    maximumFractionDigits: 0,
-  }).format(totalBalance);
+  const formattedTotal = formatCurrency(totalBalance);
 
   return (
     <aside className="rounded-2xl border border-slate-200/80 bg-white/85 p-6 shadow-xl shadow-slate-200/50 backdrop-blur-xl dark:border-slate-800 dark:bg-slate-900/80 dark:shadow-slate-950/40">
@@ -157,6 +155,7 @@ export default function TransferPage() {
       wallet.parent_wallet_id ? sum : sum + Number(wallet.balance || 0),
     0
   );
+  const selectableWalletCount = getTransferSelectableWallets(wallets).length;
 
   const handleEditTransfer = (transfer: Transfer) => {
     setEditingTransfer(transfer);
@@ -220,7 +219,7 @@ export default function TransferPage() {
 
       {isWalletLoading ? (
         <TransferSkeleton />
-      ) : wallets.length < 2 ? (
+      ) : selectableWalletCount < 2 ? (
         <WalletRequirementEmptyState />
       ) : (
         <>

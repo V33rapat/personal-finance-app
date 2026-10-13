@@ -57,12 +57,3 @@ export function addCalendarDays(value: string, amount: number) {
 
   return date.toISOString().slice(0, 10);
 }
-
-export function formatThaiCalendarDate(value: string) {
-  return new Intl.DateTimeFormat("th-TH", {
-    day: "numeric",
-    month: "long",
-    year: "numeric",
-    timeZone: "UTC",
-  }).format(toUtcDate(value));
-}

@@ -5,8 +5,8 @@ import { BarChart3, Layers3 } from "lucide-react";
 import Button from "@/components/ui/Button";
 import Card from "@/components/ui/Card";
 import { TH_TEXT } from "@/constants/th";
+import { formatDisplayDateRange } from "@/lib/dateFormat";
 import { useDashboardOverview } from "../hooks/useDashboardOverview";
-import { formatThaiDateRange } from "../lib/date";
 import { buildExpenseBreakdown } from "../lib/overview";
 import DashboardBarChart, {
   type DashboardChartTransactionType,
@@ -123,7 +123,7 @@ export default function DashboardWeeklyOverview() {
     overview,
     preferences.hidden_category_ids
   );
-  const rangeLabel = formatThaiDateRange(preferences.period_start, preferences.period_end);
+  const rangeLabel = formatDisplayDateRange(preferences.period_start, preferences.period_end);
 
   return (
     <Card data-testid="dashboard-overview" className="p-5 sm:p-6">

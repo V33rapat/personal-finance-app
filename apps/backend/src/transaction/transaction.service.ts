@@ -13,6 +13,8 @@ import { FindDailyTransactionDto } from './dto/find-daily-transaction.dto';
 
 const DAILY_TRANSACTION_PAGE_SIZE = 50;
 
+type TransactionManagement = 'manual' | 'transfer' | 'allocation';
+
 @Injectable()
 export class TransactionService {
   constructor(private prisma: PrismaService) {}
@@ -78,11 +80,25 @@ export class TransactionService {
       ? { wallets: { user_id: userId, id: walletId }, deleted_at: null }
       : { wallets: { user_id: userId }, deleted_at: null };
 
-    return this.prisma.transactions.findMany({
+    const transactions = await this.prisma.transactions.findMany({
       where,
-      include: { categories: true, wallets: true },
+      include: {
+        categories: true,
+        wallets: true,
+        transfers_transfers_from_transaction_idTotransactions: {
+          select: { allocation_id: true },
+        },
+        transfers_transfers_to_transaction_idTotransactions: {
+          select: { allocation_id: true },
+        },
+      },
       orderBy: { transaction_date: 'desc' },
     });
+
+    return transactions.map((transaction) => ({
+      ...transaction,
+      management: this.getTransactionManagement(transaction),
+    }));
   }
 
   async findDaily(userId: string, query: FindDailyTransactionDto) {
@@ -180,20 +196,10 @@ export class TransactionService {
         expense: summary.expense.toFixed(2),
         net: (summary.income - summary.expense).toFixed(2),
       },
-      items: transactions.map((transaction) => {
-        const transfer =
-          transaction.transfers_transfers_from_transaction_idTotransactions ??
-          transaction.transfers_transfers_to_transaction_idTotransactions;
-
-        return {
-          ...transaction,
-          management: transfer
-            ? transfer.allocation_id
-              ? 'allocation'
-              : 'transfer'
-            : 'manual',
-        };
-      }),
+      items: transactions.map((transaction) => ({
+        ...transaction,
+        management: this.getTransactionManagement(transaction),
+      })),
       page,
       has_more: page * DAILY_TRANSACTION_PAGE_SIZE < total,
     };
@@ -333,6 +339,23 @@ export class TransactionService {
         'This transaction belongs to a transfer. Please edit or delete it through Transfer.',
       );
     }
+  }
+
+  private getTransactionManagement(transaction: {
+    transfers_transfers_from_transaction_idTotransactions?: {
+      allocation_id: string | null;
+    } | null;
+    transfers_transfers_to_transaction_idTotransactions?: {
+      allocation_id: string | null;
+    } | null;
+  }): TransactionManagement {
+    const transfer =
+      transaction.transfers_transfers_from_transaction_idTotransactions ??
+      transaction.transfers_transfers_to_transaction_idTotransactions;
+
+    if (!transfer) return 'manual';
+
+    return transfer.allocation_id ? 'allocation' : 'transfer';
   }
 
   private async findEligibleTransactionWallet(

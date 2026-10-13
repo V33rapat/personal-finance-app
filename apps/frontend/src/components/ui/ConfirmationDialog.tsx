@@ -13,6 +13,7 @@ interface ConfirmationDialogProps {
   onCancel: () => void;
   variant?: "danger" | "warning";
   isLoading?: boolean;
+  error?: string | null;
 }
 
 export default function ConfirmationDialog({
@@ -25,6 +26,7 @@ export default function ConfirmationDialog({
   onCancel,
   variant = "danger",
   isLoading = false,
+  error,
 }: ConfirmationDialogProps) {
   if (!isOpen) return null;
 
@@ -65,6 +67,15 @@ export default function ConfirmationDialog({
             {confirmText ?? TH_TEXT.common.delete}
           </Button>
         </div>
+        {error && (
+          <p
+            data-testid="confirmation-dialog-error"
+            role="alert"
+            className="mt-3 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700 dark:border-red-900/70 dark:bg-red-950/30 dark:text-red-300"
+          >
+            {error}
+          </p>
+        )}
       </div>
     </div>
   );

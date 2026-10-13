@@ -15,7 +15,7 @@ import {
 import { TH_TEXT } from "@/constants/th";
 import type { DashboardOverview } from "../hooks/useDashboardOverview";
 import { buildDashboardChartData } from "../lib/overview";
-import { toUtcDate } from "../lib/date";
+import { formatCompactDate, formatDisplayDate } from "@/lib/dateFormat";
 
 interface DashboardBarChartProps {
   overview: DashboardOverview;
@@ -40,11 +40,7 @@ function formatCurrency(value: number) {
 }
 
 function formatAxisDate(value: string) {
-  return new Intl.DateTimeFormat("th-TH", {
-    day: "numeric",
-    month: "short",
-    timeZone: "UTC",
-  }).format(toUtcDate(value));
+  return formatCompactDate(value);
 }
 
 function formatAxisAmount(value: number) {
@@ -110,7 +106,7 @@ function DashboardChartTooltip({
       data-testid="dashboard-overview-chart-tooltip"
       className="min-w-48 rounded-lg border border-[var(--dashboard-tooltip-border)] bg-[var(--dashboard-tooltip-background)] px-3 py-2 text-sm text-[var(--dashboard-tooltip-foreground)] shadow-lg"
     >
-      <p className="mb-2 font-medium">{formatAxisDate(String(label))}</p>
+      <p className="mb-2 font-medium">{formatDisplayDate(String(label))}</p>
       {entries.length > 0 && (
         <div className="space-y-1">
           {entries.map((item) => (
