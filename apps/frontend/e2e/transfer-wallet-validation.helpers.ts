@@ -1,4 +1,5 @@
 import { expect, type Locator, type Page } from "@playwright/test";
+import { authenticatedApiRequest } from "./authenticated-api.helpers";
 
 export const TRANSFER_TEST_DATE = "2025-12-15";
 export const TRANSFER_DELETED_WALLET_ID =
@@ -30,7 +31,7 @@ export interface TransferPayload {
 }
 
 export async function readWallets(page: Page) {
-  const response = await page.request.get("/api/wallet");
+  const response = await authenticatedApiRequest(page, "/api/wallet");
   expect(response.ok(), response.ok() ? "" : await response.text()).toBe(true);
   const wallets: unknown = await response.json();
   expect(Array.isArray(wallets)).toBe(true);
@@ -59,11 +60,22 @@ export async function getOptionValues(select: Locator) {
 }
 
 export async function postTransfer(page: Page, payload: TransferPayload) {
-  return page.request.post("/api/transfer", { data: payload });
+  return authenticatedApiRequest(page, "/api/transfer", { method: "POST", data: payload });
+}
+
+export async function patchTransfer(
+  page: Page,
+  transferId: string,
+  payload: Partial<TransferPayload>,
+) {
+  return authenticatedApiRequest(page, `/api/transfer/${transferId}`, {
+    method: "PATCH",
+    data: payload,
+  });
 }
 
 export async function readTransfers(page: Page) {
-  const response = await page.request.get("/api/transfer");
+  const response = await authenticatedApiRequest(page, "/api/transfer");
   expect(response.ok(), response.ok() ? "" : await response.text()).toBe(true);
   const transfers: unknown = await response.json();
   expect(Array.isArray(transfers)).toBe(true);
@@ -82,6 +94,8 @@ export async function readBalances(page: Page, walletIds: string[]) {
 }
 
 export async function removeTransfer(page: Page, transferId: string) {
-  const response = await page.request.delete(`/api/transfer/${transferId}`);
+  const response = await authenticatedApiRequest(page, `/api/transfer/${transferId}`, {
+    method: "DELETE",
+  });
   expect(response.ok(), response.ok() ? "" : await response.text()).toBe(true);
 }

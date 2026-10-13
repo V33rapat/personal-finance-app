@@ -2,6 +2,7 @@ import { expect, test, type Page } from "@playwright/test";
 import {
   findWallet,
   postTransfer,
+  patchTransfer,
   readBalances,
   readTransfers,
   readWallets,
@@ -130,15 +131,10 @@ test.describe("Transfer wallet API validation", () => {
         const transferIdsBefore = (await readTransfers(page)).map(
           ({ id }) => id,
         );
-        const response = await page.request.patch(
-          `/api/transfer/${transfer.id}`,
-          {
-            data: {
-              from_wallet_id: scenario.fromWalletId,
-              to_wallet_id: scenario.toWalletId,
-            },
-          },
-        );
+        const response = await patchTransfer(page, transfer.id, {
+          from_wallet_id: scenario.fromWalletId,
+          to_wallet_id: scenario.toWalletId,
+        });
         expect(response.status()).toBe(404);
 
         await expectWalletStateUnchanged(
