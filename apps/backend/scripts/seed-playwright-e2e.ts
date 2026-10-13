@@ -59,8 +59,8 @@ async function resetUserData(userId: string) {
   await prisma.release_announcement_preferences.deleteMany({
     where: { user_id: userId },
   });
-  await prisma.spending_budgets.deleteMany({ where: { user_id: userId } });
   await prisma.spending_plans.deleteMany({ where: { user_id: userId } });
+  await prisma.spending_budgets.deleteMany({ where: { user_id: userId } });
 
   if (walletIds.length > 0) {
     await prisma.transfers.deleteMany({
@@ -321,6 +321,49 @@ async function seedPrimaryUser() {
       amount: 50,
       transfer_date: reportingDate,
       note: 'E2E allocation transfer pair',
+    },
+  });
+
+  await prisma.spending_plans.create({
+    data: {
+      user_id: user.id,
+      name: 'E2E Legacy Spending Plan',
+      amount: 100,
+      start_date: reportingDate,
+      end_date: reportingDate,
+      spending_plan_view_preferences: {
+        create: {
+          last_view: 'monthly',
+          show_daily_balance: true,
+          visible_purpose_names: ['E2E Legacy Purpose'],
+        },
+      },
+      spending_plan_revisions: {
+        create: {
+          effective_date: reportingDate,
+          spending_plan_revision_wallets: {
+            create: { wallet_id: cash.id },
+          },
+          spending_plan_revision_purposes: {
+            create: {
+              name: 'E2E Legacy Purpose',
+              sort_order: 0,
+              target_amount: null,
+              distribution_type: null,
+              distribution_weekdays: [],
+              spending_plan_revision_purpose_categories: {
+                create: { category_id: food.id },
+              },
+              spending_plan_revision_allocations: {
+                create: {
+                  allocation_date: reportingDate,
+                  amount: 100,
+                },
+              },
+            },
+          },
+        },
+      },
     },
   });
 

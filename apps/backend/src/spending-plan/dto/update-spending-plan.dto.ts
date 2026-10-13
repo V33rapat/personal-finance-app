@@ -4,13 +4,11 @@ import {
   ArrayMinSize,
   ArrayUnique,
   IsArray,
-  IsNumber,
   IsOptional,
   IsString,
   IsUUID,
   Matches,
   MaxLength,
-  Min,
   MinLength,
   ValidateNested,
 } from 'class-validator';
@@ -24,11 +22,6 @@ export class UpdateSpendingPlanDto {
   @MaxLength(100)
   @IsOptional()
   name?: string;
-
-  @IsNumber({ maxDecimalPlaces: 2 })
-  @Min(0.01)
-  @IsOptional()
-  amount?: number;
 
   @Matches(DATE_PATTERN)
   effective_date: string;

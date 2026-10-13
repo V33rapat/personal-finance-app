@@ -197,16 +197,32 @@ A view of a Spending Budget for a selected daily, weekly, monthly, or yearly Rep
 _Avoid_: Budget history, forecasted expense
 
 **Spending Plan**:
-An explicit, user-created plan that distributes one total amount across one to 31 future calendar days and one or more Plan Purposes. It tracks Expenses without reserving money or changing Wallet Balances.
+An explicit, user-created plan for one to 31 past, current, or future calendar days. It sets per-occurrence spending targets for one or more Plan Purposes and tracks recorded Expenses without reserving money or changing Wallet Balances.
 _Avoid_: Spending Budget, transfer, reserved balance
 
 **Plan Purpose**:
-A named part of a Spending Plan that maps one or more expense Transaction Categories and has a daily planned amount.
+A named part of a Spending Plan that maps one or more expense Transaction Categories, has a target amount for each scheduled occurrence, and uses one Spending Plan Distribution rule. Its target applies to the combined Expense total of its Categories, and a Transaction Category belongs to at most one Plan Purpose within the same Spending Plan.
 _Avoid_: Transaction Category, wallet purpose
 
+**Plan Total**:
+The total projected spending of a Spending Plan, calculated from every Plan Purpose's per-occurrence target and its scheduled calendar days. It is not entered directly by the user.
+_Avoid_: Plan budget input, reserved balance
+
+**Spending Plan Wallet Scope**:
+The explicitly selected one or more Wallets whose Expenses are compared with a Spending Plan. Wallets created later are not included until the user adds them to the plan.
+_Avoid_: All wallets, dynamic wallet scope
+
+**Spending Plan Distribution**:
+The rule that chooses which calendar days a Plan Purpose's per-occurrence target applies to, such as every day, weekdays, selected weekdays every week, selected weekdays every two weeks, or specific dates. A two-week rule begins on the first matching weekday within the plan and repeats every 14 days. Each rule must select at least one day within its Plan's date range.
+_Avoid_: manual daily allocation, recurring Transaction
+
+**Unplanned Plan Expense**:
+An Expense in a Plan Purpose's Transaction Category and Wallet Scope that occurs on a date where that Purpose has no target. It is compared against a zero target and is shown as overspending rather than being omitted.
+_Avoid_: Ignored expense, uncategorized expense
+
 **Plan Revision**:
-An immutable snapshot of a Spending Plan's Wallet Scope, Plan Purposes, category mappings, and daily allocations that becomes effective on a specific calendar date. Earlier recorded days continue to use the Revision that was effective on those days.
-_Avoid_: Edited history, overwritten plan
+A configuration of a Spending Plan's Wallet Scope, Plan Purposes, category mappings, Distribution rules, and generated occurrence allocations that becomes effective on a specific calendar date and remains in effect until the next Revision. Saving a Revision for the same effective date replaces that day's configuration.
+_Avoid_: Transaction edit, plan history entry
 
 **Dashboard Layout**:
 The user's chosen arrangement of Dashboard content.
