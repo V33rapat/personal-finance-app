@@ -11,17 +11,21 @@ interface FormFieldProps extends React.InputHTMLAttributes<HTMLInputElement> {
   label: string;
   error?: string;
   rightSlot?: React.ReactNode; // สำหรับใส่ปุ่ม show/hide password
+  labelClassName?: string;
 }
 
 const FormField = forwardRef<HTMLInputElement, FormFieldProps>(
-  ({ label, error, rightSlot, id, className = "", ...props }, ref) => {
+  ({ label, error, rightSlot, id, className = "", labelClassName = "", ...props }, ref) => {
     const inputId = id ?? label.toLowerCase().replace(/\s+/g, "-");
 
     return (
       <div className="flex flex-col gap-1.5">
         <label
           htmlFor={inputId}
-          className="text-xs font-semibold tracking-widest uppercase text-slate-500 dark:text-slate-400"
+          className={[
+            "text-xs font-semibold tracking-widest uppercase text-slate-500 dark:text-slate-400",
+            labelClassName,
+          ].join(" ")}
         >
           {label}
         </label>
