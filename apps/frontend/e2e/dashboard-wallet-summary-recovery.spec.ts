@@ -12,19 +12,7 @@ import {
 } from "./dashboard-wallet-summary.helpers";
 
 const CASH_WALLET = "E2E เงินสด";
-const SAVINGS_CHILD_WALLET = "E2E เงินเก็บ: E2E เงินสำรอง";
-const INVESTMENT_WALLET = "E2E พอร์ตลงทุน";
-const EXTRA_WALLET_ONE = "E2E Wallet Summary Extra One";
-const EXTRA_WALLET_TWO = "E2E Wallet Summary Extra Two";
 const REMOVED_WALLET = "E2E Wallet Summary Removed Through UI";
-const ELIGIBLE_WALLETS = [
-  CASH_WALLET,
-  SAVINGS_CHILD_WALLET,
-  INVESTMENT_WALLET,
-  EXTRA_WALLET_ONE,
-  EXTRA_WALLET_TWO,
-  REMOVED_WALLET,
-];
 
 test.describe("Dashboard Wallet Summary recovery", () => {
   test("keeps a deleted wallet as unavailable until the user removes it", async ({
@@ -33,7 +21,7 @@ test.describe("Dashboard Wallet Summary recovery", () => {
     await createWalletThroughUi(page, REMOVED_WALLET);
     const summary = await openDashboardWalletSummary(page);
     const settings = await openWalletSummarySettings(page);
-    await clearWalletSummarySelection(settings, ELIGIBLE_WALLETS);
+    await clearWalletSummarySelection(settings);
     await setWalletSummarySelection(settings, [REMOVED_WALLET]);
     const saveRequest = waitForWalletSummaryRequest(page, "PATCH");
     await saveWalletSummarySettings(settings);

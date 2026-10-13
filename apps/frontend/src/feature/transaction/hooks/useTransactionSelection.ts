@@ -25,6 +25,16 @@ export function useTransactionSelection() {
     setSelectedIds(new Set());
   }, []);
 
+  const removeSelection = useCallback((id: string) => {
+    setSelectedIds((prev) => {
+      if (!prev.has(id)) return prev;
+
+      const next = new Set(prev);
+      next.delete(id);
+      return next;
+    });
+  }, []);
+
   const isSelected = useCallback((id: string) => {
     return selectedIds.has(id);
   }, [selectedIds]);
@@ -44,6 +54,7 @@ export function useTransactionSelection() {
     toggleSelection,
     selectAll,
     clearSelection,
+    removeSelection,
     isSelected,
     isAllSelected,
   };

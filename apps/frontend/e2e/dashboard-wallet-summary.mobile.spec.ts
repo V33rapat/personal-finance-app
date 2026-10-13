@@ -10,16 +10,6 @@ import {
 
 const CASH_WALLET = "E2E เงินสด";
 const SAVINGS_CHILD_WALLET = "E2E เงินเก็บ: E2E เงินสำรอง";
-const INVESTMENT_WALLET = "E2E พอร์ตลงทุน";
-const EXTRA_WALLET_ONE = "E2E Wallet Summary Extra One";
-const EXTRA_WALLET_TWO = "E2E Wallet Summary Extra Two";
-const ELIGIBLE_WALLETS = [
-  CASH_WALLET,
-  SAVINGS_CHILD_WALLET,
-  INVESTMENT_WALLET,
-  EXTRA_WALLET_ONE,
-  EXTRA_WALLET_TWO,
-];
 
 test.describe("Dashboard Wallet Summary mobile layout", () => {
   test("keeps cards and settings controls usable inside the mobile viewport", async ({
@@ -27,7 +17,7 @@ test.describe("Dashboard Wallet Summary mobile layout", () => {
   }) => {
     const summary = await openDashboardWalletSummary(page);
     const settings = await openWalletSummarySettings(page);
-    await clearWalletSummarySelection(settings, ELIGIBLE_WALLETS);
+    await clearWalletSummarySelection(settings);
     await setWalletSummarySelection(settings, [
       CASH_WALLET,
       SAVINGS_CHILD_WALLET,

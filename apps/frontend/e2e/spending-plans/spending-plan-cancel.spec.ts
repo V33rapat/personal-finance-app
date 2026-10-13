@@ -16,10 +16,16 @@ test.describe("Spending Plan cancellation", () => {
 
     await page.getByRole("button", { name: "ยกเลิกแผน", exact: true }).click();
     await expect(page.getByText("ยกเลิกแผนการใช้เงิน?", { exact: true })).toBeVisible();
+    const cancellation = page.waitForResponse((response) =>
+      new URL(response.url()).pathname.endsWith("/cancel") &&
+      response.request().method() === "POST",
+    );
     await page
       .getByRole("button", { name: "ยกเลิกแผน", exact: true })
       .last()
       .click();
+    expect((await cancellation).ok()).toBe(true);
+    await expect(page.getByText("ยกเลิกแผนการใช้เงิน?", { exact: true })).toBeHidden();
 
     await openPlans(page);
     const planCard = page.getByRole("link", { name: new RegExp(name) });

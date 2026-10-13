@@ -21,7 +21,7 @@ test.describe("Dashboard chart tooltip totals", () => {
       DASHBOARD_CHART_RANGE.start,
     );
 
-    await expect(tooltip).toContainText("20 ก.ค.");
+    await expect(tooltip).toContainText("20/07/2026");
     await expect(tooltip).toContainText("รายรับ");
     await expect(tooltip).toContainText("รายจ่าย");
     await expectTooltipTotal(tooltip, "income", "รวมรายรับ", 2_000);

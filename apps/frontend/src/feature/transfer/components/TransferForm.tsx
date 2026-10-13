@@ -2,10 +2,16 @@
 
 import { FormEvent, useMemo, useState } from "react";
 import Button from "@/components/ui/Button";
+import DateField from "@/components/ui/DateField";
 import FormField from "@/components/ui/FormField";
 import { TH_TEXT } from "@/constants/th";
 import type { Wallet } from "@/feature/wallet/hooks/useWallet";
+import { formatCurrency } from "@/lib/currencyFormat";
 import type { Transfer, TransferFormValues } from "../hooks/useTransfer";
+import {
+  getTransferSelectableWallets,
+  getTransferWalletDisplayName,
+} from "../lib/transferWallets";
 import TransferBalancePreview from "./TransferBalancePreview";
 
 interface TransferFormProps {
@@ -37,14 +43,6 @@ function getTodayDateString() {
   const timezoneOffsetMs = now.getTimezoneOffset() * 60_000;
 
   return new Date(now.getTime() - timezoneOffsetMs).toISOString().split("T")[0];
-}
-
-function formatMoney(balance: string, currency: string) {
-  return new Intl.NumberFormat("th-TH", {
-    style: "currency",
-    currency,
-    maximumFractionDigits: 0,
-  }).format(Number(balance));
 }
 
 function toMoneyNumber(value: string | number | null | undefined) {
@@ -163,29 +161,34 @@ export default function TransferForm({
   onSubmit,
 }: TransferFormProps) {
   const isEditMode = mode === "edit";
+  const selectableWallets = useMemo(
+    () => getTransferSelectableWallets(wallets),
+    [wallets]
+  );
   const [values, setValues] = useState<TransferFormValues>(() =>
-    initialValues ?? getInitialValues(wallets)
+    initialValues ?? getInitialValues(selectableWallets)
   );
   const [touched, setTouched] = useState<TouchedFields>({});
   const [submitted, setSubmitted] = useState(false);
+  const [isDateDraftValid, setIsDateDraftValid] = useState(true);
 
   const sourceWallet = useMemo(
-    () => wallets.find((wallet) => wallet.id === values.from_wallet_id) ?? null,
-    [values.from_wallet_id, wallets]
+    () => selectableWallets.find((wallet) => wallet.id === values.from_wallet_id) ?? null,
+    [selectableWallets, values.from_wallet_id]
   );
   const destinationWallet = useMemo(
-    () => wallets.find((wallet) => wallet.id === values.to_wallet_id) ?? null,
-    [values.to_wallet_id, wallets]
+    () => selectableWallets.find((wallet) => wallet.id === values.to_wallet_id) ?? null,
+    [selectableWallets, values.to_wallet_id]
   );
   const fieldErrors = useMemo(
-    () => getFieldErrors(values, wallets, editingTransfer),
-    [editingTransfer, values, wallets]
+    () => getFieldErrors(values, selectableWallets, editingTransfer),
+    [editingTransfer, selectableWallets, values]
   );
   const visibleErrors = useMemo(
     () => getVisibleErrors(fieldErrors, touched, submitted),
     [fieldErrors, submitted, touched]
   );
-  const hasErrors = Object.keys(fieldErrors).length > 0;
+  const hasErrors = Object.keys(fieldErrors).length > 0 || !isDateDraftValid;
   const submitDisabled = isSaving || hasErrors;
   const submitLabel = isSaving
     ? isEditMode
@@ -279,9 +282,9 @@ export default function TransferForm({
               aria-invalid={!!visibleErrors.from_wallet_id}
             >
               <option value="">{TH_TEXT.transfer.selectSourceWallet}</option>
-              {wallets.map((wallet) => (
+              {selectableWallets.map((wallet) => (
                 <option key={wallet.id} value={wallet.id}>
-                  {wallet.name} - {formatMoney(wallet.balance, wallet.currency)}
+                  {getTransferWalletDisplayName(wallet, wallets)} - {formatCurrency(wallet.balance, wallet.currency)}
                 </option>
               ))}
             </select>
@@ -324,9 +327,9 @@ export default function TransferForm({
               aria-invalid={!!visibleErrors.to_wallet_id}
             >
               <option value="">{TH_TEXT.transfer.selectDestinationWallet}</option>
-              {wallets.map((wallet) => (
+              {selectableWallets.map((wallet) => (
                 <option key={wallet.id} value={wallet.id}>
-                  {wallet.name} - {formatMoney(wallet.balance, wallet.currency)}
+                  {getTransferWalletDisplayName(wallet, wallets)} - {formatCurrency(wallet.balance, wallet.currency)}
                 </option>
               ))}
             </select>
@@ -355,19 +358,15 @@ export default function TransferForm({
             onBlur={() => setTouched((current) => ({ ...current, amount: true }))}
           />
 
-          <FormField
+          <DateField
             id="transfer-date"
             label={TH_TEXT.transfer.date}
-            type="date"
             max={getTodayDateString()}
             value={values.transfer_date}
             error={visibleErrors.transfer_date}
-            onChange={(event) =>
-              updateValue("transfer_date", event.target.value)
-            }
-            onBlur={() =>
-              setTouched((current) => ({ ...current, transfer_date: true }))
-            }
+            onChange={(date) => updateValue("transfer_date", date)}
+            onDraftValidityChange={setIsDateDraftValid}
+            testId="transfer-date"
           />
         </div>
 

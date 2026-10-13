@@ -135,7 +135,7 @@ export function useAllocation({ wallets, onChanged }: UseAllocationOptions) {
   }, [router, showToast]);
 
   const createAllocation = useCallback(
-    async (values: AllocationFormValues) => {
+    async (values: AllocationFormValues, successTitle?: string) => {
       const validationError = getAllocationValidationError(values, wallets);
 
       if (validationError || isSaving) {
@@ -159,7 +159,7 @@ export function useAllocation({ wallets, onChanged }: UseAllocationOptions) {
 
         setAllocations((current) => [allocation, ...current]);
         await onChanged?.();
-        showToast({ title: TH_TEXT.allocation.createSuccess });
+        showToast({ title: successTitle ?? TH_TEXT.allocation.createSuccess });
         return true;
       } catch (err) {
         const message = err instanceof Error ? err.message : TH_TEXT.allocation.createFailed;

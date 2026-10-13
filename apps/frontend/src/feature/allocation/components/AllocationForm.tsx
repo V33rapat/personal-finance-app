@@ -1,7 +1,9 @@
 "use client";
 
 import { FormEvent, useMemo, useState } from "react";
+import { ChevronDown, X } from "lucide-react";
 import Button from "@/components/ui/Button";
+import DateField from "@/components/ui/DateField";
 import FormField from "@/components/ui/FormField";
 import { TH_TEXT } from "@/constants/th";
 import type { Wallet } from "@/feature/wallet/hooks/useWallet";
@@ -23,7 +25,9 @@ interface AllocationFormProps {
   wallets: Wallet[];
   isSaving: boolean;
   error: string | null;
-  mode: "create" | "edit";
+  mode: "create" | "edit" | "duplicate";
+  presentation?: "page" | "modal";
+  idPrefix?: string;
   initialValues?: AllocationFormValues;
   editingAllocation?: MoneyAllocation | null;
   onCancelEdit?: () => void;
@@ -54,6 +58,8 @@ export default function AllocationForm({
   isSaving,
   error,
   mode,
+  presentation = "page",
+  idPrefix = "allocation",
   initialValues,
   editingAllocation,
   onCancelEdit,
@@ -64,12 +70,13 @@ export default function AllocationForm({
   );
   const [submitted, setSubmitted] = useState(false);
   const [hasInteracted, setHasInteracted] = useState(false);
+  const [isDateDraftValid, setIsDateDraftValid] = useState(true);
   const eligibleWallets = useMemo(() => getEligibleAllocationWallets(wallets), [wallets]);
   const fieldErrors = useMemo(
     () => getAllocationValidationErrors(values, wallets, editingAllocation),
     [editingAllocation, values, wallets]
   );
-  const hasFieldErrors = Object.values(fieldErrors).some(Boolean);
+  const hasFieldErrors = Object.values(fieldErrors).some(Boolean) || !isDateDraftValid;
   const showValidationErrors = submitted || hasInteracted;
   const destinationErrors = [
     fieldErrors.destinationWallet,
@@ -82,6 +89,17 @@ export default function AllocationForm({
     0
   );
   const isEditMode = mode === "edit";
+  const isModal = presentation === "modal";
+  const title = isEditMode
+    ? TH_TEXT.allocation.editTitle
+    : mode === "duplicate"
+      ? TH_TEXT.allocation.duplicateTitle
+      : TH_TEXT.allocation.formTitle;
+  const description = isEditMode
+    ? TH_TEXT.allocation.editDescription
+    : mode === "duplicate"
+      ? TH_TEXT.allocation.duplicateDescription
+      : TH_TEXT.allocation.formDescription;
 
   const updateValue = <Key extends keyof AllocationFormValues>(
     key: Key,
@@ -151,47 +169,68 @@ export default function AllocationForm({
   return (
     <form
       onSubmit={handleSubmit}
-      className="rounded-2xl border border-slate-200/80 bg-white/85 p-6 shadow-xl shadow-slate-200/50 backdrop-blur-xl dark:border-slate-800 dark:bg-slate-900/80 dark:shadow-slate-950/40"
+      className={[
+        "flex min-h-0 flex-col",
+        isModal
+          ? "max-h-[calc(100dvh-2rem)]"
+          : "rounded-2xl border border-slate-200/80 bg-white/85 p-6 shadow-xl shadow-slate-200/50 backdrop-blur-xl dark:border-slate-800 dark:bg-slate-900/80 dark:shadow-slate-950/40",
+      ].join(" ")}
     >
-      <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+      <div className={[
+        "flex shrink-0 items-start justify-between gap-4",
+        isModal ? "px-5 pt-5 sm:px-6 sm:pt-6" : "",
+      ].join(" ")}>
         <div>
-          <h2 className="text-lg font-bold text-slate-900 dark:text-slate-50">
-            {isEditMode ? TH_TEXT.allocation.editTitle : TH_TEXT.allocation.formTitle}
+          <h2 id={`${idPrefix}-title`} className="text-lg font-bold text-slate-900 dark:text-slate-50">
+            {title}
           </h2>
           <p className="mt-1 text-sm leading-6 text-slate-500 dark:text-slate-400">
-            {isEditMode ? TH_TEXT.allocation.editDescription : TH_TEXT.allocation.formDescription}
+            {description}
           </p>
         </div>
-        {isEditMode && onCancelEdit && (
-          <Button type="button" variant="secondary" size="sm" disabled={isSaving} onClick={onCancelEdit}>
-            {TH_TEXT.allocation.cancelEdit}
-          </Button>
+        {isModal && onCancelEdit && (
+          <button
+            type="button"
+            aria-label={TH_TEXT.allocation.closeEditor}
+            title={TH_TEXT.allocation.closeEditor}
+            disabled={isSaving}
+            onClick={onCancelEdit}
+            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-slate-500 transition hover:bg-slate-100 hover:text-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-500 disabled:cursor-not-allowed disabled:opacity-50 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-white"
+          >
+            <X className="h-5 w-5" aria-hidden="true" />
+          </button>
         )}
       </div>
 
-      {error && (
-        <div className="mt-5 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-900/70 dark:bg-red-950/30 dark:text-red-300">
-          {error}
-        </div>
-      )}
+      <div className={isModal ? "min-h-0 flex-1 overflow-y-auto px-5 pb-5 sm:px-6" : ""}>
+        {error && (
+          <div className="mt-5 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-900/70 dark:bg-red-950/30 dark:text-red-300">
+            {error}
+          </div>
+        )}
 
-      <div className="mt-6 grid gap-6 lg:grid-cols-2">
+      <div className={[
+        "mt-6 grid gap-6",
+        isModal
+          ? "lg:grid-cols-[minmax(0,0.85fr)_minmax(0,1.15fr)]"
+          : "lg:grid-cols-2",
+      ].join(" ")}>
         <section className="border-b border-slate-200 pb-6 dark:border-slate-800 lg:border-b-0 lg:border-r lg:pb-0 lg:pr-6">
           <p className={labelClassName}>{TH_TEXT.allocation.sourcePanel}</p>
           <div className="mt-4 grid gap-4">
             <div className="flex flex-col gap-1.5">
-              <label htmlFor="allocation-source-wallet" className={labelClassName}>
+              <label htmlFor={`${idPrefix}-source-wallet`} className={labelClassName}>
                 {TH_TEXT.allocation.sourceWallet}
               </label>
               <select
-                id="allocation-source-wallet"
+                id={`${idPrefix}-source-wallet`}
                 value={values.source_wallet_id}
                 onChange={(event) => updateValue("source_wallet_id", event.target.value)}
                 disabled={isSaving}
                 aria-invalid={showValidationErrors && !!fieldErrors.sourceWallet}
                 aria-describedby={
                   showValidationErrors && fieldErrors.sourceWallet
-                    ? "allocation-source-wallet-error"
+                    ? `${idPrefix}-source-wallet-error`
                     : undefined
                 }
                 className={[
@@ -210,7 +249,7 @@ export default function AllocationForm({
               </select>
               {showValidationErrors && fieldErrors.sourceWallet && (
                 <p
-                  id="allocation-source-wallet-error"
+                  id={`${idPrefix}-source-wallet-error`}
                   role="alert"
                   className="text-xs text-red-500 dark:text-red-400"
                 >
@@ -220,7 +259,7 @@ export default function AllocationForm({
             </div>
 
             <FormField
-              id="allocation-amount"
+              id={`${idPrefix}-amount`}
               label={TH_TEXT.allocation.amount}
               type="number"
               inputMode="decimal"
@@ -233,23 +272,24 @@ export default function AllocationForm({
               error={showValidationErrors ? fieldErrors.amount : undefined}
             />
 
-            <FormField
-              id="allocation-date"
+            <DateField
+              id={`${idPrefix}-date`}
               label={TH_TEXT.allocation.date}
-              type="date"
               max={getTodayDateString()}
               value={values.allocation_date}
               disabled={isSaving}
-              onChange={(event) => updateValue("allocation_date", event.target.value)}
+              onChange={(date) => updateValue("allocation_date", date)}
+              onDraftValidityChange={setIsDateDraftValid}
               error={showValidationErrors ? fieldErrors.date : undefined}
+              testId={`${idPrefix}-date`}
             />
 
             <div className="flex flex-col gap-1.5">
-              <label htmlFor="allocation-note" className={labelClassName}>
+              <label htmlFor={`${idPrefix}-note`} className={labelClassName}>
                 {TH_TEXT.allocation.note}
               </label>
               <textarea
-                id="allocation-note"
+                id={`${idPrefix}-note`}
                 value={values.note}
                 rows={3}
                 disabled={isSaving}
@@ -284,55 +324,95 @@ export default function AllocationForm({
           </div>
 
           <div className="mt-4 grid gap-3">
-            {values.destinations.map((destination, index) => (
-              <div key={index} className="grid gap-3 rounded-xl border border-slate-200 bg-slate-50/80 p-3 dark:border-slate-800 dark:bg-slate-950/30 sm:grid-cols-[minmax(0,1fr)_132px_auto] sm:items-end">
-                <div className="flex flex-col gap-1.5">
-                  <label htmlFor={`allocation-destination-${index}`} className={labelClassName}>
-                    {TH_TEXT.allocation.destinationWallet}
-                  </label>
-                  <select
-                    id={`allocation-destination-${index}`}
-                    value={destination.wallet_id}
+            {values.destinations.map((destination, index) => {
+              const destinationWallets = getDestinationWallets(index);
+              const selectedWallet = destinationWallets.find(
+                (wallet) => wallet.id === destination.wallet_id
+              );
+              const selectedWalletLabel = selectedWallet
+                ? `${getAllocationWalletLabel(selectedWallet, wallets)} (${formatWalletMoney(
+                    selectedWallet.balance,
+                    selectedWallet.currency
+                  )})`
+                : TH_TEXT.allocation.selectDestinationWallet;
+
+              return (
+                <div key={index} className="grid gap-3 rounded-xl border border-slate-200 bg-slate-50/80 p-3 dark:border-slate-800 dark:bg-slate-950/30 sm:grid-cols-[minmax(0,1fr)_132px_auto] sm:items-start">
+                  <div className="flex min-w-0 flex-col gap-1.5">
+                    <label
+                      id={`${idPrefix}-destination-label-${index}`}
+                      htmlFor={`${idPrefix}-destination-${index}`}
+                      className={`${labelClassName} flex min-h-8 items-end leading-4`}
+                    >
+                      {TH_TEXT.allocation.destinationWallet}
+                    </label>
+                    <div className="relative h-14 w-full min-w-0 rounded-xl border border-slate-200 bg-white/60 text-sm text-slate-800 transition focus-within:border-violet-400 focus-within:ring-2 focus-within:ring-violet-400/20 dark:border-slate-700 dark:bg-slate-800/60 dark:text-slate-100 dark:focus-within:border-violet-500">
+                      <span
+                        aria-hidden="true"
+                        title={selectedWallet ? selectedWalletLabel : undefined}
+                        className="pointer-events-none absolute inset-y-0 left-4 right-10 flex min-w-0 items-center"
+                      >
+                        <span
+                          className={[
+                            "line-clamp-2 w-full break-words leading-5",
+                            selectedWallet ? "text-slate-800 dark:text-slate-100" : "text-slate-400 dark:text-slate-500",
+                          ].join(" ")}
+                        >
+                          {selectedWalletLabel}
+                        </span>
+                      </span>
+                      <ChevronDown
+                        aria-hidden="true"
+                        className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500 dark:text-slate-400"
+                      />
+                      <select
+                        id={`${idPrefix}-destination-${index}`}
+                        aria-labelledby={`${idPrefix}-destination-label-${index}`}
+                        value={destination.wallet_id}
+                        disabled={isSaving}
+                        onChange={(event) => updateDestination(index, "wallet_id", event.target.value)}
+                        className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
+                      >
+                        <option value="">{TH_TEXT.allocation.selectDestinationWallet}</option>
+                        {destinationWallets.map((wallet) => (
+                          <option key={wallet.id} value={wallet.id}>
+                            {getAllocationWalletLabel(wallet, wallets)} ({formatWalletMoney(wallet.balance, wallet.currency)})
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+
+                  <FormField
+                    id={`${idPrefix}-destination-amount-${index}`}
+                    label={TH_TEXT.allocation.destinationAmount}
+                    labelClassName="flex min-h-8 items-end leading-4"
+                    type="number"
+                    inputMode="decimal"
+                    min="0"
+                    step="0.01"
+                    className="h-14 py-0"
+                    value={destination.amount}
+                    placeholder={TH_TEXT.transaction.amountPlaceholder}
                     disabled={isSaving}
-                    onChange={(event) => updateDestination(index, "wallet_id", event.target.value)}
-                    className={selectClassName}
+                    onChange={(event) => updateDestination(index, "amount", event.target.value)}
+                  />
+
+                  <button
+                    type="button"
+                    disabled={isSaving || values.destinations.length === 1}
+                    onClick={() => removeDestination(index)}
+                    aria-label={`${TH_TEXT.allocation.removeDestination} ${index + 1}`}
+                    title={TH_TEXT.allocation.removeDestination}
+                    className="flex h-[46px] w-[46px] items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-500 transition hover:border-red-200 hover:bg-red-50 hover:text-red-600 disabled:cursor-not-allowed disabled:opacity-50 sm:mt-[38px] sm:h-14 sm:w-14 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-400 dark:hover:border-red-900 dark:hover:bg-red-950/30 dark:hover:text-red-300"
                   >
-                    <option value="">{TH_TEXT.allocation.selectDestinationWallet}</option>
-                    {getDestinationWallets(index).map((wallet) => (
-                      <option key={wallet.id} value={wallet.id}>
-                        {getAllocationWalletLabel(wallet, wallets)} ({formatWalletMoney(wallet.balance, wallet.currency)})
-                      </option>
-                    ))}
-                  </select>
+                    <svg className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor" aria-hidden>
+                      <path d="M6.06 4.5 4.5 6.06 8.44 10 4.5 13.94 6.06 15.5 10 11.56l3.94 3.94 1.56-1.56L11.56 10l3.94-3.94-1.56-1.56L10 8.44 6.06 4.5Z" />
+                    </svg>
+                  </button>
                 </div>
-
-                <FormField
-                  id={`allocation-destination-amount-${index}`}
-                  label={TH_TEXT.allocation.destinationAmount}
-                  type="number"
-                  inputMode="decimal"
-                  min="0"
-                  step="0.01"
-                  value={destination.amount}
-                  placeholder={TH_TEXT.transaction.amountPlaceholder}
-                  disabled={isSaving}
-                  onChange={(event) => updateDestination(index, "amount", event.target.value)}
-                />
-
-                <button
-                  type="button"
-                  disabled={isSaving || values.destinations.length === 1}
-                  onClick={() => removeDestination(index)}
-                  aria-label={`${TH_TEXT.allocation.removeDestination} ${index + 1}`}
-                  title={TH_TEXT.allocation.removeDestination}
-                  className="flex h-[46px] w-[46px] items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-500 transition hover:border-red-200 hover:bg-red-50 hover:text-red-600 disabled:cursor-not-allowed disabled:opacity-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-400 dark:hover:border-red-900 dark:hover:bg-red-950/30 dark:hover:text-red-300"
-                >
-                  <svg className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor" aria-hidden>
-                    <path d="M6.06 4.5 4.5 6.06 8.44 10 4.5 13.94 6.06 15.5 10 11.56l3.94 3.94 1.56-1.56L11.56 10l3.94-3.94-1.56-1.56L10 8.44 6.06 4.5Z" />
-                  </svg>
-                </button>
-              </div>
-            ))}
+              );
+            })}
           </div>
 
           <div className="mt-5 grid grid-cols-2 gap-3">
@@ -365,14 +445,28 @@ export default function AllocationForm({
           )}
         </section>
       </div>
+      </div>
 
-      <div className="mt-7 flex justify-end">
+      <div className={[
+        "flex shrink-0 gap-3",
+        isModal
+          ? "border-t border-slate-200 bg-white px-5 py-4 dark:border-slate-800 dark:bg-slate-900 sm:px-6"
+          : "mt-7 justify-end",
+        isModal ? "flex-col-reverse sm:flex-row sm:justify-end" : "",
+      ].join(" ")}>
+        {isModal && onCancelEdit && (
+          <Button type="button" variant="secondary" disabled={isSaving} onClick={onCancelEdit}>
+            {TH_TEXT.common.cancel}
+          </Button>
+        )}
         <Button type="submit" disabled={isSaving || hasFieldErrors}>
           {isSaving
             ? TH_TEXT.allocation.saving
             : isEditMode
               ? TH_TEXT.allocation.saveChanges
-              : TH_TEXT.allocation.submit}
+              : mode === "duplicate"
+                ? TH_TEXT.allocation.duplicateSubmit
+                : TH_TEXT.allocation.submit}
         </Button>
       </div>
     </form>

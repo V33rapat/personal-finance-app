@@ -1,33 +1,22 @@
 "use client";
 
 import { TH_TEXT } from "@/constants/th";
+import { formatCurrency } from "@/lib/currencyFormat";
+import { formatDisplayDate } from "@/lib/dateFormat";
 import type { Transaction } from "./TransactionItem";
+import TransactionActionMenu from "./TransactionActionMenu";
 
 interface TransactionRowProps {
   transaction: Transaction;
   showWallet?: boolean;
   currency?: string;
   onEdit?: (transaction: Transaction) => void;
+  onDuplicate?: (transaction: Transaction) => void;
   onSaveAsTemplate?: (transaction: Transaction) => void;
+  onDelete?: (transaction: Transaction) => void;
   isSavingTemplate?: boolean;
   isSelected?: boolean;
   onToggleSelect?: (id: string) => void;
-}
-
-function formatMoney(amount: string, currency: string = "THB") {
-  return new Intl.NumberFormat("th-TH", {
-    style: "currency",
-    currency,
-    maximumFractionDigits: 2,
-  }).format(Number(amount));
-}
-
-function formatDate(dateString: string) {
-  return new Date(dateString).toLocaleDateString("th-TH", {
-    day: "numeric",
-    month: "short",
-    year: "numeric",
-  });
 }
 
 export default function TransactionRow({
@@ -35,7 +24,9 @@ export default function TransactionRow({
   showWallet = false,
   currency = "THB",
   onEdit,
+  onDuplicate,
   onSaveAsTemplate,
+  onDelete,
   isSavingTemplate = false,
   isSelected = false,
   onToggleSelect,
@@ -102,7 +93,7 @@ export default function TransactionRow({
               <span>·</span>
             </>
           )}
-          <span>{formatDate(transaction.transaction_date)}</span>
+          <span>{formatDisplayDate(transaction.transaction_date)}</span>
           {isManaged && (
             <span className="rounded-full bg-slate-100 px-2 py-0.5 font-medium text-slate-600 dark:bg-slate-800 dark:text-slate-300">
               {managementLabel}
@@ -115,38 +106,20 @@ export default function TransactionRow({
         <div className="text-right">
           <p className={["font-semibold", isIncome ? "text-emerald-600 dark:text-emerald-400" : "text-rose-600 dark:text-rose-400"].join(" ")}>
             {isIncome ? "+" : "-"}
-            {formatMoney(transaction.amount, currency)}
+            {formatCurrency(transaction.amount, currency)}
           </p>
           <p className="text-xs text-slate-400 dark:text-slate-500">
             {isIncome ? TH_TEXT.transaction.income : TH_TEXT.transaction.expense}
           </p>
         </div>
-        {onEdit && !isManaged && (
-          <button
-          onClick={() => onEdit(transaction)}
-          className="rounded-lg p-1.5 text-slate-400 opacity-0 transition-opacity hover:bg-slate-100 hover:text-slate-600 group-hover:opacity-100 dark:hover:bg-slate-800 dark:hover:text-slate-300"
-          aria-label={TH_TEXT.common.edit}
-          >
-            <svg className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
-              <path d="M2.695 14.763l-1.262 3.154a.5.5 0 00.65.65l3.155-1.262a4 4 0 001.343-.885L17.5 5.5a2.121 2.121 0 00-3-3L3.58 13.42a4 4 0 00-.885 1.343z" />
-            </svg>
-          </button>
-        )}
-        {onSaveAsTemplate && !isManaged && (
-          <button
-            onClick={() => onSaveAsTemplate(transaction)}
-            disabled={isSavingTemplate}
-            className="rounded-lg p-1.5 text-slate-400 opacity-0 transition-opacity hover:bg-violet-50 hover:text-violet-600 disabled:cursor-not-allowed disabled:opacity-40 group-hover:opacity-100 dark:hover:bg-violet-950/30 dark:hover:text-violet-300"
-            aria-label={TH_TEXT.transactionTemplate.saveFromTransaction}
-            title={TH_TEXT.transactionTemplate.saveFromTransaction}
-          >
-            <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} aria-hidden>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M19 21l-7-4-7 4V5a2 2 0 0 1 2-2h6" />
-              <path strokeLinecap="round" strokeLinejoin="round" d="M17 3v8" />
-              <path strokeLinecap="round" strokeLinejoin="round" d="M13 7h8" />
-            </svg>
-          </button>
-        )}
+        <TransactionActionMenu
+          transaction={transaction}
+          onEdit={onEdit}
+          onDuplicate={onDuplicate}
+          onSaveAsTemplate={onSaveAsTemplate}
+          onDelete={onDelete}
+          isSavingTemplate={isSavingTemplate}
+        />
       </div>
     </div>
   );

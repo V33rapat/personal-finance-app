@@ -15,7 +15,9 @@ interface TransactionListProps {
   currency?: string;
   empty?: boolean;
   onEdit?: (transaction: Transaction) => void;
+  onDuplicate?: (transaction: Transaction) => void;
   onSaveAsTemplate?: (transaction: Transaction) => void;
+  onDelete?: (transaction: Transaction) => void;
   isSavingTemplate?: boolean;
   selectedIds?: Set<string>;
   onToggleSelect?: (id: string) => void;
@@ -33,7 +35,9 @@ export default function TransactionList({
   currency = "THB",
   empty = false,
   onEdit,
+  onDuplicate,
   onSaveAsTemplate,
+  onDelete,
   isSavingTemplate = false,
   selectedIds,
   onToggleSelect,
@@ -84,7 +88,9 @@ export default function TransactionList({
             showWallet={showWallet}
             currency={currency}
             onEdit={onEdit}
+            onDuplicate={onDuplicate}
             onSaveAsTemplate={onSaveAsTemplate}
+            onDelete={onDelete}
             isSavingTemplate={isSavingTemplate}
             isSelected={selectedIds?.has(transaction.id)}
             onToggleSelect={onToggleSelect}

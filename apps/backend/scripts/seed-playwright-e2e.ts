@@ -59,8 +59,8 @@ async function resetUserData(userId: string) {
   await prisma.release_announcement_preferences.deleteMany({
     where: { user_id: userId },
   });
-  await prisma.spending_budgets.deleteMany({ where: { user_id: userId } });
   await prisma.spending_plans.deleteMany({ where: { user_id: userId } });
+  await prisma.spending_budgets.deleteMany({ where: { user_id: userId } });
 
   if (walletIds.length > 0) {
     await prisma.transfers.deleteMany({
@@ -211,8 +211,80 @@ async function seedPrimaryUser() {
       created_at: seededWalletCreatedAt,
     },
   });
+  const transferSource = await prisma.wallets.create({
+    data: {
+      user_id: user.id,
+      name: 'E2E Transfer Source',
+      wallet_type: wallet_type.normal,
+      balance: 1_234.5,
+      created_at: seededWalletCreatedAt,
+    },
+  });
+  const transferDestination = await prisma.wallets.create({
+    data: {
+      user_id: user.id,
+      name: 'E2E Transfer Destination',
+      wallet_type: wallet_type.normal,
+      balance: 250.25,
+      created_at: seededWalletCreatedAt,
+    },
+  });
+  const transferParent = await prisma.wallets.create({
+    data: {
+      user_id: user.id,
+      name: 'E2E Transfer Parent',
+      wallet_type: wallet_type.normal,
+      balance: 300,
+      created_at: seededWalletCreatedAt,
+    },
+  });
+  const transferChild = await prisma.wallets.create({
+    data: {
+      user_id: user.id,
+      parent_wallet_id: transferParent.id,
+      name: 'E2E Transfer Child',
+      wallet_type: wallet_type.normal,
+      balance: 300,
+      created_at: seededWalletCreatedAt,
+    },
+  });
+  const transferInactive = await prisma.wallets.create({
+    data: {
+      user_id: user.id,
+      name: 'E2E Transfer Inactive',
+      wallet_type: wallet_type.normal,
+      is_active: false,
+      balance: 500,
+      created_at: seededWalletCreatedAt,
+    },
+  });
+  const transferDeleted = await prisma.wallets.create({
+    data: {
+      id: '90000000-0000-4000-8000-000000000001',
+      user_id: user.id,
+      name: 'E2E Transfer Deleted',
+      wallet_type: wallet_type.normal,
+      balance: 700,
+      deleted_at: new Date('2026-07-01T00:00:00.000Z'),
+      created_at: seededWalletCreatedAt,
+    },
+  });
   await prisma.transactions.createMany({
     data: [
+      ...[
+        { wallet: transferSource, amount: 1_234.5 },
+        { wallet: transferDestination, amount: 250.25 },
+        { wallet: transferChild, amount: 300 },
+        { wallet: transferInactive, amount: 500 },
+        { wallet: transferDeleted, amount: 700 },
+      ].map(({ wallet, amount }) => ({
+        wallet_id: wallet.id,
+        category_id: salary.id,
+        name: `E2E opening balance ${wallet.name}`,
+        type: transaction_type.income,
+        amount,
+        transaction_date: new Date('2025-12-15T00:00:00.000Z'),
+      })),
       {
         wallet_id: cash.id,
         category_id: food.id,
@@ -321,6 +393,49 @@ async function seedPrimaryUser() {
       amount: 50,
       transfer_date: reportingDate,
       note: 'E2E allocation transfer pair',
+    },
+  });
+
+  await prisma.spending_plans.create({
+    data: {
+      user_id: user.id,
+      name: 'E2E Legacy Spending Plan',
+      amount: 100,
+      start_date: reportingDate,
+      end_date: reportingDate,
+      spending_plan_view_preferences: {
+        create: {
+          last_view: 'monthly',
+          show_daily_balance: true,
+          visible_purpose_names: ['E2E Legacy Purpose'],
+        },
+      },
+      spending_plan_revisions: {
+        create: {
+          effective_date: reportingDate,
+          spending_plan_revision_wallets: {
+            create: { wallet_id: cash.id },
+          },
+          spending_plan_revision_purposes: {
+            create: {
+              name: 'E2E Legacy Purpose',
+              sort_order: 0,
+              target_amount: null,
+              distribution_type: null,
+              distribution_weekdays: [],
+              spending_plan_revision_purpose_categories: {
+                create: { category_id: food.id },
+              },
+              spending_plan_revision_allocations: {
+                create: {
+                  allocation_date: reportingDate,
+                  amount: 100,
+                },
+              },
+            },
+          },
+        },
+      },
     },
   });
 
@@ -532,6 +647,90 @@ async function seedDailyUser() {
       transfer_date: reportingDate,
       note: 'E2E daily allocation transfer pair',
     },
+  });
+
+  const actionDate = new Date('2026-07-19T00:00:00.000Z');
+  const existingTemplate = await prisma.transaction_templates.create({
+    data: {
+      user_id: user.id,
+      wallet_id: dailyWallet.id,
+      category_id: dailyFood.id,
+      name: 'E2E Action Existing Template',
+      type: transaction_type.expense,
+      default_amount: 45,
+      note: 'E2E existing template note',
+    },
+  });
+  await prisma.transaction_templates.create({
+    data: {
+      user_id: user.id,
+      wallet_id: dailyWallet.id,
+      category_id: dailyFood.id,
+      name: 'E2E Action Replacement Template',
+      type: transaction_type.expense,
+      default_amount: 75,
+      note: 'E2E replacement template note',
+    },
+  });
+
+  await prisma.transactions.createMany({
+    data: [
+      {
+        wallet_id: dailyWallet.id,
+        category_id: dailyFood.id,
+        template_id: existingTemplate.id,
+        name: 'E2E Action Manual Expense',
+        type: transaction_type.expense,
+        amount: 45,
+        note: 'E2E action menu fixture',
+        transaction_date: actionDate,
+      },
+      {
+        wallet_id: dailyWallet.id,
+        category_id: dailyIncome.id,
+        name: 'E2E Action Manual Income',
+        type: transaction_type.income,
+        amount: 500,
+        note: 'E2E action income fixture',
+        transaction_date: actionDate,
+      },
+      {
+        wallet_id: dailyWallet.id,
+        category_id: dailyFood.id,
+        name: 'E2E Action Edit Target',
+        type: transaction_type.expense,
+        amount: 35,
+        note: 'E2E edit fixture',
+        transaction_date: actionDate,
+      },
+      {
+        wallet_id: dailyWallet.id,
+        category_id: dailyFood.id,
+        name: 'E2E Action Delete Target',
+        type: transaction_type.expense,
+        amount: 25,
+        note: 'E2E delete fixture',
+        transaction_date: actionDate,
+      },
+      {
+        wallet_id: dailyWallet.id,
+        category_id: dailyFood.id,
+        name: 'E2E Action Error Delete Target',
+        type: transaction_type.expense,
+        amount: 30,
+        note: 'E2E delete error fixture',
+        transaction_date: actionDate,
+      },
+      {
+        wallet_id: dailyWallet.id,
+        category_id: dailyFood.id,
+        name: 'E2E Action Interaction Target',
+        type: transaction_type.expense,
+        amount: 20,
+        note: 'E2E interaction fixture',
+        transaction_date: actionDate,
+      },
+    ],
   });
 
   return { user, dailyWallet, dailyDestination, parentWithActiveChild };

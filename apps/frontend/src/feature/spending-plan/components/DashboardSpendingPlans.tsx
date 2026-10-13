@@ -24,7 +24,7 @@ export default function DashboardSpendingPlans() {
   if (error) {
     return (
       <section aria-labelledby="dashboard-spending-plans-heading">
-        <div role="alert" className="flex flex-col gap-3 border border-red-200 bg-red-50 p-4 text-sm text-red-700 dark:border-red-900/70 dark:bg-red-950/30 dark:text-red-300 sm:flex-row sm:items-center sm:justify-between">
+        <div role="alert" className="flex flex-col gap-3 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700 dark:border-red-900/70 dark:bg-red-950/30 dark:text-red-300 sm:flex-row sm:items-center sm:justify-between">
           <p>{error}</p>
           <Button size="sm" variant="secondary" onClick={() => void load()}>ลองใหม่</Button>
         </div>
