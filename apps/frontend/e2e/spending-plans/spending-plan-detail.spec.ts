@@ -17,7 +17,7 @@ test.describe("Spending Plan detail views", () => {
       .getByRole("button", { name: "ตารางตามช่วงเวลา", exact: true })
       .click();
     await expect(
-      page.getByRole("heading", { name: "ตารางตามช่วงเวลา", exact: true }),
+      page.getByRole("heading", { name: /^แผนตามช่วงเวลา:/ }),
     ).toBeVisible();
     await expect(page.getByRole("table")).toBeVisible();
 
@@ -28,9 +28,12 @@ test.describe("Spending Plan detail views", () => {
     await page
       .getByRole("button", { name: "ภาพรวมรายเดือน", exact: true })
       .click();
-    await expect(
-      page.getByRole("heading", { name: "ภาพรวมรายเดือน", exact: true }),
-    ).toBeVisible();
+    const calendarDay = page.getByRole("button", { name: `เลือกวันที่ ${startDate}`, exact: true });
+    await expect(calendarDay).toBeVisible();
+    await calendarDay.click();
+    await expect(page.getByLabel("เลือกวันที่ดูภาพรวม")).toHaveCount(0);
+    await page.getByRole("button", { name: "ดูภาพรวม", exact: true }).click();
+    await expect(page.getByLabel("เลือกวันที่ดูภาพรวม")).toHaveValue(startDate);
   });
 
   test("stores the selected detail view for the plan", async ({ page }, testInfo) => {

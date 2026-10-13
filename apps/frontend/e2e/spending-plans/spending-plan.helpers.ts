@@ -1,4 +1,5 @@
 import { expect, type Page } from "@playwright/test";
+import { dateFieldValue } from "../date-format.helpers";
 
 export function getBangkokToday() {
   const parts = new Intl.DateTimeFormat("en-CA", {
@@ -57,10 +58,10 @@ export async function createPlanThroughUi(
   await page.getByLabel("ชื่อแผน", { exact: true }).fill(options.name);
   await page
     .getByLabel("วันเริ่มต้น", { exact: true })
-    .fill(options.startDate);
+    .fill(dateFieldValue(options.startDate));
   await page
     .getByLabel("วันสิ้นสุด", { exact: true })
-    .fill(endDate);
+    .fill(dateFieldValue(endDate));
 
   const walletOptions = page.getByTestId("spending-plan-wallet-options");
   await expect(walletOptions).toBeVisible();

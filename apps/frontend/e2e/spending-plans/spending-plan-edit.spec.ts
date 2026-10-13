@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { dateFieldValue } from "../date-format.helpers";
 import {
   createPlanName,
   createPlanThroughUi,
@@ -18,7 +19,7 @@ test.describe("Spending Plan revisions", () => {
     await page.getByLabel("ชื่อแผน", { exact: true }).fill(revisedName);
     await page
       .getByLabel("ให้ Revision มีผลตั้งแต่", { exact: true })
-      .fill(startDate);
+      .fill(dateFieldValue(startDate));
     await page
       .getByRole("button", { name: "บันทึกเป็น Revision ใหม่", exact: true })
       .click();

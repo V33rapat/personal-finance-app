@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { dateFieldValue } from "../date-format.helpers";
 import { createPlanName, getPlanTestStartDate } from "./spending-plan.helpers";
 
 test("keeps distribution cards usable on mobile without horizontal overflow", async ({
@@ -9,8 +10,8 @@ test("keeps distribution cards usable on mobile without horizontal overflow", as
 
   await page.getByLabel("ชื่อแผน", { exact: true }).fill(createPlanName("distribution-mobile"));
   const startDate = getPlanTestStartDate(220, testInfo.retry);
-  await page.getByLabel("วันเริ่มต้น", { exact: true }).fill(startDate);
-  await page.getByLabel("วันสิ้นสุด", { exact: true }).fill(startDate);
+  await page.getByLabel("วันเริ่มต้น", { exact: true }).fill(dateFieldValue(startDate));
+  await page.getByLabel("วันสิ้นสุด", { exact: true }).fill(dateFieldValue(startDate));
   await page.getByTestId("spending-plan-wallet-checkbox").first().check();
   await expect(page.getByRole("group", { name: "กระเป๋าที่เลือก" })).toContainText("E2E");
 

@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { dateFieldValue } from "../date-format.helpers";
 import {
   addDays,
   createPlanName,
@@ -19,7 +20,7 @@ test.describe("Spending Plan copy", () => {
     const copiedStartDate = addDays(sourceStartDate, 7);
     await page
       .getByLabel("วันเริ่มต้นของแผนใหม่", { exact: true })
-      .fill(copiedStartDate);
+      .fill(dateFieldValue(copiedStartDate));
     await page.getByRole("button", { name: "ยืนยันคัดลอกแผน", exact: true }).click();
 
     await expect(page).toHaveURL(/\/spending-plans\/[0-9a-f-]+$/);

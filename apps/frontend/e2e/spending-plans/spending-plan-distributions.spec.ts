@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { dateFieldValue } from "../date-format.helpers";
 import {
   addDays,
   createPlanName,
@@ -106,7 +107,7 @@ test.describe("Spending Plan distribution rules", () => {
     });
 
     await page.getByRole("button", { name: "แก้ไขแผน", exact: true }).click();
-    await page.getByLabel("ให้ Revision มีผลตั้งแต่", { exact: true }).fill(effectiveDate);
+    await page.getByLabel("ให้ Revision มีผลตั้งแต่", { exact: true }).fill(dateFieldValue(effectiveDate));
     const purpose = page.getByTestId("spending-plan-purpose-card").first();
     await purpose.getByTestId("spending-plan-distribution-select").selectOption("specific_dates");
     await purpose

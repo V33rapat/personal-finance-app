@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { dateFieldValue } from "../date-format.helpers";
 import {
   addDays,
   createPlanName,
@@ -26,7 +27,7 @@ test.describe("Retrospective Spending Plans", () => {
     await page.getByLabel("ชื่อแผน", { exact: true }).fill(revisedName);
     await page
       .getByLabel("ให้ Revision มีผลตั้งแต่", { exact: true })
-      .fill(startDate);
+      .fill(dateFieldValue(startDate));
 
     const request = page.waitForRequest((candidate) => {
       if (!candidate.url().includes("/api/spending-plan/") || candidate.method() !== "PATCH") {
@@ -54,7 +55,7 @@ test.describe("Retrospective Spending Plans", () => {
     await page.getByRole("button", { name: "คัดลอกแผน", exact: true }).click();
     await page
       .getByLabel("วันเริ่มต้นของแผนใหม่", { exact: true })
-      .fill(copiedStartDate);
+      .fill(dateFieldValue(copiedStartDate));
     await page.getByRole("button", { name: "ยืนยันคัดลอกแผน", exact: true }).click();
 
     await expect(
