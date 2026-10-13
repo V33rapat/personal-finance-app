@@ -62,6 +62,7 @@ export default function DateField({
   const validityCallbackRef = useRef(onDraftValidityChange);
   const [draft, setDraft] = useState(() => formatDateInput(value));
   const [lastValue, setLastValue] = useState(value);
+  const [lastSubmittedValue, setLastSubmittedValue] = useState<string | null>(null);
   const [isFormatInvalid, setIsFormatInvalid] = useState(false);
   const [isCalendarOpen, setIsCalendarOpen] = useState(false);
   const [calendarMonth, setCalendarMonth] = useState(() => new Date());
@@ -74,9 +75,17 @@ export default function DateField({
 
   if (value !== lastValue) {
     setLastValue(value);
-    setDraft(formatDateInput(value));
-    setIsFormatInvalid(false);
+    // A parent echo must not replace a newer draft typed before that render.
+    if (value !== lastSubmittedValue) {
+      setDraft(formatDateInput(value));
+      setIsFormatInvalid(false);
+    }
   }
+
+  const submitValue = (nextValue: string) => {
+    setLastSubmittedValue(nextValue);
+    onChange(nextValue);
+  };
 
   useEffect(() => {
     validityCallbackRef.current = onDraftValidityChange;
@@ -149,13 +158,12 @@ export default function DateField({
 
     if (!nextDraft) {
       reportValidity(true);
-      onChange("");
+      submitValue("");
     } else {
       const parsedDate = parseDisplayDate(nextDraft);
       reportValidity(Boolean(parsedDate), nextDraft.length === 10 && !parsedDate);
       if (parsedDate) {
-        setLastValue(parsedDate);
-        onChange(parsedDate);
+        submitValue(parsedDate);
       }
     }
 
@@ -185,8 +193,8 @@ export default function DateField({
         !nextDraft || Boolean(parsedDate),
         nextDraft.length === 10 && !parsedDate
       );
-      if (parsedDate) onChange(parsedDate);
-      if (!nextDraft) onChange("");
+      if (parsedDate) submitValue(parsedDate);
+      if (!nextDraft) submitValue("");
       requestAnimationFrame(() => {
         const nextPosition = getDateDraftCaretPosition(nextDraft, digitsBeforeCaret);
         inputRef.current?.setSelectionRange(nextPosition, nextPosition);
@@ -206,8 +214,8 @@ export default function DateField({
         !nextDraft || Boolean(parsedDate),
         nextDraft.length === 10 && !parsedDate
       );
-      if (parsedDate) onChange(parsedDate);
-      if (!nextDraft) onChange("");
+      if (parsedDate) submitValue(parsedDate);
+      if (!nextDraft) submitValue("");
       requestAnimationFrame(() => {
         const nextPosition = getDateDraftCaretPosition(nextDraft, digitsBeforeCaret);
         inputRef.current?.setSelectionRange(nextPosition, nextPosition);
@@ -215,16 +223,18 @@ export default function DateField({
     }
   };
 
-  const handleBlur = () => {
-    if (!draft) {
+  const handleBlur = (event: React.FocusEvent<HTMLInputElement>) => {
+    const currentDraft = formatDateDraft(event.currentTarget.value);
+    setDraft(currentDraft);
+    if (!currentDraft) {
       reportValidity(true);
-      onChange("");
+      submitValue("");
       return;
     }
 
-    const parsedDate = parseDisplayDate(draft);
+    const parsedDate = parseDisplayDate(currentDraft);
     reportValidity(Boolean(parsedDate), true);
-    if (parsedDate) onChange(parsedDate);
+    if (parsedDate) submitValue(parsedDate);
   };
 
   const toggleCalendar = () => {
@@ -239,7 +249,7 @@ export default function DateField({
     const isoDate = fromLocalCalendarDate(date);
     setDraft(formatDateInput(isoDate));
     reportValidity(true);
-    onChange(isoDate);
+    submitValue(isoDate);
     setIsCalendarOpen(false);
     inputRef.current?.focus();
   };

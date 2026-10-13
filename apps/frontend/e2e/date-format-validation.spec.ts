@@ -9,6 +9,7 @@ async function expectInvalidDateToBeRejected(page: Page, invalidValue: string) {
   await dateField.fill(invalidValue);
   await dateField.blur();
 
+  await expect(dateField).toHaveValue(invalidValue);
   await expect(dateField).toHaveAttribute("aria-invalid", "true");
   await expect(dialog.getByRole("alert")).toBeVisible();
 
