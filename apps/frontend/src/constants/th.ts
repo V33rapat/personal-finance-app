@@ -39,6 +39,8 @@ export const TH_TEXT = {
     retry: "ลองใหม่",
     invalidDateFormat: "กรุณากรอกวันที่รูปแบบ DD/MM/YYYY ให้ถูกต้อง",
     selectDateFromCalendar: "เลือกวันที่จากปฏิทิน",
+    previousMonth: "แสดงเดือนก่อนหน้า",
+    nextMonth: "แสดงเดือนถัดไป",
     date: "วันที่",
     dateFrom: "วันที่เริ่มต้น",
     dateTo: "วันที่สิ้นสุด",

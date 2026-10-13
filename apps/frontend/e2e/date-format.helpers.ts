@@ -11,7 +11,15 @@ export async function openTransactionModal(page: Page, name: string) {
 
   const dialog = page.getByTestId("transaction-modal");
   await expect(dialog).toBeVisible();
-  await dialog.getByTestId("transaction-wallet").selectOption({ label: "E2E เงินสด" });
+  const walletSelect = dialog.getByTestId("transaction-wallet");
+  const walletId = await walletSelect.locator("option").evaluateAll((options) =>
+    options.find((option) => {
+      const label = option.textContent?.trim() ?? "";
+      return label === "E2E เงินสด" || label.startsWith("E2E เงินสด (");
+    })?.getAttribute("value"),
+  );
+  if (!walletId) throw new Error("Missing transaction wallet option: E2E เงินสด");
+  await walletSelect.selectOption(walletId);
   await dialog.getByTestId("transaction-name").fill(name);
   await dialog.getByTestId("transaction-amount").fill("11.25");
 

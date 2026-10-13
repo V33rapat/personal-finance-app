@@ -2,6 +2,7 @@ import { expect, test, type Page } from "@playwright/test";
 import { getBangkokToday } from "./spending-budget.helpers";
 import { dateFieldValue, openTransactionModal } from "./date-format.helpers";
 import { chooseCalendarDate } from "./date-format-calendar.helpers";
+import { authenticatedApiRequest } from "./authenticated-api.helpers";
 
 const HISTORICAL_DATE = "2026-07-20";
 
@@ -19,6 +20,15 @@ async function createTransactionFromHistoricalCalendar(
   await dialog.getByRole("button", { name: /เลือกวันที่จากปฏิทิน/ }).click();
 
   const calendar = page.getByRole("dialog").last();
+  const bounds = await calendar.boundingBox();
+  const viewport = page.viewportSize();
+  expect(bounds).not.toBeNull();
+  expect(viewport).not.toBeNull();
+  expect(bounds!.y).toBeGreaterThanOrEqual(0);
+  expect(bounds!.y + bounds!.height).toBeLessThanOrEqual(viewport!.height);
+  expect(bounds!.x).toBeGreaterThanOrEqual(0);
+  expect(bounds!.x + bounds!.width).toBeLessThanOrEqual(viewport!.width);
+  await page.screenshot({ path: test.info().outputPath("calendar-viewport.png") });
   await chooseCalendarDate(calendar, today, HISTORICAL_DATE);
   await expect(dateField).toHaveValue(dateFieldValue(HISTORICAL_DATE));
 
@@ -55,8 +65,10 @@ async function createTransactionFromHistoricalCalendar(
     ).toContainText(dateFieldValue(HISTORICAL_DATE));
   } finally {
     if (createdTransactionId) {
-      const response = await page.context().request.delete(
-        new URL(`/api/transaction/${createdTransactionId}`, page.url()).toString(),
+      const response = await authenticatedApiRequest(
+        page,
+        `/api/transaction/${createdTransactionId}`,
+        { method: "DELETE" },
       );
       expect(response.ok()).toBe(true);
     } else if (await dialog.isVisible()) {
@@ -78,5 +90,13 @@ test.describe("Historical date selected from calendar with Thai browser locale",
 
   test("sends the selected calendar day without shifting it", async ({ page }) => {
     await createTransactionFromHistoricalCalendar(page, "th-TH");
+  });
+});
+
+test.describe("Historical calendar on a narrow viewport", () => {
+  test.use({ viewport: { width: 390, height: 844 } });
+
+  test("keeps the calendar usable inside the transaction modal", async ({ page }) => {
+    await createTransactionFromHistoricalCalendar(page, "narrow");
   });
 });

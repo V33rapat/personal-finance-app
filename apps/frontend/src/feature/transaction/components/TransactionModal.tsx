@@ -255,7 +255,7 @@ function TransactionModalForm({
         aria-modal="true"
         aria-labelledby="transaction-modal-title"
         data-testid="transaction-modal"
-        className="relative w-full max-w-md rounded-2xl border border-slate-200 bg-white p-6 shadow-2xl dark:border-slate-800 dark:bg-slate-900"
+        className="relative max-h-[calc(100dvh-2rem)] w-full max-w-md overflow-y-auto rounded-2xl border border-slate-200 bg-white p-6 shadow-2xl dark:border-slate-800 dark:bg-slate-900"
       >
         <div className="mb-6 flex items-center justify-between">
           <h2

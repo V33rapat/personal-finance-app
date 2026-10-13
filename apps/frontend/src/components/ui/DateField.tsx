@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState, useId } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState, useId } from "react";
 import { DayPicker } from "react-day-picker";
 import { th } from "date-fns/locale";
 import { CalendarDays } from "lucide-react";
@@ -58,6 +58,7 @@ export default function DateField({
   const inputId = id ?? `date-field-${generatedId}`;
   const rootRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const calendarRef = useRef<HTMLDivElement>(null);
   const validityCallbackRef = useRef(onDraftValidityChange);
   const [draft, setDraft] = useState(() => formatDateInput(value));
   const [lastValue, setLastValue] = useState(value);
@@ -85,6 +86,34 @@ export default function DateField({
     setIsFormatInvalid(!isValid && showFormatError);
     validityCallbackRef.current?.(isValid);
   }, []);
+
+  useLayoutEffect(() => {
+    if (!isCalendarOpen) return;
+
+    const positionCalendar = () => {
+      const input = inputRef.current;
+      const calendar = calendarRef.current;
+      if (!input || !calendar) return;
+      const rect = input.getBoundingClientRect();
+      const margin = 8;
+      const below = Math.max(0, window.innerHeight - rect.bottom - margin * 2);
+      const above = Math.max(0, rect.top - margin * 2);
+      const openAbove = calendar.scrollHeight > below && above > below;
+      const availableHeight = openAbove ? above : below;
+      calendar.style.maxHeight = `${availableHeight}px`;
+      const height = Math.min(calendar.scrollHeight, availableHeight);
+      calendar.style.top = `${openAbove ? rect.top - margin - height : rect.bottom + margin}px`;
+      calendar.style.left = `${Math.max(margin, Math.min(rect.right - calendar.offsetWidth, window.innerWidth - calendar.offsetWidth - margin))}px`;
+    };
+
+    positionCalendar();
+    window.addEventListener("resize", positionCalendar);
+    window.addEventListener("scroll", positionCalendar, true);
+    return () => {
+      window.removeEventListener("resize", positionCalendar);
+      window.removeEventListener("scroll", positionCalendar, true);
+    };
+  }, [isCalendarOpen, calendarMonth]);
 
   useEffect(() => {
     if (!isCalendarOpen) return;
@@ -124,7 +153,10 @@ export default function DateField({
     } else {
       const parsedDate = parseDisplayDate(nextDraft);
       reportValidity(Boolean(parsedDate), nextDraft.length === 10 && !parsedDate);
-      if (parsedDate) onChange(parsedDate);
+      if (parsedDate) {
+        setLastValue(parsedDate);
+        onChange(parsedDate);
+      }
     }
 
     requestAnimationFrame(() => {
@@ -283,9 +315,10 @@ export default function DateField({
       )}
       {isCalendarOpen && (
         <div
+          ref={calendarRef}
           role="dialog"
           aria-label={`${TH_TEXT.common.selectDateFromCalendar}${label ? `: ${label}` : ""}`}
-          className="absolute right-0 z-40 mt-2 w-[min(21rem,calc(100vw-2rem))] rounded-lg border border-slate-200 bg-white p-3 shadow-xl dark:border-slate-700 dark:bg-slate-900"
+          className="fixed z-40 w-[min(21rem,calc(100vw-2rem))] overflow-y-auto rounded-lg border border-slate-200 bg-white p-3 shadow-xl dark:border-slate-700 dark:bg-slate-900"
         >
           <DayPicker
             mode="single"
@@ -300,6 +333,8 @@ export default function DateField({
             endMonth={maxDate}
             showOutsideDays
             labels={{
+              labelPrevious: () => TH_TEXT.common.previousMonth,
+              labelNext: () => TH_TEXT.common.nextMonth,
               labelDayButton: (date) =>
                 `${TH_TEXT.common.selectDateFromCalendar}: ${formatDisplayDate(fromLocalCalendarDate(date))}`,
             }}

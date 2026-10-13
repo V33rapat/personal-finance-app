@@ -1,6 +1,7 @@
 import { expect, test } from "@playwright/test";
 import { getBangkokToday } from "./spending-budget.helpers";
 import { dateFieldValue } from "./date-format.helpers";
+import { chooseCalendarDate } from "./date-format-calendar.helpers";
 
 async function expectDateFieldsUseDisplayFormat(page: import("@playwright/test").Page) {
   const today = dateFieldValue(getBangkokToday());
@@ -19,7 +20,7 @@ async function expectDateFieldsUseDisplayFormat(page: import("@playwright/test")
   await expect(transactionDate).toHaveValue("18/09/2026");
   await page.getByRole("button", { name: /เลือกวันที่จากปฏิทิน/ }).last().click();
   const datePicker = page.getByRole("dialog").last();
-  await datePicker.getByRole("button", { name: new RegExp(today) }).click();
+  await chooseCalendarDate(datePicker, "2026-09-18", getBangkokToday());
   await expect(transactionDate).toHaveValue(today);
 
   await page.goto("/transfer");
