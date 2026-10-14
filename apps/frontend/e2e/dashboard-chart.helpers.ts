@@ -94,13 +94,20 @@ export async function hoverDashboardChartDate(
   const tick = chart.getByTestId(`dashboard-overview-chart-date-${date}`);
 
   await expect(tick).toBeVisible();
+  await chart.scrollIntoViewIfNeeded();
+  await page.mouse.move(0, 0);
   const [chartBox, tickBox] = await Promise.all([chart.boundingBox(), tick.boundingBox()]);
 
   if (!chartBox || !tickBox) {
     throw new Error(`Could not calculate chart coordinates for ${date}`);
   }
 
-  await page.mouse.move(tickBox.x + tickBox.width / 2, chartBox.y + chartBox.height / 2);
+  await chart.hover({
+    position: {
+      x: tickBox.x + tickBox.width / 2 - chartBox.x,
+      y: chartBox.height / 2,
+    },
+  });
   const tooltip = chart.getByTestId("dashboard-overview-chart-tooltip");
   await expect(tooltip).toBeVisible();
 
