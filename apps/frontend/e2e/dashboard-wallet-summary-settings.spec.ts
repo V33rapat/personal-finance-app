@@ -31,7 +31,7 @@ const ELIGIBLE_WALLETS = [
 
 async function saveSelection(page: Page, walletNames: string[]) {
   const dialog = await openWalletSummarySettings(page);
-  await clearWalletSummarySelection(dialog, ELIGIBLE_WALLETS);
+  await clearWalletSummarySelection(dialog);
   await setWalletSummarySelection(dialog, walletNames);
   const walletIds = await Promise.all(
     walletNames.map((walletName) =>
@@ -100,7 +100,7 @@ test.describe("Dashboard Wallet Summary settings", () => {
   }) => {
     await openDashboardWalletSummary(page);
     const dialog = await openWalletSummarySettings(page);
-    await clearWalletSummarySelection(dialog, ELIGIBLE_WALLETS);
+    await clearWalletSummarySelection(dialog);
     await setWalletSummarySelection(dialog, ELIGIBLE_WALLETS.slice(0, 4));
 
     let patchCount = 0;

@@ -1,6 +1,9 @@
 import { TH_TEXT } from "@/constants/th";
 import type { Wallet } from "@/feature/wallet/hooks/useWallet";
 import type { MoneyAllocation, AllocationFormValues } from "../hooks/useAllocation";
+import { getTodayDateString } from "./allocationDate";
+
+export { getTodayDateString } from "./allocationDate";
 import { getEligibleAllocationWallets } from "./allocationWallet";
 
 export interface AllocationValidationErrors {
@@ -10,13 +13,6 @@ export interface AllocationValidationErrors {
   destinationWallet?: string;
   destinationAmount?: string;
   remaining?: string;
-}
-
-export function getTodayDateString() {
-  const now = new Date();
-  const timezoneOffsetMs = now.getTimezoneOffset() * 60_000;
-
-  return new Date(now.getTime() - timezoneOffsetMs).toISOString().split("T")[0];
 }
 
 export function toMoneyCents(value: string | number | null | undefined) {

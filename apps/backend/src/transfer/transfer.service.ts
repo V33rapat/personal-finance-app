@@ -382,6 +382,10 @@ export class TransferService {
         id: { in: [fromWalletId, toWalletId] },
         user_id: userId,
         deleted_at: null,
+        is_active: true,
+        other_wallets: {
+          none: { is_active: true, deleted_at: null },
+        },
       },
     });
 

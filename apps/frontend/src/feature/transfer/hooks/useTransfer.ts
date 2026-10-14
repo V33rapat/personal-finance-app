@@ -6,6 +6,7 @@ import { useToast } from "@/components/providers/ToastProvider";
 import { TH_TEXT } from "@/constants/th";
 import { readApiResponse } from "@/lib/api";
 import type { Wallet } from "@/feature/wallet/hooks/useWallet";
+import { getTransferSelectableWallets } from "../lib/transferWallets";
 
 interface TransferWallet {
   id: string;
@@ -55,7 +56,7 @@ export interface TransferFormValues {
 }
 
 interface UseTransferOptions {
-  wallets?: Pick<Wallet, "id" | "name" | "balance">[];
+  wallets?: Wallet[];
   autoLoad?: boolean;
   onChanged?: () => void | Promise<void>;
 }
@@ -133,7 +134,9 @@ export function useTransfer({
   const [error, setError] = useState<string | null>(null);
 
   const walletMap = useMemo(() => {
-    return new Map(wallets.map((wallet) => [wallet.id, wallet]));
+    return new Map(
+      getTransferSelectableWallets(wallets).map((wallet) => [wallet.id, wallet])
+    );
   }, [wallets]);
 
   const validateTransfer = useCallback(

@@ -1,4 +1,5 @@
 import { expect, test, type Locator, type Page } from "@playwright/test";
+import { dateFieldValue } from "./date-format.helpers";
 import {
   WALLET_SCOPE_TEXT,
   expectWalletScopePayload,
@@ -100,7 +101,7 @@ async function createExpenseThroughUi(
   await modal.locator('input[type="number"]').fill("50");
   await modal.getByPlaceholder("เลือกหมวดหมู่").fill(categoryName);
   await modal.getByRole("button", { name: categoryName, exact: true }).click();
-  await modal.locator('input[type="date"]').fill(getBangkokToday());
+  await modal.getByTestId("transaction-date").fill(dateFieldValue(getBangkokToday()));
 
   const requestPromise = page.waitForRequest((request) => {
     const url = new URL(request.url());

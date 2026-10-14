@@ -1,21 +1,28 @@
 export type SpendingPlanStatus = "scheduled" | "active" | "completed" | "cancelled";
 export type SpendingPlanView = "monthly" | "range" | "daily";
+export type SpendingPlanDistributionType =
+  | "equal_daily"
+  | "weekdays"
+  | "weekly"
+  | "biweekly"
+  | "specific_dates";
 
-export interface SpendingPlanAllocationFormValue {
-  date: string;
-  amount: string;
+export interface SpendingPlanDistributionFormValue {
+  type: SpendingPlanDistributionType | null;
+  weekdays: number[];
+  dates: string[];
 }
 
 export interface SpendingPlanPurposeFormValue {
   id: string;
   name: string;
+  target_amount: string;
   category_ids: string[];
-  allocations: SpendingPlanAllocationFormValue[];
+  distribution: SpendingPlanDistributionFormValue;
 }
 
 export interface SpendingPlanFormValues {
   name: string;
-  amount: string;
   start_date: string;
   end_date: string;
   wallet_ids: string[];
@@ -24,11 +31,10 @@ export interface SpendingPlanFormValues {
 
 export interface SpendingPlanValidationErrors {
   name?: string;
-  amount?: string;
   dates?: string;
   wallets?: string;
   purposes?: string;
-  allocations?: string;
+  distributions?: string;
 }
 
 export function toUtcDate(value: string) {
@@ -40,14 +46,21 @@ export function toDateString(date: Date) {
 }
 
 export function getPlanDates(startDate: string, endDate: string) {
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(startDate) || !/^\d{4}-\d{2}-\d{2}$/.test(endDate)) {
+  if (
+    !/^\d{4}-\d{2}-\d{2}$/.test(startDate) ||
+    !/^\d{4}-\d{2}-\d{2}$/.test(endDate)
+  ) {
     return [];
   }
 
   const start = toUtcDate(startDate);
   const end = toUtcDate(endDate);
 
-  if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime()) || end < start) {
+  if (
+    Number.isNaN(start.getTime()) ||
+    Number.isNaN(end.getTime()) ||
+    end < start
+  ) {
     return [];
   }
 
@@ -60,43 +73,85 @@ export function getPlanDates(startDate: string, endDate: string) {
   return dates;
 }
 
-export function createPurpose(
-  dates: string[],
-  index: number,
-): SpendingPlanPurposeFormValue {
+export function createPurpose(index: number): SpendingPlanPurposeFormValue {
   return {
     id: `purpose-${index}-${Date.now()}`,
     name: "",
+    target_amount: "0",
     category_ids: [],
-    allocations: dates.map((date) => ({ date, amount: "0" })),
+    distribution: {
+      type: "equal_daily",
+      weekdays: [],
+      dates: [],
+    },
   };
 }
 
-export function synchronizePurposeAllocations(
-  purpose: SpendingPlanPurposeFormValue,
-  dates: string[],
-): SpendingPlanPurposeFormValue {
-  const existing = new Map(
-    purpose.allocations.map((allocation) => [allocation.date, allocation.amount]),
+function getIsoWeekday(value: string) {
+  const day = toUtcDate(value).getUTCDay();
+  return day === 0 ? 7 : day;
+}
+
+function daysBetween(start: string, end: string) {
+  return Math.floor(
+    (toUtcDate(end).getTime() - toUtcDate(start).getTime()) / 86_400_000,
   );
-
-  return {
-    ...purpose,
-    allocations: dates.map((date) => ({
-      date,
-      amount: existing.get(date) ?? "0",
-    })),
-  };
 }
 
-export function synchronizePlanAllocations(values: SpendingPlanFormValues) {
-  const dates = getPlanDates(values.start_date, values.end_date);
+export function getDistributionDates(
+  planStart: string,
+  windowStart: string,
+  windowEnd: string,
+  distribution: SpendingPlanDistributionFormValue,
+) {
+  const dates = getPlanDates(windowStart, windowEnd);
+
+  switch (distribution.type) {
+    case "equal_daily":
+      return dates;
+    case "weekdays":
+      return dates.filter((date) => getIsoWeekday(date) <= 5);
+    case "weekly":
+      return dates.filter((date) =>
+        distribution.weekdays.includes(getIsoWeekday(date)),
+      );
+    case "biweekly":
+      return dates.filter(
+        (date) =>
+          Math.floor(daysBetween(planStart, date) / 7) % 2 === 0 &&
+          distribution.weekdays.includes(getIsoWeekday(date)),
+      );
+    case "specific_dates":
+      return [...new Set(distribution.dates)]
+        .filter((date) => date >= windowStart && date <= windowEnd)
+        .sort();
+    default:
+      return [];
+  }
+}
+
+export function getDistributionPreview(
+  purpose: SpendingPlanPurposeFormValue,
+  planStart: string,
+  windowStart: string,
+  windowEnd: string,
+) {
+  const selectedDates = getDistributionDates(
+    planStart,
+    windowStart,
+    windowEnd,
+    purpose.distribution,
+  );
+  const targetAmount = Number(purpose.target_amount || 0);
+  const cents = Number.isFinite(targetAmount)
+    ? Math.round(targetAmount * 100)
+    : 0;
 
   return {
-    ...values,
-    purposes: values.purposes.map((purpose) =>
-      synchronizePurposeAllocations(purpose, dates),
-    ),
+    selectedDates,
+    dayCount: selectedDates.length,
+    amountPerOccurrence: cents / 100,
+    total: (cents * selectedDates.length) / 100,
   };
 }
 
@@ -113,16 +168,18 @@ function isMoney(value: string, allowZero = false) {
 
 export function getSpendingPlanValidationErrors(
   values: SpendingPlanFormValues,
+  options: {
+    windowStart?: string;
+    windowEnd?: string;
+  } = {},
 ): SpendingPlanValidationErrors {
   const errors: SpendingPlanValidationErrors = {};
   const dates = getPlanDates(values.start_date, values.end_date);
+  const windowStart = options.windowStart ?? values.start_date;
+  const windowEnd = options.windowEnd ?? values.end_date;
 
   if (values.name.trim().length < 3 || values.name.trim().length > 100) {
     errors.name = "กรุณากรอกชื่อแผน 3-100 ตัวอักษร";
-  }
-
-  if (!isMoney(values.amount)) {
-    errors.amount = "กรุณากรอกยอดรวมของแผนให้มากกว่า 0 บาท";
   }
 
   if (dates.length === 0 || dates.length > 31) {
@@ -140,44 +197,60 @@ export function getSpendingPlanValidationErrors(
       (purpose) =>
         !purpose.name.trim() ||
         purpose.category_ids.length === 0 ||
-        purpose.allocations.length !== dates.length,
+        !isMoney(purpose.target_amount),
     )
   ) {
-    errors.purposes = "กรอกชื่อ เลือกหมวดหมู่ และจัดสรรเงินให้ครบทุกวัตถุประสงค์";
+    errors.purposes = "กรอกชื่อ เลือกหมวดหมู่ และวงเงินต่อครั้งของทุกวัตถุประสงค์ให้ครบ";
   }
 
   const categories = values.purposes.flatMap((purpose) => purpose.category_ids);
-
   if (new Set(categories).size !== categories.length) {
     errors.purposes = "หนึ่งหมวดหมู่เลือกได้เพียงหนึ่งวัตถุประสงค์";
   }
 
-  if (
-    values.purposes.some((purpose) =>
-      purpose.allocations.some((allocation) => !isMoney(allocation.amount, true)),
-    )
-  ) {
-    errors.allocations = "จำนวนเงินแต่ละช่องต้องเป็น 0 หรือมีทศนิยมไม่เกิน 2 ตำแหน่ง";
-  }
+  const hasInvalidDistribution = values.purposes.some((purpose) => {
+    const distribution = purpose.distribution;
+    if (!distribution.type) return true;
+    if (
+      (distribution.type === "weekly" || distribution.type === "biweekly") &&
+      distribution.weekdays.length === 0
+    ) {
+      return true;
+    }
 
-  const allocationTotal = values.purposes.reduce(
-    (total, purpose) =>
-      total +
-      purpose.allocations.reduce(
-        (purposeTotal, allocation) => purposeTotal + Number(allocation.amount || 0),
-        0,
-      ),
-    0,
-  );
+    return (
+      getDistributionDates(
+        values.start_date,
+        windowStart,
+        windowEnd,
+        distribution,
+      ).length === 0
+    );
+  });
 
-  if (
-    isMoney(values.amount) &&
-    Math.round(allocationTotal * 100) !== Math.round(Number(values.amount) * 100)
-  ) {
-    errors.allocations = "ยอดจัดสรรทุกช่องรวมกันต้องเท่ากับยอดรวมของแผน";
+  if (hasInvalidDistribution) {
+    errors.distributions = "เลือกวันสำหรับรูปแบบการกระจายของทุกวัตถุประสงค์ให้ครบ";
   }
 
   return errors;
+}
+
+export function getProjectedPlanTotal(
+  values: SpendingPlanFormValues,
+  windowStart = values.start_date,
+  windowEnd = values.end_date,
+) {
+  const totalCents = values.purposes.reduce((total, purpose) => {
+    const preview = getDistributionPreview(
+      purpose,
+      values.start_date,
+      windowStart,
+      windowEnd,
+    );
+    return total + Math.round(preview.total * 100);
+  }, 0);
+
+  return totalCents / 100;
 }
 
 export function getPlanRemaining(

@@ -12,6 +12,7 @@ import { DashboardModule } from './dashboard/dashboard.module';
 import { AllocationModule } from './allocation/allocation.module';
 import { SpendingBudgetModule } from './spending-budget/spending-budget.module';
 import { SpendingPlanModule } from './spending-plan/spending-plan.module';
+import { ReleaseAnnouncementModule } from './release-announcement/release-announcement.module';
 
 @Module({
   controllers: [AppController],
@@ -28,6 +29,7 @@ import { SpendingPlanModule } from './spending-plan/spending-plan.module';
     AllocationModule,
     SpendingBudgetModule,
     SpendingPlanModule,
+    ReleaseAnnouncementModule,
   ],
 })
 export class AppModule {}

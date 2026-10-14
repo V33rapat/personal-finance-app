@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { dateFieldValue } from "../date-format.helpers";
 import {
   createPlanName,
   createPlanThroughUi,
@@ -18,7 +19,7 @@ test.describe("Spending Plan revisions", () => {
     await page.getByLabel("ชื่อแผน", { exact: true }).fill(revisedName);
     await page
       .getByLabel("ให้ Revision มีผลตั้งแต่", { exact: true })
-      .fill(startDate);
+      .fill(dateFieldValue(startDate));
     await page
       .getByRole("button", { name: "บันทึกเป็น Revision ใหม่", exact: true })
       .click();
@@ -27,7 +28,7 @@ test.describe("Spending Plan revisions", () => {
       page.getByRole("heading", { name: revisedName, exact: true }),
     ).toBeVisible();
     await expect(page.getByText("ประวัติ Revision", { exact: true })).toBeVisible();
-    await expect(page.locator("details")).toHaveCount(2);
+    await expect(page.locator("details")).toHaveCount(1);
   });
 
   test("can leave edit mode without changing the plan", async ({ page }, testInfo) => {

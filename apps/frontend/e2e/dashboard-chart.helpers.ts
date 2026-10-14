@@ -17,15 +17,12 @@ export const DASHBOARD_CHART_RANGE = {
 };
 
 function formatThaiDateRange(start: string, end: string) {
-  const formatter = new Intl.DateTimeFormat("th-TH", {
-    day: "numeric",
-    month: "short",
-    year: "numeric",
-    timeZone: "UTC",
-  });
-  const toDate = (value: string) => new Date(`${value}T00:00:00.000Z`);
+  const formatDate = (value: string) => {
+    const [year, month, day] = value.split("-");
+    return `${day}/${month}/${year}`;
+  };
 
-  return `${formatter.format(toDate(start))} - ${formatter.format(toDate(end))}`;
+  return `${formatDate(start)} - ${formatDate(end)}`;
 }
 
 export function formatCurrency(value: number) {
@@ -97,13 +94,20 @@ export async function hoverDashboardChartDate(
   const tick = chart.getByTestId(`dashboard-overview-chart-date-${date}`);
 
   await expect(tick).toBeVisible();
+  await chart.scrollIntoViewIfNeeded();
+  await page.mouse.move(0, 0);
   const [chartBox, tickBox] = await Promise.all([chart.boundingBox(), tick.boundingBox()]);
 
   if (!chartBox || !tickBox) {
     throw new Error(`Could not calculate chart coordinates for ${date}`);
   }
 
-  await page.mouse.move(tickBox.x + tickBox.width / 2, chartBox.y + chartBox.height / 2);
+  await chart.hover({
+    position: {
+      x: tickBox.x + tickBox.width / 2 - chartBox.x,
+      y: chartBox.height / 2,
+    },
+  });
   const tooltip = chart.getByTestId("dashboard-overview-chart-tooltip");
   await expect(tooltip).toBeVisible();
 

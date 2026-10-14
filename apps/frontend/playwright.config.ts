@@ -34,9 +34,11 @@ export default defineConfig({
       dependencies: ["setup"],
       testIgnore: [
         /.*\.mobile\.spec\.ts/,
+        /release-announcements-.*\.spec\.ts/,
         /.*\.user-b\.spec\.ts/,
         /.*wallet-summary-default\.spec\.ts/,
         /wallet-daily-(navigation|mutations|wallet-state)\.spec\.ts/,
+        /transaction-action-menu(?:-mutations|-managed)?\.spec\.ts/,
       ],
     },
     {
@@ -65,7 +67,10 @@ export default defineConfig({
       },
       dependencies: ["setup"],
       testMatch: /.*\.mobile\.spec\.ts/,
-      testIgnore: [/wallet-daily\.mobile\.spec\.ts/],
+      testIgnore: [
+        /wallet-daily\.mobile\.spec\.ts/,
+        /release-announcements\.mobile\.spec\.ts/,
+      ],
     },
     {
       name: "chromium-desktop-daily",
@@ -74,7 +79,8 @@ export default defineConfig({
         storageState: "playwright/.auth/user-daily.json",
       },
       dependencies: ["setup"],
-      testMatch: /wallet-daily-(navigation|mutations|wallet-state)\.spec\.ts/,
+      testMatch:
+        /(wallet-daily-(navigation|mutations|wallet-state)|transaction-action-menu(?:-mutations|-managed)?)\.spec\.ts/,
     },
     {
       name: "chromium-mobile-daily",
@@ -84,6 +90,22 @@ export default defineConfig({
       },
       dependencies: ["setup"],
       testMatch: /wallet-daily\.mobile\.spec\.ts/,
+    },
+    {
+      name: "chromium-release-announcements",
+      use: {
+        ...devices["Desktop Chrome"],
+      },
+      dependencies: ["setup"],
+      testMatch: /release-announcements-(default|popup|history|dismissal|safety)\.spec\.ts/,
+    },
+    {
+      name: "chromium-release-announcements-mobile",
+      use: {
+        ...devices["Pixel 7"],
+      },
+      dependencies: ["setup"],
+      testMatch: /release-announcements\.mobile\.spec\.ts/,
     },
   ],
   webServer: [
@@ -96,6 +118,9 @@ export default defineConfig({
       env: {
         ...process.env,
         PORT: backendPort,
+        WALPACA_E2E_TEST_MODE: "true",
+        RELEASE_ANNOUNCEMENT_TEST_CATALOG_PATH:
+          "test/fixtures/release-announcements.json",
       },
     },
     {

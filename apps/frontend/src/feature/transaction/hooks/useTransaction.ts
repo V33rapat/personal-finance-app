@@ -3,6 +3,10 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useToast } from "@/components/providers/ToastProvider";
 import type { Transaction, TransactionType } from "../components/TransactionItem";
+import {
+  toTransactionCreatePayload,
+  toTransactionUpdatePayload,
+} from "../lib/transactionActions";
 
 interface UseTransactionOptions {
   walletId?: string | null;
@@ -19,6 +23,8 @@ export interface TransactionFormValues {
   transaction_date: string;
   note: string;
 }
+
+export type TransactionModalMode = "create" | "edit" | "duplicate";
 
 interface TransactionCategory {
   id: string;
@@ -46,6 +52,7 @@ interface ApiTransaction {
   note: string | null;
   transaction_date: string;
   created_at: string;
+  management?: Transaction["management"];
   categories?: { id: string; name: string; type?: TransactionType } | null;
   wallets?: { name: string } | null;
 }
@@ -74,6 +81,7 @@ function mapApiTransaction(transaction: ApiTransaction): Transaction {
     note: transaction.note ?? "",
     transaction_date: transaction.transaction_date.split("T")[0],
     created_at: transaction.created_at,
+    management: transaction.management,
   };
 }
 
@@ -107,6 +115,7 @@ export function useTransaction(options: UseTransactionOptions = {}) {
     searchQuery: "",
   });
   const [modalOpen, setModalOpen] = useState(false);
+  const [modalMode, setModalMode] = useState<TransactionModalMode>("create");
   const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
   const [currentWalletId, setCurrentWalletId] = useState<string | null>(walletId ?? null);
   const [defaultTransactionDate, setDefaultTransactionDate] = useState<string | undefined>();
@@ -216,6 +225,7 @@ export function useTransaction(options: UseTransactionOptions = {}) {
 
   const openModal = (nextWalletId?: string, nextTransactionDate?: string) => {
     setError("");
+    setModalMode("create");
     setCurrentWalletId(nextWalletId ?? null);
     setDefaultTransactionDate(nextTransactionDate);
     setEditingTransaction(null);
@@ -224,6 +234,16 @@ export function useTransaction(options: UseTransactionOptions = {}) {
 
   const openEditModal = (transaction: Transaction) => {
     setError("");
+    setModalMode("edit");
+    setCurrentWalletId(transaction.wallet_id);
+    setDefaultTransactionDate(undefined);
+    setEditingTransaction(transaction);
+    setModalOpen(true);
+  };
+
+  const openDuplicateModal = (transaction: Transaction) => {
+    setError("");
+    setModalMode("duplicate");
     setCurrentWalletId(transaction.wallet_id);
     setDefaultTransactionDate(undefined);
     setEditingTransaction(transaction);
@@ -232,6 +252,7 @@ export function useTransaction(options: UseTransactionOptions = {}) {
 
   const closeModal = () => {
     setModalOpen(false);
+    setModalMode("create");
     setEditingTransaction(null);
     setDefaultTransactionDate(undefined);
   };
@@ -251,16 +272,7 @@ export function useTransaction(options: UseTransactionOptions = {}) {
       const response = await fetch("/api/transaction", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          wallet_id: targetWalletId,
-          name: values.name.trim(),
-          amount: Number(values.amount),
-          type: values.type,
-          category_id: values.category_id || null,
-          template_id: values.template_id || null,
-          transaction_date: values.transaction_date,
-          note: values.note.trim() || null,
-        }),
+        body: JSON.stringify(toTransactionCreatePayload(values)),
       });
       const data = await readApiResponse(response);
 
@@ -296,15 +308,7 @@ export function useTransaction(options: UseTransactionOptions = {}) {
       const response = await fetch(`/api/transaction/${editingTransaction.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          wallet_id: values.wallet_id,
-          name: values.name.trim(),
-          amount: Number(values.amount),
-          type: values.type,
-          category_id: values.category_id || null,
-          transaction_date: values.transaction_date,
-          note: values.note.trim() || null,
-        }),
+        body: JSON.stringify(toTransactionUpdatePayload(values)),
       });
       const data = await readApiResponse(response);
 
@@ -376,6 +380,7 @@ export function useTransaction(options: UseTransactionOptions = {}) {
     categories,
     filters,
     modalOpen,
+    modalMode,
     editingTransaction,
     currentWalletId,
     defaultTransactionDate,
@@ -389,6 +394,7 @@ export function useTransaction(options: UseTransactionOptions = {}) {
 
     openModal,
     openEditModal,
+    openDuplicateModal,
     closeModal,
 
     addTransaction,

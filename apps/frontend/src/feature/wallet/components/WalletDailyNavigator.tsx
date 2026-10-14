@@ -6,9 +6,9 @@ import { th } from "date-fns/locale";
 import { CalendarDays, ChevronLeft, ChevronRight } from "lucide-react";
 import Button from "@/components/ui/Button";
 import { TH_TEXT } from "@/constants/th";
+import { formatDisplayDate } from "@/lib/dateFormat";
 import {
   addCalendarDays,
-  formatThaiCalendarDate,
   getBangkokToday,
   toCalendarDateString,
   toUtcDate,
@@ -62,11 +62,11 @@ export default function WalletDailyNavigator({
           disabled={disabled}
           aria-expanded={isOpen}
           aria-haspopup="dialog"
-          aria-label={`${TH_TEXT.transaction.selectDate}: ${date}`}
+          aria-label={`${TH_TEXT.transaction.selectDate}: ${formatDisplayDate(date)}`}
           data-testid="daily-date-picker-trigger"
           className="flex h-10 w-full items-center justify-between gap-3 rounded-lg border border-slate-200 bg-white px-3 text-left text-sm font-semibold text-slate-700 transition hover:border-violet-300 disabled:cursor-not-allowed disabled:opacity-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:hover:border-violet-600"
         >
-          <span>{formatThaiCalendarDate(date)}</span>
+          <span>{formatDisplayDate(date)}</span>
           <CalendarDays className="h-4 w-4 shrink-0 text-violet-600 dark:text-violet-300" aria-hidden />
         </button>
 

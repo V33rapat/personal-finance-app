@@ -18,6 +18,24 @@ const defaultSummaryEmail =
   'playwright-dashboard-summary@walpaca.test';
 const dailyEmail =
   process.env.PLAYWRIGHT_E2E_DAILY_EMAIL ?? 'playwright-e2e-daily@walpaca.test';
+const announcementDefaultEmail =
+  process.env.PLAYWRIGHT_E2E_ANNOUNCEMENT_DEFAULT_EMAIL ??
+  'playwright-announcement-default@walpaca.test';
+const announcementMissedEmail =
+  process.env.PLAYWRIGHT_E2E_ANNOUNCEMENT_MISSED_EMAIL ??
+  'playwright-announcement-missed@walpaca.test';
+const announcementDismissalEmail =
+  process.env.PLAYWRIGHT_E2E_ANNOUNCEMENT_DISMISSAL_EMAIL ??
+  'playwright-announcement-dismissal@walpaca.test';
+const announcementHistoryEmail =
+  process.env.PLAYWRIGHT_E2E_ANNOUNCEMENT_HISTORY_EMAIL ??
+  'playwright-announcement-history@walpaca.test';
+const announcementSafetyEmail =
+  process.env.PLAYWRIGHT_E2E_ANNOUNCEMENT_SAFETY_EMAIL ??
+  'playwright-announcement-safety@walpaca.test';
+const announcementMobileEmail =
+  process.env.PLAYWRIGHT_E2E_ANNOUNCEMENT_MOBILE_EMAIL ??
+  'playwright-announcement-mobile@walpaca.test';
 const password = process.env.PLAYWRIGHT_E2E_PASSWORD ?? 'PlaywrightE2E!123';
 const reportingDate = new Date('2026-07-20T00:00:00.000Z');
 const paginationDate = new Date('2026-07-24T00:00:00.000Z');
@@ -35,6 +53,13 @@ async function resetUserData(userId: string) {
   await prisma.dashboard_wallet_summary_preferences.deleteMany({
     where: { user_id: userId },
   });
+  await prisma.release_announcement_user_states.deleteMany({
+    where: { user_id: userId },
+  });
+  await prisma.release_announcement_preferences.deleteMany({
+    where: { user_id: userId },
+  });
+  await prisma.spending_plans.deleteMany({ where: { user_id: userId } });
   await prisma.spending_budgets.deleteMany({ where: { user_id: userId } });
 
   if (walletIds.length > 0) {
@@ -186,8 +211,80 @@ async function seedPrimaryUser() {
       created_at: seededWalletCreatedAt,
     },
   });
+  const transferSource = await prisma.wallets.create({
+    data: {
+      user_id: user.id,
+      name: 'E2E Transfer Source',
+      wallet_type: wallet_type.normal,
+      balance: 1_234.5,
+      created_at: seededWalletCreatedAt,
+    },
+  });
+  const transferDestination = await prisma.wallets.create({
+    data: {
+      user_id: user.id,
+      name: 'E2E Transfer Destination',
+      wallet_type: wallet_type.normal,
+      balance: 250.25,
+      created_at: seededWalletCreatedAt,
+    },
+  });
+  const transferParent = await prisma.wallets.create({
+    data: {
+      user_id: user.id,
+      name: 'E2E Transfer Parent',
+      wallet_type: wallet_type.normal,
+      balance: 300,
+      created_at: seededWalletCreatedAt,
+    },
+  });
+  const transferChild = await prisma.wallets.create({
+    data: {
+      user_id: user.id,
+      parent_wallet_id: transferParent.id,
+      name: 'E2E Transfer Child',
+      wallet_type: wallet_type.normal,
+      balance: 300,
+      created_at: seededWalletCreatedAt,
+    },
+  });
+  const transferInactive = await prisma.wallets.create({
+    data: {
+      user_id: user.id,
+      name: 'E2E Transfer Inactive',
+      wallet_type: wallet_type.normal,
+      is_active: false,
+      balance: 500,
+      created_at: seededWalletCreatedAt,
+    },
+  });
+  const transferDeleted = await prisma.wallets.create({
+    data: {
+      id: '90000000-0000-4000-8000-000000000001',
+      user_id: user.id,
+      name: 'E2E Transfer Deleted',
+      wallet_type: wallet_type.normal,
+      balance: 700,
+      deleted_at: new Date('2026-07-01T00:00:00.000Z'),
+      created_at: seededWalletCreatedAt,
+    },
+  });
   await prisma.transactions.createMany({
     data: [
+      ...[
+        { wallet: transferSource, amount: 1_234.5 },
+        { wallet: transferDestination, amount: 250.25 },
+        { wallet: transferChild, amount: 300 },
+        { wallet: transferInactive, amount: 500 },
+        { wallet: transferDeleted, amount: 700 },
+      ].map(({ wallet, amount }) => ({
+        wallet_id: wallet.id,
+        category_id: salary.id,
+        name: `E2E opening balance ${wallet.name}`,
+        type: transaction_type.income,
+        amount,
+        transaction_date: new Date('2025-12-15T00:00:00.000Z'),
+      })),
       {
         wallet_id: cash.id,
         category_id: food.id,
@@ -296,6 +393,49 @@ async function seedPrimaryUser() {
       amount: 50,
       transfer_date: reportingDate,
       note: 'E2E allocation transfer pair',
+    },
+  });
+
+  await prisma.spending_plans.create({
+    data: {
+      user_id: user.id,
+      name: 'E2E Legacy Spending Plan',
+      amount: 100,
+      start_date: reportingDate,
+      end_date: reportingDate,
+      spending_plan_view_preferences: {
+        create: {
+          last_view: 'monthly',
+          show_daily_balance: true,
+          visible_purpose_names: ['E2E Legacy Purpose'],
+        },
+      },
+      spending_plan_revisions: {
+        create: {
+          effective_date: reportingDate,
+          spending_plan_revision_wallets: {
+            create: { wallet_id: cash.id },
+          },
+          spending_plan_revision_purposes: {
+            create: {
+              name: 'E2E Legacy Purpose',
+              sort_order: 0,
+              target_amount: null,
+              distribution_type: null,
+              distribution_weekdays: [],
+              spending_plan_revision_purpose_categories: {
+                create: { category_id: food.id },
+              },
+              spending_plan_revision_allocations: {
+                create: {
+                  allocation_date: reportingDate,
+                  amount: 100,
+                },
+              },
+            },
+          },
+        },
+      },
     },
   });
 
@@ -509,6 +649,90 @@ async function seedDailyUser() {
     },
   });
 
+  const actionDate = new Date('2026-07-19T00:00:00.000Z');
+  const existingTemplate = await prisma.transaction_templates.create({
+    data: {
+      user_id: user.id,
+      wallet_id: dailyWallet.id,
+      category_id: dailyFood.id,
+      name: 'E2E Action Existing Template',
+      type: transaction_type.expense,
+      default_amount: 45,
+      note: 'E2E existing template note',
+    },
+  });
+  await prisma.transaction_templates.create({
+    data: {
+      user_id: user.id,
+      wallet_id: dailyWallet.id,
+      category_id: dailyFood.id,
+      name: 'E2E Action Replacement Template',
+      type: transaction_type.expense,
+      default_amount: 75,
+      note: 'E2E replacement template note',
+    },
+  });
+
+  await prisma.transactions.createMany({
+    data: [
+      {
+        wallet_id: dailyWallet.id,
+        category_id: dailyFood.id,
+        template_id: existingTemplate.id,
+        name: 'E2E Action Manual Expense',
+        type: transaction_type.expense,
+        amount: 45,
+        note: 'E2E action menu fixture',
+        transaction_date: actionDate,
+      },
+      {
+        wallet_id: dailyWallet.id,
+        category_id: dailyIncome.id,
+        name: 'E2E Action Manual Income',
+        type: transaction_type.income,
+        amount: 500,
+        note: 'E2E action income fixture',
+        transaction_date: actionDate,
+      },
+      {
+        wallet_id: dailyWallet.id,
+        category_id: dailyFood.id,
+        name: 'E2E Action Edit Target',
+        type: transaction_type.expense,
+        amount: 35,
+        note: 'E2E edit fixture',
+        transaction_date: actionDate,
+      },
+      {
+        wallet_id: dailyWallet.id,
+        category_id: dailyFood.id,
+        name: 'E2E Action Delete Target',
+        type: transaction_type.expense,
+        amount: 25,
+        note: 'E2E delete fixture',
+        transaction_date: actionDate,
+      },
+      {
+        wallet_id: dailyWallet.id,
+        category_id: dailyFood.id,
+        name: 'E2E Action Error Delete Target',
+        type: transaction_type.expense,
+        amount: 30,
+        note: 'E2E delete error fixture',
+        transaction_date: actionDate,
+      },
+      {
+        wallet_id: dailyWallet.id,
+        category_id: dailyFood.id,
+        name: 'E2E Action Interaction Target',
+        type: transaction_type.expense,
+        amount: 20,
+        note: 'E2E interaction fixture',
+        transaction_date: actionDate,
+      },
+    ],
+  });
+
   return { user, dailyWallet, dailyDestination, parentWithActiveChild };
 }
 
@@ -645,6 +869,99 @@ async function seedDefaultSummaryUser() {
   };
 }
 
+async function createAnnouncementUser(email: string, fullName: string) {
+  return upsertUser(email, fullName);
+}
+
+async function setAnnouncementBaseline(userId: string, releaseOrder: number) {
+  await prisma.release_announcement_preferences.create({
+    data: {
+      user_id: userId,
+      baseline_release_id: `walpaca-1.${releaseOrder - 1}.0`,
+      baseline_release_order: releaseOrder,
+    },
+  });
+}
+
+async function dismissSeedAnnouncements(userId: string) {
+  await setAnnouncementBaseline(userId, 1);
+  const dismissedAt = new Date('2026-10-04T00:00:00.000Z');
+  await prisma.release_announcement_user_states.createMany({
+    data: ['walpaca-1.0.0', 'walpaca-1.1.0', 'walpaca-1.2.0'].map(
+      (releaseId) => ({
+        user_id: userId,
+        release_id: releaseId,
+        dismissed_at: dismissedAt,
+      }),
+    ),
+  });
+}
+
+async function seedAnnouncementUsers() {
+  const [fresh, missed, dismissal, history, safety, mobile] = await Promise.all(
+    [
+      createAnnouncementUser(
+        announcementDefaultEmail,
+        'Playwright Release Announcement New User',
+      ),
+      createAnnouncementUser(
+        announcementMissedEmail,
+        'Playwright Release Announcement Missed Releases',
+      ),
+      createAnnouncementUser(
+        announcementDismissalEmail,
+        'Playwright Release Announcement Dismissal',
+      ),
+      createAnnouncementUser(
+        announcementHistoryEmail,
+        'Playwright Release Announcement History',
+      ),
+      createAnnouncementUser(
+        announcementSafetyEmail,
+        'Playwright Release Announcement Safety',
+      ),
+      createAnnouncementUser(
+        announcementMobileEmail,
+        'Playwright Release Announcement Mobile',
+      ),
+    ],
+  );
+
+  await Promise.all([
+    setAnnouncementBaseline(missed.id, 1),
+    setAnnouncementBaseline(dismissal.id, 1),
+    setAnnouncementBaseline(history.id, 3),
+    setAnnouncementBaseline(safety.id, 1),
+    setAnnouncementBaseline(mobile.id, 1),
+  ]);
+  await prisma.release_announcement_user_states.createMany({
+    data: [missed, mobile].map((user) => ({
+      user_id: user.id,
+      release_id: 'walpaca-1.0.0',
+      seen_at: new Date('2026-10-04T00:00:00.000Z'),
+    })),
+  });
+  await prisma.release_announcement_user_states.create({
+    data: {
+      user_id: history.id,
+      release_id: 'walpaca-1.0.0',
+      dismissed_at: new Date('2026-10-04T00:00:00.000Z'),
+    },
+  });
+
+  await prisma.wallets.create({
+    data: {
+      user_id: safety.id,
+      name: 'E2E Wallet for Announcement Focus',
+      wallet_type: wallet_type.normal,
+      balance: 0,
+      created_at: seededWalletCreatedAt,
+    },
+  });
+
+  return { fresh, missed, dismissal, history, safety, mobile };
+}
+
 async function seed() {
   const [primary, secondary, daily, defaultSummary] = await Promise.all([
     seedPrimaryUser(),
@@ -653,8 +970,19 @@ async function seed() {
     seedDefaultSummaryUser(),
   ]);
 
+  await Promise.all(
+    [primary.user, secondary.user, daily.user, defaultSummary.user].map(
+      (user) => dismissSeedAnnouncements(user.id),
+    ),
+  );
+  const announcementUsers = await seedAnnouncementUsers();
+
   console.log(
-    `Seeded Playwright accounts: ${primary.user.email}, ${secondary.user.email}, ${daily.user.email}, ${defaultSummary.user.email}`,
+    `Seeded Playwright accounts: ${primary.user.email}, ${secondary.user.email}, ${daily.user.email}, ${defaultSummary.user.email}, ${Object.values(
+      announcementUsers,
+    )
+      .map((user) => user.email)
+      .join(', ')}`,
   );
 }
 

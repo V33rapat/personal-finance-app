@@ -1,31 +1,30 @@
 "use client";
 
-import Button from "@/components/ui/Button";
 import { TH_TEXT } from "@/constants/th";
 import type { MoneyAllocation } from "../hooks/useAllocation";
 import { formatWalletMoney } from "../lib/allocationWallet";
+import { formatDisplayDate } from "@/lib/dateFormat";
+import AllocationActionMenu from "./AllocationActionMenu";
 
 interface AllocationHistoryProps {
   allocations: MoneyAllocation[];
   isLoading: boolean;
   isSaving: boolean;
-  editingAllocationId: string | null;
   onEdit: (allocation: MoneyAllocation) => void;
+  onDuplicate: (allocation: MoneyAllocation) => void;
   onDelete: (allocation: MoneyAllocation) => void;
 }
 
 function formatDate(value: string) {
-  const [year, month, day] = value.split("-");
-
-  return year && month && day ? `${day}/${month}/${year}` : value;
+  return formatDisplayDate(value);
 }
 
 export default function AllocationHistory({
   allocations,
   isLoading,
   isSaving,
-  editingAllocationId,
   onEdit,
+  onDuplicate,
   onDelete,
 }: AllocationHistoryProps) {
   return (
@@ -57,17 +56,11 @@ export default function AllocationHistory({
       ) : (
         <div className="mt-5 space-y-3">
           {allocations.map((allocation) => {
-            const isEditing = allocation.id === editingAllocationId;
-
             return (
               <article
                 key={allocation.id}
-                className={[
-                  "rounded-xl border p-4 transition",
-                  isEditing
-                    ? "border-violet-300 bg-violet-50/70 ring-2 ring-violet-200 dark:border-violet-700 dark:bg-violet-950/20 dark:ring-violet-900/70"
-                    : "border-slate-200 bg-slate-50/80 dark:border-slate-800 dark:bg-slate-950/30",
-                ].join(" ")}
+                data-testid="allocation-history-row"
+                className="rounded-xl border border-slate-200 bg-slate-50/80 p-4 transition dark:border-slate-800 dark:bg-slate-950/30"
               >
                 <div className="grid gap-4 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,1.4fr)_minmax(0,0.7fr)_auto] lg:items-start">
                   <div>
@@ -111,32 +104,13 @@ export default function AllocationHistory({
                     </p>
                   </div>
 
-                  <div className="flex gap-2 lg:justify-end">
-                    <Button
-                      type="button"
-                      variant={isEditing ? "primary" : "secondary"}
-                      size="sm"
-                      disabled={isSaving}
-                      onClick={() => onEdit(allocation)}
-                    >
-                      <svg className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor" aria-hidden>
-                        <path d="M13.586 3.586a2 2 0 0 1 2.828 2.828l-.793.793-2.828-2.828.793-.793ZM11.379 5.793 4 13.172V16h2.828l7.379-7.379-2.828-2.828Z" />
-                      </svg>
-                      {TH_TEXT.common.edit}
-                    </Button>
-                    <Button
-                      type="button"
-                      variant="danger"
-                      size="sm"
-                      disabled={isSaving}
-                      onClick={() => onDelete(allocation)}
-                    >
-                      <svg className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor" aria-hidden>
-                        <path fillRule="evenodd" d="M8.75 1A2.75 2.75 0 0 0 6 3.75V4H3.75a.75.75 0 0 0 0 1.5h.3l.64 10.243A2.75 2.75 0 0 0 7.434 18h5.132a2.75 2.75 0 0 0 2.744-2.257L15.95 5.5h.3a.75.75 0 0 0 0-1.5H14v-.25A2.75 2.75 0 0 0 11.25 1h-2.5ZM7.5 4v-.25c0-.69.56-1.25 1.25-1.25h2.5c.69 0 1.25.56 1.25 1.25V4h-5Z" clipRule="evenodd" />
-                      </svg>
-                      {TH_TEXT.common.delete}
-                    </Button>
-                  </div>
+                  <AllocationActionMenu
+                    label={TH_TEXT.allocation.actionsFor.replace("%s", formatDate(allocation.allocation_date))}
+                    disabled={isSaving}
+                    onEdit={() => onEdit(allocation)}
+                    onDuplicate={() => onDuplicate(allocation)}
+                    onDelete={() => onDelete(allocation)}
+                  />
                 </div>
               </article>
             );

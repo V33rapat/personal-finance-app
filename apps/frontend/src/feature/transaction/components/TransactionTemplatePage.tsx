@@ -4,6 +4,7 @@ import { FormEvent, useMemo, useRef, useState } from "react";
 import Button from "@/components/ui/Button";
 import ConfirmationDialog from "@/components/ui/ConfirmationDialog";
 import { TH_TEXT } from "@/constants/th";
+import { formatCurrency } from "@/lib/currencyFormat";
 import CategoryCombobox, { type CategoryComboboxHandle } from "./CategoryCombobox";
 import type { TransactionType } from "./TransactionItem";
 import {
@@ -27,14 +28,6 @@ function getInitialValues(
     category_id: template?.category_id ?? null,
     note: template?.note ?? "",
   };
-}
-
-function formatMoney(amount: string) {
-  return new Intl.NumberFormat("th-TH", {
-    style: "currency",
-    currency: "THB",
-    maximumFractionDigits: 2,
-  }).format(Number(amount || 0));
 }
 
 function TypeBadge({ type }: { type: TransactionType }) {
@@ -358,7 +351,7 @@ function TemplateList({
 
                   <div className="min-w-0">
                     <p className="text-sm font-bold text-slate-900 dark:text-slate-50">
-                      {formatMoney(template.default_amount)}
+                      {formatCurrency(template.default_amount)}
                     </p>
                     <p className="mt-1 truncate text-xs text-slate-500 dark:text-slate-400">
                       {template.category_name ?? TH_TEXT.common.none}

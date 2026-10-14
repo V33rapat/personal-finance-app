@@ -1,5 +1,5 @@
 import ThemeToggle from "@/components/ui/ThemeToggle";
-import { CalendarRange } from "lucide-react";
+import { CalendarRange, Sparkles } from "lucide-react";
 import { TH_TEXT } from "@/constants/th";
 import SidebarItem from "./SidebarItem";
 
@@ -70,6 +70,7 @@ const navItems = [
   { href: "/transfer", label: TH_TEXT.navigation.transfer, icon: <TransferIcon /> },
   { href: "/allocation", label: TH_TEXT.navigation.allocation, icon: <AllocationIcon /> },
   { href: "/spending-plans", label: TH_TEXT.navigation.spendingPlans, icon: <CalendarRange className="h-4 w-4" aria-hidden /> },
+  { href: "/whats-new", label: TH_TEXT.navigation.whatsNew, icon: <Sparkles className="h-4 w-4" aria-hidden /> },
   { href: "/profile", label: TH_TEXT.navigation.profile, icon: <ProfileIcon /> },
 ];
 

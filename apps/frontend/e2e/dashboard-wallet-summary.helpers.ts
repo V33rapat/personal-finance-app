@@ -5,6 +5,7 @@ import {
   type Request,
 } from "@playwright/test";
 import { getBangkokToday, openDashboard } from "./spending-budget.helpers";
+import { dateFieldValue } from "./date-format.helpers";
 
 export const DASHBOARD_WALLET_SUMMARY_TEXT = {
   heading: "กระเป๋าของคุณ",
@@ -83,15 +84,20 @@ export async function setWalletSummarySelection(
   }
 }
 
-export async function clearWalletSummarySelection(
-  dialog: Locator,
-  walletNames: string[],
-) {
-  for (const walletName of walletNames) {
-    const checkbox = getWalletSummaryCheckbox(dialog, walletName);
+export async function clearWalletSummarySelection(dialog: Locator) {
+  const checkboxes = dialog.getByRole("checkbox");
+  for (let index = 0; index < await checkboxes.count(); index += 1) {
+    const checkbox = checkboxes.nth(index);
     if (await checkbox.isChecked()) {
       await checkbox.uncheck();
     }
+  }
+
+  const removeButtons = dialog.getByRole("button", {
+    name: new RegExp(`^${escapeRegExp(DASHBOARD_WALLET_SUMMARY_TEXT.remove)} `),
+  });
+  while (await removeButtons.count()) {
+    await removeButtons.first().click();
   }
 }
 
@@ -190,7 +196,7 @@ export async function createExpenseThroughUi(
   await modal.locator('input[type="number"]').fill("50");
   await modal.getByPlaceholder("เลือกหมวดหมู่").fill(categoryName);
   await modal.getByRole("button", { name: categoryName, exact: true }).click();
-  await modal.locator('input[type="date"]').fill(getBangkokToday());
+  await modal.getByTestId("transaction-date").fill(dateFieldValue(getBangkokToday()));
 
   const requestPromise = page.waitForRequest((request) => {
     const url = new URL(request.url());

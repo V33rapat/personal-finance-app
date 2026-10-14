@@ -15,6 +15,8 @@ import {
   openDailyTransactionModal,
   saveTransactionModal,
 } from "./wallet-daily-mutations.helpers";
+import { openActionMenu } from "./transaction-action-menu.helpers";
+import { dateFieldValue } from "./date-format.helpers";
 
 test.describe("Daily Transaction View mutations and managed transactions", () => {
   test("creates a historical transaction with the selected date and refreshes its summary", async ({ page }) => {
@@ -23,7 +25,7 @@ test.describe("Daily Transaction View mutations and managed transactions", () =>
     await openDailyTransactions(page);
     await selectDailyDate(page, CREATE_DATE);
     const dialog = await openDailyTransactionModal(page);
-    await expect(dialog.getByTestId("transaction-date")).toHaveValue(CREATE_DATE);
+    await expect(dialog.getByTestId("transaction-date")).toHaveValue(dateFieldValue(CREATE_DATE));
     await fillTransactionModal(dialog, {
       name: createdName,
       amount: "75",
@@ -60,10 +62,10 @@ test.describe("Daily Transaction View mutations and managed transactions", () =>
     await expectSummary(page, 0, 40);
 
     const row = getDailyRow(page, name);
-    await row.getByRole("button", { name: "แก้ไข", exact: true }).click();
+    await (await openActionMenu(row)).menu.getByTestId("transaction-action-edit").click();
     const editDialog = page.getByTestId("transaction-modal");
-    await expect(editDialog.getByTestId("transaction-date")).toHaveValue(sourceDate);
-    await editDialog.getByTestId("transaction-date").fill(destinationDate);
+    await expect(editDialog.getByTestId("transaction-date")).toHaveValue(dateFieldValue(sourceDate));
+    await editDialog.getByTestId("transaction-date").fill(dateFieldValue(destinationDate));
 
     const patchRequest = page.waitForRequest((request) => {
       const url = new URL(request.url());
@@ -96,7 +98,7 @@ test.describe("Daily Transaction View mutations and managed transactions", () =>
 
     await openDailyTransactions(page);
     const dialog = await openDailyTransactionModal(page);
-    await expect(dialog.getByTestId("transaction-date")).toHaveAttribute("max", today);
+    await expect(dialog.getByTestId("transaction-date")).toHaveAttribute("data-max", today);
     await fillTransactionModal(dialog, {
       name: "E2E Future Transaction",
       amount: "25",
@@ -155,8 +157,12 @@ test.describe("Daily Transaction View mutations and managed transactions", () =>
     }
 
     await expectSummary(page, 0, 30);
-    await getDailyRow(page, firstName).getByRole("button", { name: new RegExp(`${firstName}$`) }).click();
-    await getDailyRow(page, secondName).getByRole("button", { name: new RegExp(`${secondName}$`) }).click();
+    await getDailyRow(page, firstName)
+      .getByRole("button", { name: `เลือกรายการ: ${firstName}`, exact: true })
+      .click();
+    await getDailyRow(page, secondName)
+      .getByRole("button", { name: `เลือกรายการ: ${secondName}`, exact: true })
+      .click();
 
     await page.getByRole("button", { name: "ลบรายการ", exact: true }).click();
     const confirmDialog = page.getByRole("dialog");

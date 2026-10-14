@@ -1,6 +1,7 @@
 "use client";
 
 import { TH_TEXT } from "@/constants/th";
+import DateField from "@/components/ui/DateField";
 import type { TransactionType } from "./TransactionItem";
 
 interface Category {
@@ -82,19 +83,21 @@ export default function TransactionFilter({
       </div>
 
       <div className="flex flex-wrap gap-3">
-        <div className="flex items-center gap-2">
-          <input
-            type="date"
+        <div className="flex min-w-0 flex-wrap items-start gap-2">
+          <DateField
+            aria-label={TH_TEXT.common.dateFrom}
             value={startDate}
-            onChange={(e) => onStartDateChange?.(e.target.value)}
-            className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-800 focus:border-violet-500 focus:outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
+            onChange={(date) => onStartDateChange?.(date)}
+            testId="transaction-filter-start-date"
+            className="bg-slate-50 dark:bg-slate-800"
           />
           <span className="text-slate-400">-</span>
-          <input
-            type="date"
+          <DateField
+            aria-label={TH_TEXT.common.dateTo}
             value={endDate}
-            onChange={(e) => onEndDateChange?.(e.target.value)}
-            className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-800 focus:border-violet-500 focus:outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
+            onChange={(date) => onEndDateChange?.(date)}
+            testId="transaction-filter-end-date"
+            className="bg-slate-50 dark:bg-slate-800"
           />
         </div>
 

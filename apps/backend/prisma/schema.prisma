@@ -100,6 +100,7 @@ model spending_plan_revisions {
   spending_plan_revision_purposes spending_plan_revision_purposes[]
 
   @@index([plan_id, effective_date(sort: Desc), created_at(sort: Desc)], map: "idx_spending_plan_revisions_plan_date")
+  @@unique([plan_id, effective_date], map: "uq_spending_plan_revisions_plan_effective_date")
 }
 
 model spending_plan_revision_wallets {
@@ -118,9 +119,13 @@ model spending_plan_revision_purposes {
   revision_id                               String                                      @db.Uuid
   name                                      String                                      @db.VarChar(100)
   sort_order                                Int
+  target_amount                             Decimal?                                    @db.Decimal(20, 2)
+  distribution_type                         spending_plan_distribution_type?
+  distribution_weekdays                     Int[]                                      @default([])
   spending_plan_revisions                   spending_plan_revisions                     @relation(fields: [revision_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
   spending_plan_revision_purpose_categories spending_plan_revision_purpose_categories[]
   spending_plan_revision_allocations        spending_plan_revision_allocations[]
+  spending_plan_revision_purpose_dates      spending_plan_revision_purpose_dates[]
 
   @@unique([revision_id, name], map: "uq_spending_plan_revision_purpose_name")
   @@index([revision_id, sort_order], map: "idx_spending_plan_revision_purposes_order")
@@ -146,6 +151,15 @@ model spending_plan_revision_allocations {
 
   @@id([purpose_id, allocation_date])
   @@index([allocation_date], map: "idx_spending_plan_allocations_date")
+}
+
+model spending_plan_revision_purpose_dates {
+  purpose_id                      String                          @db.Uuid
+  selected_date                   DateTime                        @db.Date
+  spending_plan_revision_purposes spending_plan_revision_purposes @relation(fields: [purpose_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@id([purpose_id, selected_date])
+  @@index([selected_date], map: "idx_spending_plan_purpose_dates_date")
 }
 
 model spending_plan_view_preferences {
@@ -333,12 +347,35 @@ model users {
   categories                           categories[]
   dashboard_preferences                dashboard_preferences?
   dashboard_wallet_summary_preferences dashboard_wallet_summary_preferences?
+  release_announcement_preferences     release_announcement_preferences?
+  release_announcement_user_states     release_announcement_user_states[]
   refresh_tokens                       refresh_tokens[]
   transaction_templates                transaction_templates[]
   money_allocations                    money_allocations[]
   spending_budgets                     spending_budgets[]
   spending_plans                       spending_plans[]
   wallets                              wallets[]
+}
+
+model release_announcement_preferences {
+  user_id                String   @id @db.Uuid
+  baseline_release_id    String   @db.VarChar(100)
+  baseline_release_order Int
+  initialized_at         DateTime @default(now()) @db.Timestamptz(6)
+  users                  users    @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+}
+
+model release_announcement_user_states {
+  user_id      String    @db.Uuid
+  release_id   String    @db.VarChar(100)
+  seen_at      DateTime? @db.Timestamptz(6)
+  dismissed_at DateTime? @db.Timestamptz(6)
+  created_at   DateTime  @default(now()) @db.Timestamptz(6)
+  updated_at   DateTime  @default(now()) @db.Timestamptz(6)
+  users        users     @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@id([user_id, release_id])
+  @@index([user_id, dismissed_at], map: "idx_release_announcement_states_user_dismissed")
 }
 
 /// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
@@ -394,6 +431,14 @@ enum spending_plan_view {
   monthly
   range
   daily
+}
+
+enum spending_plan_distribution_type {
+  equal_daily
+  weekdays
+  weekly
+  biweekly
+  specific_dates
 }
 
 enum user_role {

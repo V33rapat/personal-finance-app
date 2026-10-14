@@ -8,9 +8,17 @@ import { PrismaService } from '../prisma/prisma.service';
 import { CopySpendingPlanDto } from './dto/copy-spending-plan.dto';
 import { CreateSpendingPlanDto } from './dto/create-spending-plan.dto';
 import { FindSpendingPlanDetailDto } from './dto/find-spending-plan-detail.dto';
-import { SpendingPlanPurposeDto } from './dto/spending-plan-purpose.dto';
+import {
+  SpendingPlanPurposeDto,
+  type SpendingPlanDistributionType,
+} from './dto/spending-plan-purpose.dto';
 import { UpdateSpendingPlanDto } from './dto/update-spending-plan.dto';
 import { UpdateSpendingPlanPreferencesDto } from './dto/update-spending-plan-preferences.dto';
+import {
+  buildOccurrenceAllocations,
+  getDistributionDates,
+  type DistributionRule,
+} from './spending-plan-distribution';
 
 const BANGKOK_TIME_ZONE = 'Asia/Bangkok';
 const DAY_MS = 86_400_000;
@@ -47,6 +55,9 @@ const planInclude = {
           spending_plan_revision_allocations: {
             orderBy: { allocation_date: 'asc' },
           },
+          spending_plan_revision_purpose_dates: {
+            orderBy: { selected_date: 'asc' },
+          },
         },
       },
     },
@@ -62,12 +73,19 @@ type RevisionRecord = SpendingPlanRecord['spending_plan_revisions'][number];
 interface NormalizedPurpose {
   name: string;
   categoryIds: string[];
+  targetAmount: number;
+  distribution: {
+    type: SpendingPlanDistributionType;
+    weekdays: number[];
+    dates: string[];
+  };
   allocations: Array<{ date: string; amount: number }>;
 }
 
 interface RevisionValues {
   walletIds: string[];
   purposes: NormalizedPurpose[];
+  planTotal: number;
 }
 
 export interface DailyPurposeOverview {
@@ -75,6 +93,7 @@ export interface DailyPurposeOverview {
   planned: string;
   actual: string;
   remaining: string;
+  is_unplanned: boolean;
   status: 'ok' | 'warning' | 'over' | 'planned';
 }
 
@@ -157,7 +176,7 @@ export class SpendingPlanService {
         data: {
           user_id: userId,
           name: values.name,
-          amount: values.amount,
+          amount: values.planTotal,
           start_date: values.start,
           end_date: values.end,
           spending_plan_view_preferences: {
@@ -185,39 +204,61 @@ export class SpendingPlanService {
 
   async update(userId: string, id: string, dto: UpdateSpendingPlanDto) {
     const plan = await this.findOwnedPlan(userId, id);
-    this.assertMutable(plan);
+    this.assertEditable(plan);
     const effectiveDate = this.parseDate(dto.effective_date);
-    const today = this.getTodayBangkok();
-    const minimumEffectiveDate =
-      this.toUtcDate(plan.start_date) > today
-        ? this.toUtcDate(plan.start_date)
-        : today;
 
     if (
-      effectiveDate < minimumEffectiveDate ||
+      effectiveDate < this.toUtcDate(plan.start_date) ||
       effectiveDate > this.toUtcDate(plan.end_date)
     ) {
       throw new BadRequestException(
-        'Revision effective date must be within the editable plan period',
+        'Revision effective date must be within the spending plan period',
       );
     }
 
-    const values = await this.validateRevisionValues(userId, plan, dto);
-    await this.assertNoOverlap(userId, effectiveDate, values.end, values, id);
+    const revisionEnd = this.getRevisionEndDate(plan, effectiveDate);
+    const values = await this.validateRevisionValues(
+      userId,
+      plan,
+      dto,
+      effectiveDate,
+      revisionEnd,
+    );
+    await this.assertNoOverlap(userId, effectiveDate, revisionEnd, values, id);
 
     const updated = await this.prisma.$transaction(async (tx) => {
+      const existingRevision = plan.spending_plan_revisions.find(
+        (revision) =>
+          this.toUtcDate(revision.effective_date).getTime() ===
+          effectiveDate.getTime(),
+      );
+
+      if (existingRevision) {
+        await tx.spending_plan_revisions.delete({
+          where: { id: existingRevision.id },
+        });
+      }
+
       await tx.spending_plans.update({
         where: { id },
         data: {
           name: values.name,
-          amount: values.amount,
           updated_at: new Date(),
         },
       });
       await this.createRevision(tx, id, effectiveDate, values);
 
-      return tx.spending_plans.findUniqueOrThrow({
+      const withRevision = await tx.spending_plans.findUniqueOrThrow({
         where: { id },
+        include: planInclude,
+      });
+
+      return tx.spending_plans.update({
+        where: { id },
+        data: {
+          amount: this.getTimelineAllocationTotal(withRevision),
+          updated_at: new Date(),
+        },
         include: planInclude,
       });
     });
@@ -227,7 +268,7 @@ export class SpendingPlanService {
 
   async cancel(userId: string, id: string) {
     const plan = await this.findOwnedPlan(userId, id);
-    this.assertMutable(plan);
+    this.assertCancellable(plan);
 
     const cancelled = await this.prisma.spending_plans.update({
       where: { id },
@@ -259,34 +300,47 @@ export class SpendingPlanService {
 
     const values: CreateSpendingPlanDto = {
       name: dto.name ?? `${source.name} (สำเนา)`,
-      amount: Number(source.amount),
       start_date: dto.start_date,
       end_date: dto.end_date,
       wallet_ids: sourceRevision.spending_plan_revision_wallets.map(
         (wallet) => wallet.wallet_id,
       ),
       purposes: sourceRevision.spending_plan_revision_purposes.map(
-        (purpose) => ({
-          name: purpose.name,
-          category_ids: purpose.spending_plan_revision_purpose_categories.map(
-            (category) => category.category_id,
-          ),
-          allocations: purpose.spending_plan_revision_allocations.map(
-            (allocation) => ({
-              date: this.toDateString(
-                this.shiftDate(
-                  this.toUtcDate(allocation.allocation_date),
-                  Math.floor(
-                    (start.getTime() -
-                      this.toUtcDate(source.start_date).getTime()) /
-                      DAY_MS,
-                  ),
-                ),
-              ),
-              amount: Number(allocation.amount),
-            }),
-          ),
-        }),
+        (purpose) => {
+          const offsetDays = Math.floor(
+            (start.getTime() - this.toUtcDate(source.start_date).getTime()) /
+              DAY_MS,
+          );
+          if (purpose.target_amount === null) {
+            throw new BadRequestException(
+              'Legacy spending plans must be configured before copying',
+            );
+          }
+          const distributionType = purpose.distribution_type;
+
+          return {
+            name: purpose.name,
+            target_amount: Number(purpose.target_amount),
+            category_ids: purpose.spending_plan_revision_purpose_categories.map(
+              (category) => category.category_id,
+            ),
+            distribution: {
+              type: distributionType ?? 'equal_daily',
+              weekdays: purpose.distribution_weekdays,
+              dates:
+                distributionType === 'specific_dates'
+                  ? purpose.spending_plan_revision_purpose_dates.map((date) =>
+                      this.toDateString(
+                        this.shiftDate(
+                          this.toUtcDate(date.selected_date),
+                          offsetDays,
+                        ),
+                      ),
+                    )
+                  : [],
+            },
+          };
+        },
       ),
     };
 
@@ -381,17 +435,12 @@ export class SpendingPlanService {
   ) {
     const start = this.parseDate(dto.start_date);
     const end = this.parseDate(dto.end_date);
-    const today = this.getTodayBangkok();
-
-    if (start < today) {
-      throw new BadRequestException('Spending plan cannot start in the past');
-    }
-
     return this.validateValues(userId, {
       name: dto.name,
-      amount: dto.amount,
       start,
       end,
+      windowStart: start,
+      windowEnd: end,
       walletIds: dto.wallet_ids,
       purposes: dto.purposes,
     });
@@ -401,12 +450,15 @@ export class SpendingPlanService {
     userId: string,
     plan: SpendingPlanRecord,
     dto: UpdateSpendingPlanDto,
+    windowStart: Date,
+    windowEnd: Date,
   ) {
     return this.validateValues(userId, {
       name: dto.name ?? plan.name,
-      amount: dto.amount ?? Number(plan.amount),
       start: this.toUtcDate(plan.start_date),
       end: this.toUtcDate(plan.end_date),
+      windowStart,
+      windowEnd,
       walletIds: dto.wallet_ids,
       purposes: dto.purposes,
     });
@@ -416,9 +468,10 @@ export class SpendingPlanService {
     userId: string,
     values: {
       name: string;
-      amount: number;
       start: Date;
       end: Date;
+      windowStart: Date;
+      windowEnd: Date;
       walletIds: string[];
       purposes: SpendingPlanPurposeDto[];
     },
@@ -439,40 +492,33 @@ export class SpendingPlanService {
       );
     }
 
-    if (
-      !Number.isFinite(values.amount) ||
-      values.amount <= 0 ||
-      !Number.isInteger(values.amount * 100)
-    ) {
-      throw new BadRequestException(
-        'Spending plan amount must have no more than two decimal places',
-      );
-    }
-
     const walletIds = this.normalizeIds(values.walletIds, 'Wallets');
     await this.validateWallets(userId, walletIds);
     const purposes = this.normalizePurposes(
       values.purposes,
       values.start,
       values.end,
+      values.windowStart,
+      values.windowEnd,
     );
     await this.validatePurposeCategories(userId, purposes);
-    this.assertAllocationTotal(values.amount, purposes);
 
     return {
       name,
-      amount: values.amount,
       start: values.start,
       end: values.end,
       walletIds,
       purposes,
+      planTotal: this.getPlanTotal(purposes),
     };
   }
 
   private normalizePurposes(
     purposes: SpendingPlanPurposeDto[],
-    start: Date,
-    end: Date,
+    planStart: Date,
+    planEnd: Date,
+    windowStart: Date,
+    windowEnd: Date,
   ) {
     if (purposes.length < 1 || purposes.length > 10) {
       throw new BadRequestException(
@@ -480,9 +526,6 @@ export class SpendingPlanService {
       );
     }
 
-    const expectedDates = this.getDateRange(start, end).map((date) =>
-      this.toDateString(date),
-    );
     const purposeNames = new Set<string>();
 
     return purposes.map((purpose) => {
@@ -493,40 +536,84 @@ export class SpendingPlanService {
       purposeNames.add(name);
 
       const categoryIds = this.normalizeIds(purpose.category_ids, 'Categories');
-      const allocationByDate = new Map(
-        purpose.allocations.map((allocation) => [allocation.date, allocation]),
-      );
-
       if (
-        allocationByDate.size !== purpose.allocations.length ||
-        expectedDates.some((date) => !allocationByDate.has(date)) ||
-        [...allocationByDate.keys()].some(
-          (date) => !expectedDates.includes(date),
-        )
+        !Number.isFinite(purpose.target_amount) ||
+        purpose.target_amount <= 0 ||
+        !Number.isInteger(purpose.target_amount * 100)
       ) {
         throw new BadRequestException(
-          'Every purpose must contain one allocation for each plan day',
+          'Purpose target amounts must be greater than zero with no more than two decimal places',
         );
       }
 
-      const allocations = expectedDates.map((date) => {
-        const allocation = allocationByDate.get(date);
-        if (!allocation) {
-          throw new BadRequestException('Spending plan allocation is missing');
-        }
-        if (
-          !Number.isFinite(allocation.amount) ||
-          allocation.amount < 0 ||
-          !Number.isInteger(allocation.amount * 100)
-        ) {
+      const distribution = purpose.distribution;
+      if (!distribution) {
+        throw new BadRequestException(
+          'Every purpose needs a distribution rule',
+        );
+      }
+
+      const weekdays = [...new Set(distribution.weekdays ?? [])].sort(
+        (left, right) => left - right,
+      );
+      if (
+        (distribution.type === 'weekly' || distribution.type === 'biweekly') &&
+        (weekdays.length === 0 || weekdays.some((day) => day < 1 || day > 7))
+      ) {
+        throw new BadRequestException(
+          'Weekly distributions must select at least one weekday',
+        );
+      }
+
+      const selectedDates = [...new Set(distribution.dates ?? [])].sort();
+      if (distribution.type === 'specific_dates') {
+        if (selectedDates.length === 0) {
           throw new BadRequestException(
-            'Spending plan allocations must have no more than two decimal places',
+            'Specific-date distributions must select at least one date',
           );
         }
-        return { date, amount: allocation.amount };
-      });
+        selectedDates.forEach((date) => {
+          this.parseDate(date);
+          if (
+            this.parseDate(date) < windowStart ||
+            this.parseDate(date) > windowEnd
+          ) {
+            throw new BadRequestException(
+              'Specific distribution dates must be inside the editable window',
+            );
+          }
+        });
+      }
 
-      return { name, categoryIds, allocations };
+      const normalizedDistribution: DistributionRule = {
+        type: distribution.type,
+        weekdays,
+        dates: selectedDates,
+      };
+      const selectedDistributionDates = getDistributionDates(
+        this.toDateString(planStart),
+        this.toDateString(windowStart),
+        this.toDateString(windowEnd),
+        normalizedDistribution,
+      );
+      if (selectedDistributionDates.length === 0) {
+        throw new BadRequestException(
+          'Distribution rule must select at least one day',
+        );
+      }
+
+      return {
+        name,
+        categoryIds,
+        targetAmount: purpose.target_amount,
+        distribution: normalizedDistribution,
+        allocations: buildOccurrenceAllocations(
+          this.toDateString(planStart),
+          this.toDateString(planEnd),
+          purpose.target_amount,
+          selectedDistributionDates,
+        ),
+      };
     });
   }
 
@@ -577,25 +664,18 @@ export class SpendingPlanService {
     }
   }
 
-  private assertAllocationTotal(
-    amount: number,
-    purposes: Array<{ allocations: Array<{ amount: number }> }>,
-  ) {
-    const allocationTotal = purposes.reduce(
+  private getPlanTotal(purposes: NormalizedPurpose[]) {
+    const totalCents = purposes.reduce(
       (total, purpose) =>
         total +
         purpose.allocations.reduce(
-          (purposeTotal, allocation) => purposeTotal + allocation.amount,
+          (purposeTotal, allocation) =>
+            purposeTotal + Math.round(allocation.amount * 100),
           0,
         ),
       0,
     );
-
-    if (Math.round(allocationTotal * 100) !== Math.round(amount * 100)) {
-      throw new BadRequestException(
-        'Spending plan allocations must equal the plan amount',
-      );
-    }
+    return totalCents / 100;
   }
 
   private async assertNoOverlap(
@@ -677,6 +757,9 @@ export class SpendingPlanService {
           create: values.purposes.map((purpose, index) => ({
             name: purpose.name,
             sort_order: index,
+            target_amount: purpose.targetAmount,
+            distribution_type: purpose.distribution.type,
+            distribution_weekdays: purpose.distribution.weekdays,
             spending_plan_revision_purpose_categories: {
               create: purpose.categoryIds.map((categoryId) => ({
                 category_id: categoryId,
@@ -688,6 +771,14 @@ export class SpendingPlanService {
                 amount: allocation.amount,
               })),
             },
+            spending_plan_revision_purpose_dates:
+              purpose.distribution.type === 'specific_dates'
+                ? {
+                    create: purpose.distribution.dates.map((date) => ({
+                      selected_date: this.parseDate(date),
+                    })),
+                  }
+                : undefined,
           })),
         },
       },
@@ -791,6 +882,7 @@ export class SpendingPlanService {
             planned: planned.toFixed(2),
             actual: actual.toFixed(2),
             remaining: remaining.toFixed(2),
+            is_unplanned: planned.isZero() && actual.greaterThan(0),
             status: this.getAmountStatus(actual, planned, date > today),
           };
         });
@@ -877,6 +969,13 @@ export class SpendingPlanService {
         (wallet) => wallet.wallet_id,
       ),
       purposes: revision.spending_plan_revision_purposes.map((purpose) => ({
+        target_amount: purpose.target_amount?.toFixed(2) ?? null,
+        planned_total: purpose.spending_plan_revision_allocations
+          .reduce(
+            (total, allocation) => total.plus(allocation.amount),
+            new Prisma.Decimal(0),
+          )
+          .toFixed(2),
         name: purpose.name,
         category_ids: purpose.spending_plan_revision_purpose_categories.map(
           (category) => category.category_id,
@@ -888,6 +987,17 @@ export class SpendingPlanService {
             color: category.categories.color,
           }),
         ),
+        distribution:
+          purpose.distribution_type === null
+            ? null
+            : {
+                type: purpose.distribution_type,
+                weekdays: purpose.distribution_weekdays,
+                dates: purpose.spending_plan_revision_purpose_dates.map(
+                  (date) =>
+                    this.toDateString(this.toUtcDate(date.selected_date)),
+                ),
+              },
         allocations: purpose.spending_plan_revision_allocations.map(
           (allocation) => ({
             date: this.toDateString(this.toUtcDate(allocation.allocation_date)),
@@ -943,13 +1053,55 @@ export class SpendingPlanService {
     return 'active';
   }
 
-  private assertMutable(plan: SpendingPlanRecord) {
+  private assertEditable(plan: SpendingPlanRecord) {
+    const status = this.getPlanStatus(plan, this.getTodayBangkok());
+    if (status === 'cancelled') {
+      throw new BadRequestException('Cancelled plans cannot be changed');
+    }
+  }
+
+  private assertCancellable(plan: SpendingPlanRecord) {
     const status = this.getPlanStatus(plan, this.getTodayBangkok());
     if (status === 'completed' || status === 'cancelled') {
       throw new BadRequestException(
-        'Completed or cancelled plans cannot be changed',
+        'Only active or scheduled plans can be cancelled',
       );
     }
+  }
+
+  private getRevisionEndDate(plan: SpendingPlanRecord, effectiveDate: Date) {
+    const nextRevision = plan.spending_plan_revisions.find(
+      (revision) => this.toUtcDate(revision.effective_date) > effectiveDate,
+    );
+
+    return nextRevision
+      ? this.addDays(this.toUtcDate(nextRevision.effective_date), -1)
+      : this.toUtcDate(plan.end_date);
+  }
+
+  private getTimelineAllocationTotal(plan: SpendingPlanRecord) {
+    return this.getDateRange(
+      this.toUtcDate(plan.start_date),
+      this.toUtcDate(plan.end_date),
+    ).reduce((total, date) => {
+      const revision = this.getRevisionForDate(
+        plan.spending_plan_revisions,
+        date,
+      );
+      const dateKey = this.toDateString(date);
+      const dailyAmount = revision.spending_plan_revision_purposes.reduce(
+        (purposeTotal, purpose) => {
+          const allocation = purpose.spending_plan_revision_allocations.find(
+            (item) =>
+              this.toDateString(this.toUtcDate(item.allocation_date)) ===
+              dateKey,
+          );
+          return purposeTotal.plus(allocation?.amount ?? 0);
+        },
+        new Prisma.Decimal(0),
+      );
+      return total.plus(dailyAmount);
+    }, new Prisma.Decimal(0));
   }
 
   private isWalletAvailable(

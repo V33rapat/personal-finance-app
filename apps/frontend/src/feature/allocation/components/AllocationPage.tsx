@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useRef, useState } from "react";
+import { useMemo, useState } from "react";
 import Link from "next/link";
 import Button from "@/components/ui/Button";
 import ConfirmationDialog from "@/components/ui/ConfirmationDialog";
@@ -9,7 +9,9 @@ import { useWallet } from "@/feature/wallet/hooks/useWallet";
 import type { AllocationFormValues, MoneyAllocation } from "../hooks/useAllocation";
 import { useAllocation } from "../hooks/useAllocation";
 import { formatWalletMoney, getEligibleAllocationWallets } from "../lib/allocationWallet";
+import { getAllocationDuplicateValues, getAllocationFormValues } from "../lib/allocationFormValues";
 import AllocationForm from "./AllocationForm";
+import AllocationEditorModal from "./AllocationEditorModal";
 import AllocationHistory from "./AllocationHistory";
 
 function AllocationSkeleton() {
@@ -21,23 +23,16 @@ function AllocationSkeleton() {
   );
 }
 
-function getInitialValues(allocation: MoneyAllocation): AllocationFormValues {
-  return {
-    source_wallet_id: allocation.source_wallet_id,
-    amount: allocation.amount,
-    allocation_date: allocation.allocation_date,
-    note: allocation.note,
-    destinations: allocation.destinations.map((destination) => ({
-      wallet_id: destination.wallet_id,
-      amount: destination.amount,
-    })),
-  };
-}
-
 export default function AllocationPage() {
-  const formRef = useRef<HTMLDivElement>(null);
-  const [editingAllocation, setEditingAllocation] = useState<MoneyAllocation | null>(null);
+  const [activeEditor, setActiveEditor] = useState<{
+    mode: "edit" | "duplicate";
+    allocation: MoneyAllocation;
+  } | null>(null);
   const [pendingValues, setPendingValues] = useState<AllocationFormValues | null>(null);
+  const [pendingOperation, setPendingOperation] = useState<{
+    type: "create" | "update" | "duplicate";
+    allocationId?: string;
+  } | null>(null);
   const [deletingAllocation, setDeletingAllocation] = useState<MoneyAllocation | null>(null);
   const [formVersion, setFormVersion] = useState(0);
   const {
@@ -57,8 +52,14 @@ export default function AllocationPage() {
   } = useAllocation({ wallets, onChanged: reloadWallets });
   const eligibleWallets = useMemo(() => getEligibleAllocationWallets(wallets), [wallets]);
   const initialValues = useMemo(
-    () => (editingAllocation ? getInitialValues(editingAllocation) : undefined),
-    [editingAllocation]
+    () => {
+      if (!activeEditor) return undefined;
+
+      return activeEditor.mode === "edit"
+        ? getAllocationFormValues(activeEditor.allocation)
+        : getAllocationDuplicateValues(activeEditor.allocation);
+    },
+    [activeEditor]
   );
 
   const confirmationMessage = useMemo(() => {
@@ -81,23 +82,57 @@ export default function AllocationPage() {
     ].join("\n");
   }, [pendingValues, wallets]);
 
-  const handleEdit = (allocation: MoneyAllocation) => {
-    setEditingAllocation(allocation);
-    formRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  const handleEdit = (allocation: MoneyAllocation) => setActiveEditor({ mode: "edit", allocation });
+
+  const handleDuplicate = (allocation: MoneyAllocation) =>
+    setActiveEditor({ mode: "duplicate", allocation });
+
+  const handleCreateSubmit = (values: AllocationFormValues) => {
+    setPendingOperation({ type: "create" });
+    setPendingValues(values);
+  };
+
+  const handleEditorSubmit = (values: AllocationFormValues) => {
+    if (!activeEditor) return;
+
+    setPendingOperation(
+      activeEditor.mode === "edit"
+        ? { type: "update", allocationId: activeEditor.allocation.id }
+        : { type: "duplicate" },
+    );
+    setPendingValues(values);
+  };
+
+  const handleCloseEditor = () => {
+    if (isSaving) return;
+
+    setActiveEditor(null);
+    setPendingValues(null);
+    setPendingOperation(null);
+  };
+
+  const handleCancelConfirmation = () => {
+    setPendingValues(null);
+    setPendingOperation(null);
   };
 
   const handleConfirmSubmit = async () => {
-    if (!pendingValues || isSaving) {
+    if (!pendingValues || !pendingOperation || isSaving) {
       return;
     }
 
-    const success = editingAllocation
-      ? await updateAllocation(editingAllocation.id, pendingValues)
-      : await createAllocation(pendingValues);
+    const success = pendingOperation.type === "update" && pendingOperation.allocationId
+      ? await updateAllocation(pendingOperation.allocationId, pendingValues)
+      : await createAllocation(
+          pendingValues,
+          pendingOperation.type === "duplicate" ? TH_TEXT.allocation.duplicateSuccess : undefined,
+        );
+
+    setPendingValues(null);
+    setPendingOperation(null);
 
     if (success) {
-      setPendingValues(null);
-      setEditingAllocation(null);
+      setActiveEditor(null);
       setFormVersion((current) => current + 1);
     }
   };
@@ -110,9 +145,8 @@ export default function AllocationPage() {
     const success = await deleteAllocation(deletingAllocation.id);
 
     if (success) {
-      if (editingAllocation?.id === deletingAllocation.id) {
-        setEditingAllocation(null);
-        setFormVersion((current) => current + 1);
+      if (activeEditor?.allocation.id === deletingAllocation.id) {
+        setActiveEditor(null);
       }
       setDeletingAllocation(null);
     }
@@ -162,43 +196,60 @@ export default function AllocationPage() {
         </section>
       ) : (
         <>
-          <div ref={formRef}>
-            <AllocationForm
-              key={`${editingAllocation?.id ?? "create"}-${formVersion}`}
-              wallets={wallets}
-              isSaving={isSaving}
-              error={allocationError}
-              mode={editingAllocation ? "edit" : "create"}
-              initialValues={initialValues}
-              editingAllocation={editingAllocation}
-              onCancelEdit={() => {
-                setEditingAllocation(null);
-                setFormVersion((current) => current + 1);
-              }}
-              onSubmit={setPendingValues}
-            />
-          </div>
+          <AllocationForm
+            key={`create-${formVersion}`}
+            wallets={wallets}
+            isSaving={isSaving}
+            error={allocationError}
+            mode="create"
+            onSubmit={handleCreateSubmit}
+          />
 
           <AllocationHistory
             allocations={allocations}
             isLoading={isAllocationLoading}
             isSaving={isSaving}
-            editingAllocationId={editingAllocation?.id ?? null}
             onEdit={handleEdit}
+            onDuplicate={handleDuplicate}
             onDelete={setDeletingAllocation}
           />
         </>
       )}
 
+      {activeEditor && initialValues && (
+        <AllocationEditorModal
+          allocation={activeEditor.allocation}
+          mode={activeEditor.mode}
+          initialValues={initialValues}
+          wallets={wallets}
+          isSaving={isSaving}
+          error={allocationError}
+          onClose={handleCloseEditor}
+          onSubmit={handleEditorSubmit}
+        />
+      )}
+
       <ConfirmationDialog
         isOpen={!!pendingValues}
-        title={editingAllocation ? TH_TEXT.allocation.confirmUpdateTitle : TH_TEXT.allocation.confirmCreateTitle}
+        title={
+          pendingOperation?.type === "update"
+            ? TH_TEXT.allocation.confirmUpdateTitle
+            : pendingOperation?.type === "duplicate"
+              ? TH_TEXT.allocation.confirmDuplicateTitle
+              : TH_TEXT.allocation.confirmCreateTitle
+        }
         message={confirmationMessage}
-        confirmText={editingAllocation ? TH_TEXT.allocation.saveChanges : TH_TEXT.allocation.submit}
+        confirmText={
+          pendingOperation?.type === "update"
+            ? TH_TEXT.allocation.saveChanges
+            : pendingOperation?.type === "duplicate"
+              ? TH_TEXT.allocation.duplicateSubmit
+              : TH_TEXT.allocation.submit
+        }
         variant="warning"
         isLoading={isSaving}
         onConfirm={() => void handleConfirmSubmit()}
-        onCancel={() => setPendingValues(null)}
+        onCancel={handleCancelConfirmation}
       />
 
       <ConfirmationDialog

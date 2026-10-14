@@ -48,21 +48,6 @@ export function toDateString(value: Date) {
   return `${year}-${month}-${day}`;
 }
 
-export function formatThaiDateRange(start: string, end: string) {
-  const formatter = new Intl.DateTimeFormat("th-TH", {
-    day: "numeric",
-    month: "short",
-    year: "numeric",
-    timeZone: "UTC",
-  });
-
-  if (start === end) {
-    return formatter.format(toUtcDate(start));
-  }
-
-  return `${formatter.format(toUtcDate(start))} - ${formatter.format(toUtcDate(end))}`;
-}
-
 export function formatThaiMonth(value: string) {
   return new Intl.DateTimeFormat("th-TH", {
     month: "long",

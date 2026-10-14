@@ -122,7 +122,12 @@ test.describe("Daily Transaction View navigation and filters", () => {
     const row = page.getByTestId("daily-transaction-row").filter({
       hasText: "E2E Daily Food Expense",
     });
-    await row.getByRole("button", { name: /E2E Daily Food Expense$/ }).click();
+    await row
+      .getByRole("button", {
+        name: "เลือกรายการ: E2E Daily Food Expense",
+        exact: true,
+      })
+      .click();
     await expect(page.getByRole("button", { name: "ลบรายการ", exact: true })).toBeVisible();
 
     await page.getByTestId("daily-filter-search").fill("");

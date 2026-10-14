@@ -7,30 +7,33 @@ import {
 
 test.describe("Spending Plan detail views", () => {
   test("switches between monthly, range, and daily views", async ({ page }, testInfo) => {
+    const startDate = getPlanTestStartDate(15, testInfo.retry);
     await createPlanThroughUi(page, {
       name: createPlanName("detail"),
-      startDate: getPlanTestStartDate(15, testInfo.retry),
+      startDate,
     });
 
     await page
       .getByRole("button", { name: "ตารางตามช่วงเวลา", exact: true })
       .click();
     await expect(
-      page.getByRole("heading", { name: "ตารางตามช่วงเวลา", exact: true }),
+      page.getByRole("heading", { name: /^แผนตามช่วงเวลา:/ }),
     ).toBeVisible();
     await expect(page.getByRole("table")).toBeVisible();
 
-    await page
-      .getByRole("button", { name: "ภาพรวมต่อวัน", exact: true })
-      .click();
-    await expect(page.getByText("ภาพรวมต่อวัน:", { exact: false })).toBeVisible();
+    await page.getByRole("row", { name: `เลือกวันที่ ${startDate}` }).click();
+    await page.getByRole("button", { name: "เปิดวันที่เลือก", exact: true }).click();
+    await expect(page.getByLabel("เลือกวันที่ดูภาพรวม")).toBeVisible();
 
     await page
       .getByRole("button", { name: "ภาพรวมรายเดือน", exact: true })
       .click();
-    await expect(
-      page.getByRole("heading", { name: "ภาพรวมรายเดือน", exact: true }),
-    ).toBeVisible();
+    const calendarDay = page.getByRole("button", { name: `เลือกวันที่ ${startDate}`, exact: true });
+    await expect(calendarDay).toBeVisible();
+    await calendarDay.click();
+    await expect(page.getByLabel("เลือกวันที่ดูภาพรวม")).toHaveCount(0);
+    await page.getByRole("button", { name: "ดูภาพรวม", exact: true }).click();
+    await expect(page.getByLabel("เลือกวันที่ดูภาพรวม")).toHaveValue(startDate);
   });
 
   test("stores the selected detail view for the plan", async ({ page }, testInfo) => {

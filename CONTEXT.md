@@ -69,8 +69,68 @@ A Wallet used for everyday cash, spending, saving, or goal-based money.
 _Avoid_: Cash account, basic wallet
 
 **Investment Portfolio**:
-A Wallet used for money allocated to investment assets, including stock-focused portfolios.
+A Wallet that represents one investment account at one broker, used for money allocated to investment assets, including stock-focused portfolios.
 _Avoid_: Stock account, brokerage account, portfolio as a separate object
+
+**Investment Holding**:
+An individual investment asset held inside one Investment Portfolio, such as a stock, ETF, or future supported asset.
+_Avoid_: Portfolio, stock wallet, asset wallet
+
+**Investment Instrument**:
+A system-recognized United States stock or ETF selected from a searchable directory using its ticker, name, market, and currency. It is the reference asset used by an Investment Holding.
+_Avoid_: Free-text ticker, Investment Holding, Investment Portfolio
+
+**Investment Lot**:
+A separately recorded purchase of an Investment Holding, preserving its quantity, price, date, fees, and Investment Exchange Rate. Lots support fractional quantities and are the source record used to calculate realized gains when shares are sold.
+_Avoid_: Average Cost record, blended purchase, Holding
+
+**Investment Cost Basis**:
+The recorded cost assigned to Investment Holdings or sold shares. Walpaca keeps individual Investment Lots, uses first-in first-out (FIFO) by default for realized gains, and may show Average Cost only as a simplified view of the remaining Holding.
+_Avoid_: Current market value, sale price, Wallet Balance
+
+**United States Equity Market**:
+The initial supported market for long-only Investment Holdings, covering United States stocks and ETFs quoted in United States dollars. Margin, short selling, options, and leverage are outside version 1.
+_Avoid_: Global market, Thailand stock market
+
+**Portfolio Market Value**:
+The current estimated value of all Investment Holdings in an Investment Portfolio using their latest available market prices. It is distinct from the Wallet Balance.
+_Avoid_: Wallet Balance, invested cash, purchase total
+
+**Market Quote**:
+The latest available market price and its source timestamp for an Investment Holding. Version 1 may use delayed data and must show when the quote was last updated.
+_Avoid_: Guaranteed real-time price, purchase price, Investment Exchange Rate
+
+**Market Data Provider**:
+An external service used to supply Investment Instruments, Market Quotes, historical prices, and supported corporate-action data. Version 1 uses one primary provider behind a Backend interface so the provider can be replaced later, beginning with a monitored free-tier quota and allowing a future paid plan.
+_Avoid_: Investment Portfolio, broker, permanent data source
+
+**Stale Market Data**:
+The state where a Market Quote or Market Exchange Rate cannot be refreshed. Walpaca keeps showing the last known value with its timestamp and a warning rather than replacing the Portfolio Market Value with zero.
+_Avoid_: Zero value, missing Holding, real-time data
+
+**Market Data Refresh**:
+The Backend policy that reuses cached Market Quotes until they are 15 minutes old when a portfolio is viewed, and records a Portfolio Value Snapshot once after the United States market closes each trading day.
+_Avoid_: Browser polling, real-time stream, unlimited provider requests
+
+**Portfolio Value Snapshot**:
+An end-of-day record of an Investment Portfolio's market value, using the available Market Quotes and Market Exchange Rate for a United States market trading date. Snapshots provide the historical portfolio value chart.
+_Avoid_: Live quote, Wallet Balance, Investment Lot
+
+**United States Market Day**:
+The trading date in the United States market calendar used for Market Quotes and Portfolio Value Snapshots. The Thai user interface describes it as the United States market close and separately shows the Thai local update time.
+_Avoid_: Thailand calendar day, browser date, America/New_York in user-facing text
+
+**Investment Return**:
+The performance of an Investment Portfolio after Investment Fees. It is shown as unrealized gain or loss for open Holdings, realized gain or loss for shares sold using FIFO, and total return including dividends.
+_Avoid_: Portfolio Market Value, Wallet Balance, purchase total
+
+**Investment Tax Data**:
+The transaction, lot, fee, and exchange-rate records retained for a user's future reconciliation or export. Version 1 does not calculate or file tax obligations.
+_Avoid_: Tax advice, tax filing, guaranteed taxable gain
+
+**Dashboard Investment Summary**:
+A compact Dashboard view of total Investment Portfolio market value, total Investment Return, and Market Quote freshness. Detailed charts, Holdings, lots, and Investment Transactions remain in the related Investment Portfolio.
+_Avoid_: Full portfolio detail, Wallet Balance, Spending Budget
 
 **Sub-portfolio**:
 An Investment Portfolio nested under another Investment Portfolio to separate investment strategies or goals.
@@ -89,6 +149,38 @@ _Avoid_: Parent Wallet transaction, summary transaction
 **Transaction**:
 A dated record of money entering or leaving a Wallet for a real-life event.
 _Avoid_: Transfer, movement, entry
+
+**Investment Transaction**:
+A dated record of buying, selling, or receiving dividends for an Investment Holding in an Investment Portfolio. It is distinct from the related movement of money between Wallets.
+_Avoid_: Normal Transaction, Transfer, Holding
+
+**Investment Transaction Recalculation**:
+The recomputation of lots, FIFO realized gains, Investment Cash, Portfolio Value Snapshots, and derived returns after a user corrects or deletes an Investment Transaction.
+_Avoid_: Editing only the visible row, fixed historical result, manual database adjustment
+
+**Manual Investment Entry**:
+An Investment Transaction entered by the user with its broker-confirmed details. Version 1 uses Manual Investment Entries; importing broker files is a future capability.
+_Avoid_: Broker import, estimated transaction, Market Quote
+
+**Investment Cash**:
+Cash held inside an Investment Portfolio. Dividends and stock-sale proceeds enter as Investment Cash and may remain available for a later purchase or be transferred to a Normal Wallet.
+_Avoid_: Portfolio Market Value, invested amount, Wallet Balance
+
+**Investment Exchange Rate**:
+The Thai baht amount per United States dollar recorded with an Investment Transaction to preserve the actual Thai baht cash movement and show equivalent portfolio values.
+_Avoid_: Stock price, current exchange rate, Wallet Balance
+
+**Investment Fee**:
+A broker commission, exchange fee, or other charge recorded with an Investment Transaction. A purchase fee increases the Investment Lot cost; a sale fee reduces sale proceeds.
+_Avoid_: Stock price, Market Exchange Rate, dividend
+
+**Investment Stock Split**:
+A user-recorded corporate action that changes the quantity and per-share cost of existing Investment Lots by a stated ratio without changing their total cost.
+_Avoid_: Buy, Sell, Market Quote
+
+**Market Exchange Rate**:
+The latest available United States dollar to Thai baht exchange rate used to convert current Portfolio Market Value into Thai baht. It is distinct from the historical Investment Exchange Rate recorded with an Investment Transaction.
+_Avoid_: Investment Exchange Rate, purchase exchange rate, fixed portfolio rate
 
 **Transaction Date**:
 The calendar date the Transaction belongs to. It may be today or a past date, but not a future date.
@@ -140,6 +232,28 @@ _Avoid_: Expense category, service charge transaction
 A grouped movement of an existing Amount from one Source Wallet to one or more Destination Wallets. Its related Transfers are managed together as one financial action.
 _Avoid_: Income, recurring transfer, individual transfer
 
+### Release Communications
+
+**Release Announcement**:
+A versioned, published summary of Walpaca features, improvements, and fixes. Announcements are maintained in the application release catalog and deployed with the code.
+_Avoid_: In-app user message, notification
+
+**Release Baseline**:
+The first release an account should receive in the automatic popup. When a new account first opens the popup, its baseline is the latest published release; earlier announcements remain available in history.
+_Avoid_: Installed version, last-seen version
+
+**Seen Announcement**:
+A Release Announcement whose details have been opened from either the popup or update history. Seen state is stored for the User Account and shared across its devices.
+_Avoid_: Dismissed announcement, delivered announcement
+
+**Dismissed Announcement**:
+A Release Announcement hidden account-wide when the user chooses not to show the popup's current snapshot again. Dismissed announcements remain available in update history.
+_Avoid_: Seen announcement, deleted announcement
+
+**Temporary Popup Close**:
+Closing the update popup without choosing account-wide dismissal. It suppresses only that popup snapshot in the current browser tab and does not affect other devices or update history.
+_Avoid_: Dismissal, read state
+
 ### Reporting And Analysis
 
 **Dashboard**:
@@ -175,16 +289,32 @@ A view of a Spending Budget for a selected daily, weekly, monthly, or yearly Rep
 _Avoid_: Budget history, forecasted expense
 
 **Spending Plan**:
-An explicit, user-created plan that distributes one total amount across one to 31 future calendar days and one or more Plan Purposes. It tracks Expenses without reserving money or changing Wallet Balances.
+An explicit, user-created plan for one to 31 past, current, or future calendar days. It sets per-occurrence spending targets for one or more Plan Purposes and tracks recorded Expenses without reserving money or changing Wallet Balances.
 _Avoid_: Spending Budget, transfer, reserved balance
 
 **Plan Purpose**:
-A named part of a Spending Plan that maps one or more expense Transaction Categories and has a daily planned amount.
+A named part of a Spending Plan that maps one or more expense Transaction Categories, has a target amount for each scheduled occurrence, and uses one Spending Plan Distribution rule. Its target applies to the combined Expense total of its Categories, and a Transaction Category belongs to at most one Plan Purpose within the same Spending Plan.
 _Avoid_: Transaction Category, wallet purpose
 
+**Plan Total**:
+The total projected spending of a Spending Plan, calculated from every Plan Purpose's per-occurrence target and its scheduled calendar days. It is not entered directly by the user.
+_Avoid_: Plan budget input, reserved balance
+
+**Spending Plan Wallet Scope**:
+The explicitly selected one or more Wallets whose Expenses are compared with a Spending Plan. Wallets created later are not included until the user adds them to the plan.
+_Avoid_: All wallets, dynamic wallet scope
+
+**Spending Plan Distribution**:
+The rule that chooses which calendar days a Plan Purpose's per-occurrence target applies to, such as every day, weekdays, selected weekdays every week, selected weekdays every two weeks, or specific dates. A two-week rule begins on the first matching weekday within the plan and repeats every 14 days. Each rule must select at least one day within its Plan's date range.
+_Avoid_: manual daily allocation, recurring Transaction
+
+**Unplanned Plan Expense**:
+An Expense in a Plan Purpose's Transaction Category and Wallet Scope that occurs on a date where that Purpose has no target. It is compared against a zero target and is shown as overspending rather than being omitted.
+_Avoid_: Ignored expense, uncategorized expense
+
 **Plan Revision**:
-An immutable snapshot of a Spending Plan's Wallet Scope, Plan Purposes, category mappings, and daily allocations that becomes effective on a specific calendar date. Earlier recorded days continue to use the Revision that was effective on those days.
-_Avoid_: Edited history, overwritten plan
+A configuration of a Spending Plan's Wallet Scope, Plan Purposes, category mappings, Distribution rules, and generated occurrence allocations that becomes effective on a specific calendar date and remains in effect until the next Revision. Saving a Revision for the same effective date replaces that day's configuration.
+_Avoid_: Transaction edit, plan history entry
 
 **Dashboard Layout**:
 The user's chosen arrangement of Dashboard content.
